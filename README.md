@@ -3,3 +3,7 @@ This contains all modeling, data analysis, and data visualization scripts for th
 As of 6/6/22, we are simply examining the differences in human response times when an opponent changes their response time. 
 
 Analysis and Figure scripts is most updated, not v1
+
+Optimal Decision Time Agent Simulation is using Gamble Time
+
+Most updated model is Optimal Decision Time Simulations Asymmetric (No Feedback)
