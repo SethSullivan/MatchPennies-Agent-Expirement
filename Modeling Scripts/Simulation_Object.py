@@ -42,12 +42,12 @@ def simulation_runs(NUM_TRIALS, TRIAL_TIME, m, n, player_decision_times, agent_d
             for k in range(NUM_TRIALS):
                 # For gambles, reach time is decision time + movement time.. this get's overwritten for reaction if statement
                 # LEave target time is player decision time for gambles, again get's changed in first if statement
-                player_leave_target_times[i,j,k] = player_decision_times[i,j,k]
+                player_leave_target_times[i,j,k] = player_decision_times[i,j,k] + 80 # 80 is the processing delay
                 player_reach_times[i,j,k] = player_decision_times[i,j,k] + movement_times[i,j,k]
                 agent_reach_times[i,j,k] = agent_decision_times[i,j,k] + AGENT_MOVEMENT_TIME
                 
                 if ((player_decision_times[i,j,k] >= agent_decision_times[i,j,k])): # If player selects after agent, they are forced to react
-                    player_leave_target_times[i,j,k] = agent_decision_times[i,j,k] + reaction_times[i,j,k] # PLayer can immediately react to the agent
+                    player_leave_target_times[i,j,k] = agent_decision_times[i,j,k] + reaction_times[i,j,k] # PLayer can immediately react to the agent REACTION TIMES INCLUDE THE PROCESSING SHIT
                     player_reach_times[i,j,k] = player_leave_target_times[i,j,k] + movement_times[i,j,k]
                     if player_reach_times[i,j,k] < TRIAL_TIME:
                         player_wins[i,j] += 1
@@ -144,7 +144,7 @@ def _plot_optimals_all_on_one(self,metrics_ax1,metrics_ax2,save=False):
     ax2.spines['top'].set_visible(False)
     #ax.set_title(f'P1 SD = {sig1}, P2 SD = {sig2}')
     ax.set_title(f'{self.sub_name} Probabilistic Model Results\nAgent SD = {self.agent_uncertainty}')
-    dv.Custom_Legend(ax, legend_labels, legend_colors, loc=(0.02,0.27), fontsize = 10)
+    dv.Custom_Legend(ax, legend_labels, legend_colors, fontsize = 8)
     if save:
         print('HERE')
         plt.savefig(r'C:\Users\Seth Sullivan\OneDrive - University of Delaware - o365\Desktop\Articles\test.png',dpi = 400, transparent = True, bbox_inches='tight')
@@ -214,8 +214,8 @@ class Optimal_Decision_Time_Simulation():
             self.player_decision_times[i,:,:] = stats.norm.rvs(self.player_decision_means[i],self.timing_uncertainty,size = (self.n,self.NUM_TRIALS))#, random_state = 0)
         for j in range(self.n):
             self.agent_decision_times[:,j,:] = stats.norm.rvs(self.agent_decision_means[j],self.agent_uncertainty,size =(self.m, self.NUM_TRIALS))#,random_state = 0)
-        self.reaction_times = stats.skewnorm.rvs(5,self.reaction_time_mean,self.reaction_uncertainty,size=(self.m,self.n,self.NUM_TRIALS))
-        self.movement_times = stats.skewnorm.rvs(5,self.movement_time_mean,self.movement_uncertainty,size=(self.m,self.n,self.NUM_TRIALS))
+        self.reaction_times = stats.skewnorm.rvs(2,self.reaction_time_mean,self.reaction_uncertainty,size=(self.m,self.n,self.NUM_TRIALS))
+        self.movement_times = stats.skewnorm.rvs(2,self.movement_time_mean,self.movement_uncertainty,size=(self.m,self.n,self.NUM_TRIALS))
         
     # Still needs work, doesn't significantly speed up over the for loops anyway
     # def draw_times_fast(self):
