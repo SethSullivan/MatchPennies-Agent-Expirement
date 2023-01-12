@@ -244,7 +244,7 @@ class Subject():
     def wins_when_both_decide(self):
         # Get agent decision array
         self.player_both_reached_wins = np.zeros((self.num_blocks))
-        self.perc_player_both_reached_wins = np.zeros((self.num_blocks))
+        self.player_perc_both_reached_wins = np.zeros((self.num_blocks))
         self.agent_both_reached_wins = np.zeros((self.num_blocks))
         # Get wins when both decide
         for i in range(self.num_blocks):
@@ -257,7 +257,7 @@ class Subject():
             y = np.count_nonzero(self.agent_task_decision_array[i,:]!=0)
             if x!= 0 and y!= 0:
                 total = np.count_nonzero(np.logical_and(self.player_task_decision_array[i,:]!=0,self.agent_task_decision_array[i,:]!=0))
-                self.perc_player_both_reached_wins[i] = (self.player_both_reached_wins[i]/total)*100
+                self.player_perc_both_reached_wins[i] = (self.player_both_reached_wins[i]/total)*100
                 
     def binned_metrics(self,bin_start = 800,bin_end = 1400, bin_size = 50,cut_off_threshold = 30):
         self.bins = np.arange(bin_start,bin_end,bin_size)
