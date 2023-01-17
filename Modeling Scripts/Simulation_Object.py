@@ -337,14 +337,16 @@ def _plot_histogram(self,metrics, density=True):
             d += 1
             c = -1                 
     return fig,axs            
-class Simulation_Experiment_Results():
+class Simulation_Experiment_Results(Optimal_Decision_Time_Simulation):
     '''
     This class stitches the two objects together in experiment condition order
     '''
     def __init__(self,objects):
-       self.o1,self.o2 = objects
-       self.num_blocks = 6
-       self.place_optimals_together()
+        super(Optimal_Decision_Time_Simulation,self).__init__(reaction_time_mean,movement_time_mean,timing_uncertainty,reaction_uncertainty,
+                                                              movement_uncertainty,decision_to_action_delay_mean)
+        self.o1,self.o2 = objects
+        self.num_blocks = 6
+        self.place_optimals_together()
     def place_optimals_together(self):
         self.optimal_mean_results = {}
         for (k1,v1),(k2,v2) in zip(self.o1.experiment_simulation_optimal_results_dict.items(),
