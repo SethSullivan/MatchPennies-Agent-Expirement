@@ -39,8 +39,8 @@ class Subject():
         self.num_stds_for_reaction_time = kwargs.get('num_stds_for_reaction_time',2)
         self.n = kwargs.get('cutoff_for_controls_calc',10)
         
-        #------------------------Calculate Means and Stds----------------------------------------------------------------------------------------------------------
-        # Control means
+        #------------------------Calculate Mean and Stds----------------------------------------------------------------------------------------------------------
+        # Control mean
         self.reaction_time_mean = np.nanmean(self.reaction_time[self.n:])
         self.reaction_movement_time_mean = np.nanmean(self.reaction_movement_time[self.n:])
         self.reaction_plus_movement_time_mean = np.nanmean(self.reaction_time[self.n:] + self.reaction_movement_time[self.n:])
@@ -63,7 +63,7 @@ class Subject():
         self.reaction_time_minus_sd = self.reaction_time_mean - self.reaction_time_sd
         self.reaction_time_minus_2sd = self.reaction_time_mean - 2*self.reaction_time_sd
         
-        # Task means and stds
+        # Task mean and stds
         self.agent_task_reach_time_mean = np.nanmean(self.agent_task_reach_time,axis = 1)
         self.agent_task_reach_time_median = np.nanmedian(self.agent_task_reach_time,axis = 1)
         self.agent_task_reach_time_sd = np.nanstd(self.agent_task_reach_time,axis = 1)
@@ -75,7 +75,7 @@ class Subject():
         self.player_task_reach_time_sd = np.nanstd(self.player_task_reach_time,axis = 1)
         self.player_task_decision_time_mean = np.nanmean(self.player_task_decision_time,axis = 1)
         self.player_task_decision_time_median = np.nanmedian(self.player_task_decision_time,axis = 1)
-        self.player_task_decision_time_sd = np.nanstd(self.agent_task_reach_time,axis = 1)
+        self.player_task_decision_time_sd = np.nanstd(self.player_task_reach_time,axis = 1)
         self.player_task_movement_time_mean = np.nanmean(self.player_task_reach_time_mean - self.player_task_decision_time_mean)
         self.player_task_movement_time_median = np.nanmedian(self.player_task_reach_time_mean - self.player_task_decision_time_mean)
         self.player_task_movement_time_sd = np.nanstd(self.player_task_reach_time_mean - self.player_task_decision_time_mean)
@@ -220,11 +220,13 @@ class Subject():
         self.perc_indecisions_that_were_reactions = (self.reaction_indecisions/self.player_indecisions)*100
         self.perc_incorrects_that_were_reactions = (self.reaction_incorrects/self.player_incorrects)*100
 
-        # get means
-        self.gamble_decision_time_means = np.nanmean(self.gamble_decision_time, axis = 1 )
-        self.reaction_decision_time_means = np.nanmean(self.reaction_decision_time, axis = 1 )
-        self.agent_task_decision_time_gamble_means = np.nanmean(self.agent_task_decision_time_gambles, axis = 1)
-        self.agent_task_decision_time_reaction_means = np.nanmean(self.agent_task_decision_time_reactions, axis = 1)
+        # get mean
+        self.gamble_decision_time_mean = np.nanmean(self.gamble_decision_time, axis = 1 )
+        self.gamble_decision_time_sd = np.nanstd(self.gamble_decision_time, axis = 1 )
+        self.reaction_decision_time_mean = np.nanmean(self.reaction_decision_time, axis = 1 )
+        self.reaction_decision_time_sd = np.nanstd(self.reaction_decision_time, axis = 1 )
+        self.agent_task_decision_time_gamble_mean = np.nanmean(self.agent_task_decision_time_gambles, axis = 1)
+        self.agent_task_decision_time_reaction_mean = np.nanmean(self.agent_task_decision_time_reactions, axis = 1)
 
         # Not sure why I had this threshold in??
         # for i in range(self.num_blocks):
@@ -232,13 +234,13 @@ class Subject():
         #         perc_reaction_wins[i] = np.nan
         #         perc_reaction_incorrects[i] = np.nan
         #         perc_reaction_indecisions[i] = np.nan
-        #         reaction_decision_time_means[i] = np.nan
+        #         reaction_decision_time_mean[i] = np.nan
 
         #     if total_gambles[i]<10:
         #         perc_gamble_wins[i] = np.nan
         #         perc_gamble_incorrects[i] = np.nan
         #         perc_gamble_indecisions[i] = np.nan
-        #         self.gamble_decision_time_means[i] = np.nan
+        #         self.gamble_decision_time_mean[i] = np.nan
         return
         
     def wins_when_both_decide(self):
@@ -311,7 +313,7 @@ class Group():
         self.num_blocks = kwargs.get('num_blocks',6)
         self.num_trials = kwargs.get('num_trials',80)
         self.bin_cutoff_threshold = kwargs.get('bin_cutoff_threshold',30)
-        # Control tasks, group means and uncertainties
+        # Control tasks, group mean and uncertainties
         self.reaction_time_mean = np.nanmean(self.combine_all_subjects('reaction_time_mean'))
         self.reaction_time_median = np.nanmedian(self.combine_all_subjects('reaction_time_mean'))
         self.reaction_time_sd = np.nanmean(self.combine_all_subjects('reaction_time_sd'))
@@ -354,7 +356,7 @@ class Group():
         self.all_agent_mean_reach_time_each_condition = np.nanmean(self.all_agent_task_reach_times_each_condition,axis=1)
         
         # BINNING ----------------------------------------------------------------------------------------
-        # Binned means across all participants
+        # Binned mean across all participants
         self.perc_binned_player_wins_mean = np.nanmean(self.combine_all_subjects('perc_binned_player_wins'),axis = 0)
         self.perc_binned_player_indecisions_mean = np.nanmean(self.combine_all_subjects('perc_binned_player_indecisions'),axis = 0)
         self.perc_binned_player_incorrects_mean = np.nanmean(self.combine_all_subjects('perc_binned_player_incorrects'),axis = 0)
