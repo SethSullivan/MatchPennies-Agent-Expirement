@@ -312,32 +312,31 @@ class Subject():
         
     def first_half_second_half(self):
         m = int(self.num_trials/2)
-        self.player_indecisions_first_half = np.zeros((self.num_subjects, self.num_blocks))
-        self.player_wins_first_half = np.zeros((self.num_subjects, self.num_blocks))
-        self.player_incorrects_first_half = np.zeros((self.num_subjects,self.num_blocks))
+        self.player_indecisions_first_half = np.zeros(( self.num_blocks))
+        self.player_wins_first_half = np.zeros(( self.num_blocks))
+        self.player_incorrects_first_half = np.zeros((self.num_blocks))
         
-        self.player_indecisions_second_half = np.zeros((self.num_subjects, self.num_blocks))
-        self.player_wins_second_half = np.zeros((self.num_subjects, self.num_blocks))
-        self.player_incorrects_second_half = np.zeros((self.num_subjects,self.num_blocks))
+        self.player_indecisions_second_half = np.zeros(( self.num_blocks))
+        self.player_wins_second_half = np.zeros(( self.num_blocks))
+        self.player_incorrects_second_half = np.zeros((self.num_blocks))
         
-        for i in range(self.num_subjects):
-            for j in range(self.num_blocks):
-                # Calculate first half
-                self.player_indecisions_first_half[i,j] = np.count_nonzero(self.player_task_decision_array[i,j,:m] == 0)
-                self.player_wins_first_half[i,j] = np.count_nonzero(np.logical_and(self.player_task_decision_array[i,j,:m] == 1 , self.agent_task_decision_array[i,j,:m] == 1))
-                self.player_wins_first_half[i,j]+= np.count_nonzero(np.logical_and(self.player_task_decision_array[i,j,:m] == -1 , self.agent_task_decision_array[i,j,:m] == -1))
-                self.player_wins_first_half[i,j]+= np.count_nonzero(np.logical_and(self.player_task_decision_array[i,j,:m] == -1 , self.agent_task_decision_array[i,j,:m] == 0))
-                self.player_wins_first_half[i,j]+= np.count_nonzero(np.logical_and(self.player_task_decision_array[i,j,:m] == 1 , self.agent_task_decision_array[i,j,:m] == 0))
-                self.player_incorrects_first_half[i,j] = np.count_nonzero(np.logical_and(self.player_task_decision_array[i,j,:m] == 1 , self.agent_task_decision_array[i,j,:m] == -1))
-                self.player_incorrects_first_half[i,j] += np.count_nonzero(np.logical_and(self.player_task_decision_array[i,j,:m] == -1 , self.agent_task_decision_array[i,j,:m] == 1))
-                # Calculate second half
-                self.player_indecisions_second_half[i,j] = np.count_nonzero(self.player_task_decision_array[i,j,m:] == 0)
-                self.player_wins_second_half[i,j] = np.count_nonzero(np.logical_and(self.player_task_decision_array[i,j,m:] == 1 , self.agent_task_decision_array[i,j,m:] == 1))
-                self.player_wins_second_half[i,j]+= np.count_nonzero(np.logical_and(self.player_task_decision_array[i,j,m:] == -1 , self.agent_task_decision_array[i,j,m:] == -1))
-                self.player_wins_second_half[i,j]+= np.count_nonzero(np.logical_and(self.player_task_decision_array[i,j,m:] == -1 , self.agent_task_decision_array[i,j,m:] == 0))
-                self.player_wins_second_half[i,j]+= np.count_nonzero(np.logical_and(self.player_task_decision_array[i,j,m:] == 1 , self.agent_task_decision_array[i,j,m:] == 0))
-                self.player_incorrects_second_half[i,j] = np.count_nonzero(np.logical_and(self.player_task_decision_array[i,j,m:] == 1 , self.agent_task_decision_array[i,j,m:] == -1))
-                self.player_incorrects_second_half[i,j] += np.count_nonzero(np.logical_and(self.player_task_decision_array[i,j,m:] == -1 , self.agent_task_decision_array[i,j,m:] == 1))
+        for i in range(self.num_blocks):
+            # Calculate first half
+            self.player_indecisions_first_half[i] = np.count_nonzero(self.player_task_decision_array[i,:m] == 0)
+            self.player_wins_first_half[i] = np.count_nonzero(np.logical_and(self.player_task_decision_array[i,:m] == 1 , self.agent_task_decision_array[i,:m] == 1))
+            self.player_wins_first_half[i]+= np.count_nonzero(np.logical_and(self.player_task_decision_array[i,:m] == -1 , self.agent_task_decision_array[i,:m] == -1))
+            self.player_wins_first_half[i]+= np.count_nonzero(np.logical_and(self.player_task_decision_array[i,:m] == -1 , self.agent_task_decision_array[i,:m] == 0))
+            self.player_wins_first_half[i]+= np.count_nonzero(np.logical_and(self.player_task_decision_array[i,:m] == 1 , self.agent_task_decision_array[i,:m] == 0))
+            self.player_incorrects_first_half[i] = np.count_nonzero(np.logical_and(self.player_task_decision_array[i,:m] == 1 , self.agent_task_decision_array[i,:m] == -1))
+            self.player_incorrects_first_half[i] += np.count_nonzero(np.logical_and(self.player_task_decision_array[i,:m] == -1 , self.agent_task_decision_array[i,:m] == 1))
+            # Calculate second half
+            self.player_indecisions_second_half[i] = np.count_nonzero(self.player_task_decision_array[i,m:] == 0)
+            self.player_wins_second_half[i] = np.count_nonzero(np.logical_and(self.player_task_decision_array[i,m:] == 1 , self.agent_task_decision_array[i,m:] == 1))
+            self.player_wins_second_half[i]+= np.count_nonzero(np.logical_and(self.player_task_decision_array[i,m:] == -1 , self.agent_task_decision_array[i,m:] == -1))
+            self.player_wins_second_half[i]+= np.count_nonzero(np.logical_and(self.player_task_decision_array[i,m:] == -1 , self.agent_task_decision_array[i,m:] == 0))
+            self.player_wins_second_half[i]+= np.count_nonzero(np.logical_and(self.player_task_decision_array[i,m:] == 1 , self.agent_task_decision_array[i,m:] == 0))
+            self.player_incorrects_second_half[i] = np.count_nonzero(np.logical_and(self.player_task_decision_array[i,m:] == 1 , self.agent_task_decision_array[i,m:] == -1))
+            self.player_incorrects_second_half[i] += np.count_nonzero(np.logical_and(self.player_task_decision_array[i,m:] == -1 , self.agent_task_decision_array[i,m:] == 1))
 
         self.perc_player_indecisions_first_half = (self.player_indecisions_first_half / m)*100
         self.perc_player_wins_first_half = (self.player_wins_first_half / m)*100
