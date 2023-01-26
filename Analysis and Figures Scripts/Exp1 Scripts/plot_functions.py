@@ -77,7 +77,7 @@ def scatter_with_correlation(ax,xdata,ydata,**kwargs):
     xdata = xdata.flatten()
     ydata= ydata.flatten()
     lm = stats.linregress(xdata,ydata)
-    x = np.arange(min(xdata)-10,max(xdata)+10,1)
+    x = np.arange(np.nanmin(xdata)-10,np.nanmax(xdata)+10,1)
     y = lm.slope*x + lm.intercept
     spear_r = stats.spearmanr(xdata, ydata)
     ax.scatter(xdata,ydata,c=facecolor,s = markersize,alpha = alpha,linewidths=lw, edgecolors=edgecolor)
