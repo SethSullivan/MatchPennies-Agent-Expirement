@@ -206,10 +206,11 @@ class Subject():
             self.reaction_indecisions[i]+=1
             self.total_did_not_leave[i]+=1
         self.perc_reactions = (self.total_reactions/self.num_trials)*100
+        # OF the total reactions what were the percents
         self.perc_reaction_wins = (self.reaction_wins/self.total_reactions)*100 # Array division
         self.perc_reaction_incorrects = (self.reaction_incorrects/self.total_reactions)*100
         self.perc_reaction_indecisions = (self.reaction_indecisions/self.total_reactions)*100
-
+        # Of the total gambles what were the percents
         self.perc_gambles = (self.total_gambles/self.num_trials)*100
         self.perc_gamble_wins = (self.gamble_wins/self.total_gambles)*100
         self.perc_gamble_incorrects = (self.gamble_incorrects/self.total_gambles)*100
@@ -315,10 +316,15 @@ class Subject():
         self.player_indecisions_first_half = np.zeros(( self.num_blocks))
         self.player_wins_first_half = np.zeros(( self.num_blocks))
         self.player_incorrects_first_half = np.zeros((self.num_blocks))
+        self.player_task_decision_time_first_half = np.zeros((self.num_blocks,m))
+        self.agent_task_decision_time_first_half = np.zeros((self.num_blocks,m))
+        
         
         self.player_indecisions_second_half = np.zeros(( self.num_blocks))
         self.player_wins_second_half = np.zeros(( self.num_blocks))
         self.player_incorrects_second_half = np.zeros((self.num_blocks))
+        self.player_task_decision_time_second_half = np.zeros((self.num_blocks,m))
+        self.agent_task_decision_time_second_half = np.zeros((self.num_blocks,m))
         
         for i in range(self.num_blocks):
             # Calculate first half
@@ -344,7 +350,45 @@ class Subject():
         self.perc_player_indecisions_second_half = (self.player_indecisions_second_half / m)*100
         self.perc_player_wins_second_half = (self.player_wins_second_half / m)*100
         self.perc_player_incorrects_second_half = (self.player_incorrects_second_half / m)*100
+         # Get Reach and Decision Times    
+        self.agent_task_reach_time_first_half = self.agent_task_reach_time[:,:m]
+        self.player_task_reach_time_first_half = self.player_task_reach_time[:,:m]
+        self.agent_task_decision_time_first_half = self.agent_task_decision_time[:,:m]
+        self.player_task_decision_time_first_half = self.player_task_decision_time[:,:m]
+
+        self.agent_task_reach_time_second_half = self.agent_task_reach_time[:,m:]
+        self.player_task_reach_time_second_half = self.player_task_reach_time[:,m:]
+        self.agent_task_decision_time_second_half = self.agent_task_decision_time[:,m:]
+        self.player_task_decision_time_second_half = self.player_task_decision_time[:,m:]
         
+        self.player_minus_agent_task_decision_time_first_half = self.player_minus_agent_task_decision_time[:,:m]
+        self.player_minus_agent_task_decision_time_second_half = self.player_minus_agent_task_decision_time[:,m:]
+        
+        
+        # Calculate Means
+        # First half
+        self.agent_task_reach_time_first_half_mean = np.nanmean(self.agent_task_reach_time_first_half,axis = 1)
+        self.agent_task_reach_time_first_half_sd = np.nanstd(self.agent_task_reach_time_first_half,axis = 1)
+        self.agent_task_decision_time_first_half_mean = np.nanmean(self.agent_task_decision_time_first_half, axis =1)
+        self.agent_task_decision_time_first_half_sd = np.nanstd(self.agent_task_decision_time_first_half, axis =1)
+        self.player_task_reach_time_first_half_mean = np.nanmean(self.player_task_reach_time_first_half,axis=1)
+        self.player_task_reach_time_first_half_sd = np.nanstd(self.player_task_reach_time_first_half,axis=1)
+        self.player_task_decision_time_first_half_mean = np.nanmean(self.player_task_decision_time_first_half,axis=1)
+        self.player_task_decision_time_first_half_sd = np.nanstd(self.agent_task_reach_time_first_half,axis = 1)
+        self.player_minus_agent_task_decision_time_first_half_mean = np.nanmean(self.player_minus_agent_task_decision_time_first_half,axis=1)
+        self.player_minus_agent_task_decision_time_first_half_mean = np.nanstd(self.player_minus_agent_task_decision_time_first_half,axis=1)
+
+        # Second half
+        self.agent_task_reach_time_second_half_mean = np.nanmean(self.agent_task_reach_time_second_half,axis = 1)
+        self.agent_task_reach_time_second_half_sd = np.nanstd(self.agent_task_reach_time_second_half,axis = 1)
+        self.agent_task_decision_time_second_half_mean = np.nanmean(self.agent_task_decision_time_second_half, axis =1)
+        self.agent_task_decision_time_second_half_sd = np.nanstd(self.agent_task_decision_time_second_half, axis =1)
+        self.player_task_reach_time_second_half_mean = np.nanmean(self.player_task_reach_time_second_half,axis=1)
+        self.player_task_reach_time_second_half_sd = np.nanstd(self.player_task_reach_time_second_half,axis=1)
+        self.player_task_decision_time_second_half_mean = np.nanmean(self.player_task_decision_time_second_half,axis=1)
+        self.player_task_decision_time_second_half_sd = np.nanstd(self.agent_task_reach_time_second_half,axis = 1)
+        self.player_minus_agent_task_decision_time_second_half_mean = np.nanmean(self.player_minus_agent_task_decision_time_second_half,axis=1)
+        self.player_minus_agent_task_decision_time_second_half_mean = np.nanstd(self.player_minus_agent_task_decision_time_second_half,axis=1)
 class Group():
     def __init__(self, objects,**kwargs):
         self.objects = objects
