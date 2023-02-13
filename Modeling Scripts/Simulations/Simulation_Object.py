@@ -47,8 +47,8 @@ def simulation_runs(NUM_TRIALS, TRIAL_TIME, m, n, player_decision_times, agent_d
                 player_reach_times[i,j,k] = player_leave_target_times[i,j,k] + movement_times[i,j,k]
                 agent_reach_times[i,j,k] = agent_decision_times[i,j,k] + AGENT_MOVEMENT_TIME
                 
-                if ((player_decision_times[i,j,k] - decision_to_action_delay[i,j,k] >= agent_decision_times[i,j,k])): # If player decides before some delay, they are forced to react
-                    player_leave_target_times[i,j,k] = agent_decision_times[i,j,k] + reaction_times[i,j,k] # PLayer can immediately react to the agent REACTION TIMES INCLUDE THE PROCESSING SHIT
+                if ((player_decision_times[i,j,k] >= agent_decision_times[i,j,k])): # If player decides before some delay, they are forced to react
+                    player_leave_target_times[i,j,k] = agent_decision_times[i,j,k] + reaction_times[i,j,k] # Player can immediately react to the agent REACTION TIMES INCLUDE THE PROCESSING SHIT
                     player_reach_times[i,j,k] = player_leave_target_times[i,j,k] + movement_times[i,j,k]
                     if player_reach_times[i,j,k] < TRIAL_TIME:
                         player_wins[i,j] += 1
