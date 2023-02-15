@@ -485,10 +485,10 @@ class Group():
         metrics = self.combine_all_subjects(metric)
         for i,m in enumerate(metrics):
             if comparison_direction == 'greater than':
-                if m > comparison_num:
+                if m.any() > comparison_num:
                     print(f'Sub{i+1}')
             if comparison_direction == 'less than':
-                if m < comparison_num:
+                if m.any() < comparison_num:
                     print(f'Sub{i+1}')
     def bin_threshold(self):
         '''
