@@ -5,3 +5,4 @@ Model Objects/
 __pycache__/
 *.png
 *.pkl
+.vscode/
