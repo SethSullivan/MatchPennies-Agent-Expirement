@@ -60,8 +60,7 @@ class Subject():
         self.coincidence_reach_time_sd = np.nanstd(self.coincidence_reach_time[self.n:])
         
         # CONSERVATIVE REACTION TIME
-        self.reaction_time_minus_sd = self.reaction_time_mean - self.reaction_time_sd
-        self.reaction_time_minus_2sd = self.reaction_time_mean - 2*self.reaction_time_sd
+        self.adjusted_player_reaction_time = self.reaction_time_mean - self.num_stds_for_reaction_time*self.reaction_time_sd
         
         # Task mean and stds
         self.agent_task_reach_time_mean = np.nanmean(self.agent_task_reach_time,axis = 1)
@@ -163,9 +162,9 @@ class Subject():
         self.total_reactions = np.zeros((self.num_blocks))
         self.total_did_not_leave = np.zeros((self.num_blocks))
 
-        temp_player_reaction_time =  self.reaction_time_mean - num_stds*self.reaction_time_sd
-        gamble_index = np.argwhere((self.player_task_decision_time-self.agent_task_decision_time)<=temp_player_reaction_time)
-        reaction_index = np.argwhere((self.player_task_decision_time-self.agent_task_decision_time)>temp_player_reaction_time)
+        self.adjusted_player_reaction_time =  self.reaction_time_mean - num_stds*self.reaction_time_sd
+        gamble_index = np.argwhere((self.player_task_decision_time-self.agent_task_decision_time)<=self.adjusted_player_reaction_time)
+        reaction_index = np.argwhere((self.player_task_decision_time-self.agent_task_decision_time)>self.adjusted_player_reaction_time)
         did_not_leave_start_index = np.argwhere(np.isnan(self.player_task_decision_time))
         for i,j in gamble_index:
             self.gamble_decision_time[i,j] = self.player_task_decision_time[i,j]
@@ -396,6 +395,7 @@ class Group():
         self.num_trials = kwargs.get('num_trials',80)
         self.bin_cutoff_threshold = kwargs.get('bin_cutoff_threshold',30)
         # Control tasks, group mean and uncertainties
+        self.adjusted_reaction_time_mean = np.nanmean(self.combine_all_subjects('adjusted_player_reaction_time'))
         self.reaction_time_mean = np.nanmean(self.combine_all_subjects('reaction_time_mean'))
         self.reaction_time_median = np.nanmedian(self.combine_all_subjects('reaction_time_mean'))
         self.reaction_time_sd = np.nanmean(self.combine_all_subjects('reaction_time_sd'))
