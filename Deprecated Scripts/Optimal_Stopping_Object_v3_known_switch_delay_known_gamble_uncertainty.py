@@ -43,15 +43,14 @@ class Optimal_Decision_Time_Model():
         self.timesteps = kwargs.get('timesteps',np.tile(np.arange(0,2000,self.nsteps),(self.num_blocks,1)))
         self.neg_inf_cut_off_value = -100000
         # Player Parameters
-        self.unknown_switch_delay = kwargs.get('unknown_switch_delay')
-        self.unknown_gamble_decision_time_uncertainty = kwargs.get('unknown_gamble_decision_time_uncertainty')
+        self.known_switch_delay = kwargs.get('known_switch_delay')
         # Uncertainty
         self.reaction_uncertainty = kwargs.get('reaction_uncertainty')
         self.movement_uncertainty = kwargs.get('movement_uncertainty')
-        self.timing_uncertainty = kwargs.get('timing_uncertainty')
+        self.gamble_uncertainty = kwargs.get('gamble_uncertainty')
         self.decision_action_delay_uncertainty = kwargs.get('decision_action_delay_uncertainty')
         self.reaction_plus_movement_uncertainty = np.sqrt(self.reaction_uncertainty**2 + self.movement_uncertainty**2)
-        self.total_uncertainty = np.sqrt(self.reaction_plus_movement_uncertainty**2 + self.timing_uncertainty**2)
+        self.total_uncertainty = np.sqrt(self.reaction_plus_movement_uncertainty**2 + self.gamble_uncertainty**2)
         self.total_uncertainty_reaction = self.reaction_plus_movement_uncertainty
         self.total_uncertainty_gamble = self.movement_uncertainty 
         self.agent_plus_human_uncertainty = np.sqrt(self.total_uncertainty**2 + self.agent_stds**2)
@@ -79,8 +78,9 @@ class Optimal_Decision_Time_Model():
         
         # Prob of making it to the target
         self.prob_making_reaction = self.prob_making_based_on_agent()
-        self.tiled_gamble_uncertainty = np.tile(self.unknown_gamble_decision_time_uncertainty,(2000,1)).T
-        self.gamble_reach_time_mean = self.timesteps + self.movement_time + self.decision_action_delay_mean + self.unknown_switch_delay
+        # KNOWN GAMBLE UNCERTAINTY AND KNOWN SWITCH DELAY
+        self.tiled_gamble_uncertainty = np.tile(self.gamble_uncertainty,(2000,1)).T
+        self.gamble_reach_time_mean = self.timesteps + self.movement_time + self.decision_action_delay_mean + self.known_switch_delay
         self.prob_making_gamble = stats.norm.cdf(1500,self.gamble_reach_time_mean,self.tiled_gamble_uncertainty) # KNOWLEDGE OF GAMBLE DECISION DELAY AND UNCERTAINTY
               
         
@@ -130,7 +130,8 @@ class Optimal_Decision_Time_Model():
         '''
         output = np.zeros((self.num_blocks,len(self.timesteps[0,:])))
         for i in range(self.num_blocks):
-            combined_uncertainty = np.sqrt(self.timing_uncertainty**2 + self.agent_stds[i]**2)# + self.decision_action_delay_uncertainty**2) # Prob of SELECTING only includes timing uncertainty and agent uncertainty
+            # Uncertainty is now just the gamble uncertainty
+            combined_uncertainty = np.sqrt(self.gamble_uncertainty**2)# + self.agent_stds[i]**2)# + self.decision_action_delay_uncertainty**2) # Prob of SELECTING only includes timing uncertainty and agent uncertainty
             diff = self.timesteps[i,:] - self.agent_means[i]
             # BELOW NEEDS TO INCLUDE THE DECISION ACTION DELAY
             # The probability that selecting at the current timestep will be greater than the agent mean PLUS some decision action delay...
@@ -169,7 +170,7 @@ class Optimal_Decision_Time_Model():
         self.trunc_agent_mean_optimal,self.trunc_agent_var = stats.truncnorm.stats(self.a,self.b,loc=self.agent_means,scale=self.agent_stds) 
         self.trunc_agent_std_optimal = np.sqrt(self.trunc_agent_var)
         self.optimal_reaction_leave_target_time = self.trunc_agent_mean_optimal + self.reaction_time
-        self.optimal_gamble_leave_target_time   = self.optimal_decision_time + self.decision_action_delay_mean + self.unknown_switch_delay
+        self.optimal_gamble_leave_target_time   = self.optimal_decision_time + self.decision_action_delay_mean + self.known_switch_delay
             
         self.wtd_optimal_leave_target_time = (self.prob_selecting_reaction_optimal*self.optimal_reaction_leave_target_time + \
                                             self.prob_selecting_gamble_optimal*self.optimal_gamble_leave_target_time)/(self.prob_selecting_gamble_optimal+self.prob_selecting_reaction_optimal) 
@@ -234,7 +235,7 @@ class Optimal_Decision_Time_Model():
         self.calculate_gamble_reaction_probs_from_expected_reward()
         # Calculate the mean leave target time based on the decision time
         self.calculate_mean_leave_target_time()
-        self.prob_indecision_based_on_reach_time = (1 - stats.norm.cdf(1500,self.wtd_optimal_leave_target_time+self.movement_time,self.timing_uncertainty))*100
+        self.prob_indecision_based_on_reach_time = (1 - stats.norm.cdf(1500,self.wtd_optimal_leave_target_time+self.movement_time,self.gamble_uncertainty))*100
         # Calculate the expected reach time based on the leave target times
         self.optimal_reach_time_gamble = self.optimal_gamble_leave_target_time + self.movement_time
         self.optimal_reach_time_reaction = self.optimal_reaction_leave_target_time + self.movement_time
@@ -247,7 +248,7 @@ class Optimal_Decision_Time_Model():
         self.reaction_reach_time_uncertainty = np.sqrt(self.trunc_agent_std_optimal**2 + self.reaction_plus_movement_uncertainty**2)
         self.prob_indecision_if_react = 1 - stats.norm.cdf(1500,self.trunc_agent_mean_optimal + self.reaction_plus_movement_time,self.reaction_reach_time_uncertainty) # Probability that the reach time reaction is > 1500 
         
-        self.gamble_reach_time_uncertainty = np.sqrt(self.unknown_gamble_decision_time_uncertainty**2 )
+        self.gamble_reach_time_uncertainty = np.sqrt(self.gamble_uncertainty**2 + self.movement_uncertainty**2)
         self.prob_indecision_if_gamble = 1 - stats.norm.cdf(1500,self.optimal_reach_time_gamble,self.gamble_reach_time_uncertainty)
         
         self.prob_indecision_calc = self.prob_selecting_reaction_optimal*self.prob_indecision_if_react + \

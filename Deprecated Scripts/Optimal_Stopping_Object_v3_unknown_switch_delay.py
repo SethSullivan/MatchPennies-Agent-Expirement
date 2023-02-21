@@ -150,10 +150,9 @@ class Optimal_Decision_Time_Model():
         self.tiled_agent_stds = np.tile(self.agent_stds,(2000,1)).T
         self.a, self.b = (cut_off_a - self.tiled_agent_means)/self.tiled_agent_stds, (cut_off_b - self.tiled_agent_means) / self.tiled_agent_stds
         self.trunc_agent_mean_every_timestep,self.trunc_agent_var_every_timestep = stats.truncnorm.stats(self.a,self.b,loc=self.tiled_agent_means,scale=self.tiled_agent_stds) 
-        self.trunc_agent_std_every_timestep = np.sqrt(self.trunc_agent_var_every_timestep)
+        self.trunc_agent_std_every_timestep = np.sqrt(self.trunc_agent_var_every_timestep) 
         mean_sum = self.trunc_agent_mean_every_timestep + self.reaction_plus_movement_time
         uncertainty = np.sqrt(self.trunc_agent_std_every_timestep**2 + self.reaction_plus_movement_uncertainty**2)
-        print(uncertainty,mean_sum)
         output = stats.norm.cdf(1500,mean_sum,uncertainty)
         return output
     
