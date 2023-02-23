@@ -82,13 +82,12 @@ class Optimal_Decision_Time_Model():
             self.win_reward = kwargs.get('win_reward',1)
             self.incorrect_cost = kwargs.get('incorrect_cost',0)
             self.indecision_cost = kwargs.get('indecision_cost',0)
-        
-        # Probabilites
-        if True:
             # Prob of selecting the correct target
             self.prob_success_gamble = kwargs.get('prob_success_gamble',0.5)
             self.prob_success_reaction = kwargs.get('prob_success_react',1.0)
-        
+    def run_model(self):
+        # Probabilites
+        if True:
             # Agent probabilities (not used, agent behavior is used in prob_of_selecting_reaction)
             self.prob_agent_has_gone = self.prob_agent_go()
             self.prob_agent_has_not_gone = 1 - self.prob_agent_has_gone
@@ -323,17 +322,28 @@ class Optimal_Decision_Time_Model():
         self.prob_incorrect_if_react = 0
         self.prob_incorrect_if_gamble = (1-self.prob_indecision_if_gamble)*0.5
         self.prob_incorrect_calc = self.prob_selecting_reaction_optimal*self.prob_incorrect_if_react + self.prob_selecting_gamble_optimal*self.prob_incorrect_if_gamble
+        
         self.perc_incorrect_calc = self.prob_incorrect_calc*100
   
     def calculate_gamble_reaction_metrics(self):
+        self.temp_prob_win = self.replace_zero_with_nan(self.prob_win_calc)
+        self.temp_prob_indecision = self.replace_zero_with_nan(self.prob_indecision_calc)
+        self.temp_prob_incorrect = self.replace_zero_with_nan(self.prob_incorrect_calc)
         # Percent of metric that were reaction and gamble
-        self.perc_wins_that_were_reaction = (self.prob_win_if_react*self.prob_selecting_reaction_optimal/self.prob_win_calc)*100
-        self.perc_wins_that_were_gamble = (self.prob_win_if_gamble*self.prob_selecting_gamble_optimal/self.prob_win_calc)*100
-        self.perc_incorrects_that_were_reaction = (self.prob_incorrect_if_react*self.prob_selecting_reaction_optimal/self.prob_incorrect_calc)*100
-        self.perc_incorrects_that_were_gamble = (self.prob_incorrect_if_gamble*self.prob_selecting_gamble_optimal/self.prob_incorrect_calc)*100
-        self.perc_indecisions_that_were_reaction = (self.prob_indecision_if_react*self.prob_selecting_reaction_optimal/self.prob_indecision_calc)*100
-        self.perc_indecisions_that_were_gamble = (self.prob_indecision_if_gamble*self.prob_selecting_gamble_optimal/self.prob_indecision_calc)*100
-        
+        self.perc_wins_that_were_reaction = (self.prob_win_if_react*self.prob_selecting_reaction_optimal/self.temp_prob_win)*100
+        self.perc_wins_that_were_gamble = (self.prob_win_if_gamble*self.prob_selecting_gamble_optimal/self.temp_prob_win)*100
+        self.perc_incorrects_that_were_reaction = (self.prob_incorrect_if_react*self.prob_selecting_reaction_optimal/self.temp_prob_indecision)*100
+        self.perc_incorrects_that_were_gamble = (self.prob_incorrect_if_gamble*self.prob_selecting_gamble_optimal/self.temp_prob_indecision)*100
+        self.perc_indecisions_that_were_reaction = (self.prob_indecision_if_react*self.prob_selecting_reaction_optimal/self.temp_prob_incorrect)*100
+        self.perc_indecisions_that_were_gamble = (self.prob_indecision_if_gamble*self.prob_selecting_gamble_optimal/self.temp_prob_incorrect)*100
+    
+    
+    
+    def replace_zero_with_nan(self,arr):
+        arr[arr == 0] = np.nan
+        return arr
+    
+     
     def plot_optimals(self,metrics,num_plots = None ,dpi=125):
         if num_plots is None:
             num_plots = self.num_blocks
