@@ -10,12 +10,13 @@ class Subject():
         self.num_control_trials = kwargs.get('num_control_trials',1)
         self.num_washout_trials = kwargs.get('num_washout_trials',1)                   
         # Control data
-        self.reaction_time =           kwargs.get('reaction_time')
-        self.reaction_movement_time =  kwargs.get('reaction_movement_time')
-        self.interval_trial_start =    kwargs.get('interval_trial_start')
-        self.interval_reach_time =     kwargs.get('interval_reach_time')
-        self.coincidence_trial_start = kwargs.get('coincidence_trial_start')
-        self.coincidence_reach_time =  kwargs.get('coincidence_reach_time')
+        self.reaction_time =                kwargs.get('reaction_time')
+        self.reaction_movement_time =       kwargs.get('reaction_movement_time')
+        self.reaction_plus_movement_time =  kwargs.get('reaction_plus_movement_time')
+        self.interval_trial_start =         kwargs.get('interval_trial_start')
+        self.interval_reach_time =          kwargs.get('interval_reach_time')
+        self.coincidence_trial_start =      kwargs.get('coincidence_trial_start')
+        self.coincidence_reach_time =       kwargs.get('coincidence_reach_time')
         # Washout data
         self.player_washout_decision_time =  kwargs.get('player_washout_decision_time')
         self.player_washout_decision_array = kwargs.get('player_washout_decision_array')
@@ -42,25 +43,25 @@ class Subject():
         #------------------------Calculate Mean and Stds----------------------------------------------------------------------------------------------------------
         # Control mean
         self.reaction_time_mean = np.nanmean(self.reaction_time[self.n:])
+
         self.reaction_movement_time_mean = np.nanmean(self.reaction_movement_time[self.n:])
-        self.reaction_plus_movement_time_mean = np.nanmean(self.reaction_time[self.n:] + self.reaction_movement_time[self.n:])
+        self.reaction_plus_movement_time_mean = np.nanmean(self.reaction_plus_movement_time[self.n:])
         self.interval_reach_time_mean = np.nanmean(self.interval_reach_time[self.n:])
         self.coincidence_reach_time_mean = np.nanmean(self.coincidence_reach_time[self.n:])
         # Control Medians
         self.reaction_time_median = np.nanmedian(self.reaction_time[self.n:])
         self.reaction_movement_time_median = np.nanmedian(self.reaction_movement_time[self.n:])
-        self.reaction_plus_movement_time_median = np.nanmedian(self.reaction_time[self.n:] + self.reaction_movement_time[self.n:])
         self.interval_reach_time_median = np.nanmedian(self.interval_reach_time[self.n:])
         self.coincidence_reach_time_median = np.nanmedian(self.coincidence_reach_time[self.n:])
         # Control stds
         self.reaction_time_sd = np.nanstd(self.reaction_time[self.n:])
         self.reaction_movement_time_sd = np.nanstd(self.reaction_movement_time[self.n:])
-        self.reaction_plus_movement_time_sd = np.nanstd(self.reaction_time[self.n:] + self.reaction_movement_time[self.n:])
+        self.reaction_plus_movement_time_sd = np.nanstd(self.reaction_plus_movement_time[self.n:])
         self.interval_reach_time_sd = np.nanstd(self.interval_reach_time[self.n:])
         self.coincidence_reach_time_sd = np.nanstd(self.coincidence_reach_time[self.n:])
         
-        # CONSERVATIVE REACTION TIME
-        self.adjusted_player_reaction_time = self.reaction_time_mean - self.num_stds_for_reaction_time*self.reaction_time_sd
+        self.adjusted_player_reaction_time = self.reaction_time_mean - self.num_stds_for_reaction_time*self.reaction_time_sd # CONSERVATIVE REACTION TIME
+
         
         # Task mean and stds
         self.agent_task_reach_time_mean = np.nanmean(self.agent_task_reach_time,axis = 1)
@@ -92,7 +93,7 @@ class Subject():
         self.decision_and_reach_times_on_indecisions()
                 
         # Gamble and Reaction Calculations
-        self.reaction_gamble_calculations(self.num_stds_for_reaction_time)
+        self.reaction_gamble_calculations()
         
         # Wins when both decide
         self.wins_when_both_decide()
@@ -133,7 +134,7 @@ class Subject():
         self.player_mean_task_reach_time_on_indecisions = np.nanmean(self.player_task_reach_time_on_indecisions,axis=1)
         self.player_mean_left_time_on_indecisions = np.nanmean(self.player_left_time_on_indecisions,axis=1)
             
-    def reaction_gamble_calculations(self,num_stds):
+    def reaction_gamble_calculations(self):
         # Gamble arrays
         self.gamble_decision_time = np.zeros((self.num_blocks,self.num_trials))*np.nan
         self.gamble_reach_target_time = np.zeros((self.num_blocks,self.num_trials))*np.nan
@@ -161,8 +162,11 @@ class Subject():
         self.total_gambles = np.zeros((self.num_blocks))
         self.total_reactions = np.zeros((self.num_blocks))
         self.total_did_not_leave = np.zeros((self.num_blocks))
-
-        self.adjusted_player_reaction_time =  self.reaction_time_mean - num_stds*self.reaction_time_sd
+        
+        self.gamble_wins_when_both_decide = np.zeros((self.num_blocks))
+        self.reaction_wins_when_both_decide = np.zeros((self.num_blocks))
+        self.total_gambles_when_both_decide = np.zeros((self.num_blocks))
+        self.total_reactions_when_both_decide = np.zeros((self.num_blocks))
         gamble_index = np.argwhere((self.player_task_decision_time-self.agent_task_decision_time)<=self.adjusted_player_reaction_time)
         reaction_index = np.argwhere((self.player_task_decision_time-self.agent_task_decision_time)>self.adjusted_player_reaction_time)
         did_not_leave_start_index = np.argwhere(np.isnan(self.player_task_decision_time))
@@ -182,6 +186,13 @@ class Subject():
                 self.gamble_incorrects[i] += 1
             else:
                 print('none')
+            # Get wins when both decide
+            if self.agent_task_decision_array[i,j]*self.player_task_decision_array[i,j] == 1:
+                    self.gamble_wins_when_both_decide[i]+=1 
+                    self.total_gambles_when_both_decide[i]+=1
+            if self.agent_task_decision_array[i,j]*self.player_task_decision_array[i,j] == -1:
+                    self.total_gambles_when_both_decide[i]+=1
+            
             self.total_gambles[i]+=1
         for i,j in reaction_index:
             self.reaction_decision_time[i,j] = self.player_task_decision_time[i,j]
@@ -199,12 +210,18 @@ class Subject():
                 self.reaction_incorrects[i] += 1
             else:
                 print('none')
+            # Reaction wins when both decide
+            if self.agent_task_decision_array[i,j]*self.player_task_decision_array[i,j] == 1:
+                    self.reaction_wins_when_both_decide[i]+=1 
+                    self.total_reactions_when_both_decide[i]+=1
+            if self.agent_task_decision_array[i,j]*self.player_task_decision_array[i,j] == -1:
+                    self.total_reactions_when_both_decide[i]+=1
             self.total_reactions[i]+=1
-                
         for i,j in did_not_leave_start_index:
             self.reaction_indecisions[i]+=1
             self.total_did_not_leave[i]+=1
-        self.perc_reactions = (self.total_reactions/self.num_trials)*100
+        
+        self.perc_reaction_decisions = (self.total_reactions/self.num_trials)*100
         # OF the total reactions what were the percents
         self.perc_reaction_wins = (self.reaction_wins/self.total_reactions)*100 # Array division
         self.perc_reaction_incorrects = (self.reaction_incorrects/self.total_reactions)*100
@@ -214,14 +231,19 @@ class Subject():
         self.perc_gamble_wins = (self.gamble_wins/self.total_gambles)*100
         self.perc_gamble_incorrects = (self.gamble_incorrects/self.total_gambles)*100
         self.perc_gamble_indecisions = (self.gamble_indecisions/self.total_gambles)*100
-
+        # of the wins, how many were gambles
         self.perc_wins_that_were_gambles = (self.gamble_wins/self.player_wins) *100
         self.perc_indecisions_that_were_gambles = (self.gamble_indecisions/self.player_indecisions)*100
         self.perc_incorrects_that_were_gambles = (self.gamble_incorrects/self.player_incorrects)*100
-
+        # Of the wins, how many were reaction
         self.perc_wins_that_were_reactions = (self.reaction_wins/self.player_wins)*100
         self.perc_indecisions_that_were_reactions = (self.reaction_indecisions/self.player_indecisions)*100
         self.perc_incorrects_that_were_reactions = (self.reaction_incorrects/self.player_incorrects)*100
+
+        # Of the reaction/gambles, how many did they win when both decided
+        self.perc_gamble_wins_when_both_decide = (self.gamble_wins_when_both_decide/self.total_gambles_when_both_decide)*100 
+        self.perc_reaction_wins_when_both_decide = (self.reaction_wins_when_both_decide/self.total_reactions_when_both_decide)*100 
+
 
         # get mean
         self.gamble_decision_time_mean = np.nanmean(self.gamble_decision_time, axis = 1 )
@@ -230,21 +252,35 @@ class Subject():
         self.reaction_decision_time_sd = np.nanstd(self.reaction_decision_time, axis = 1 )
         self.agent_task_decision_time_gamble_mean = np.nanmean(self.agent_task_decision_time_gambles, axis = 1)
         self.agent_task_decision_time_reaction_mean = np.nanmean(self.agent_task_decision_time_reactions, axis = 1)
-
+                
+        
+        
+        
+        
         # Not sure why I had this threshold in??
-        # for i in range(self.num_blocks):
-        #     if total_reactions[i]<10:
-        #         perc_reaction_wins[i] = np.nan
-        #         perc_reaction_incorrects[i] = np.nan
-        #         perc_reaction_indecisions[i] = np.nan
-        #         reaction_decision_time_mean[i] = np.nan
+        # BECAUSE IF SOMEONE HAS UNDER 10 REACTIONS, IT"S HARD TO SAY REALLY WHAT THEIR PERCENTAGES WERE 
+        for i in range(self.num_blocks):
+            if self.total_reactions[i]<10:
+                self.perc_reaction_wins[i] = np.nan
+                self.perc_reaction_incorrects[i] = np.nan
+                self.perc_reaction_indecisions[i] = np.nan
+                self.reaction_decision_time_mean[i] = np.nan
+                self.reaction_decision_time_sd[i] = np.nan
+                self.perc_wins_that_were_reactions[i] = np.nan
+                self.perc_indecisions_that_were_reactions[i] = np.nan
+                self.perc_incorrects_that_were_reactions[i] = np.nan
+                self.perc_reaction_wins_when_both_decide[i] = np.nan
 
-        #     if total_gambles[i]<10:
-        #         perc_gamble_wins[i] = np.nan
-        #         perc_gamble_incorrects[i] = np.nan
-        #         perc_gamble_indecisions[i] = np.nan
-        #         self.gamble_decision_time_mean[i] = np.nan
-        return
+            if self.total_gambles[i]<10:
+                self.perc_gamble_wins[i] = np.nan
+                self.perc_gamble_incorrects[i] = np.nan
+                self.perc_gamble_indecisions[i] = np.nan
+                self.gamble_decision_time_mean[i] = np.nan
+                self.gamble_decision_time_sd[i] = np.nan
+                self.perc_wins_that_were_gambles[i] = np.nan
+                self.perc_indecisions_that_were_gambles[i] = np.nan
+                self.perc_incorrects_that_were_gambles[i] = np.nan
+                self.perc_gamble_wins_when_both_decide[i] = np.nan
         
     def wins_when_both_decide(self):
         # Get agent decision array
@@ -258,6 +294,7 @@ class Subject():
                     self.player_both_reached_wins[i]+=1
                 if self.agent_task_decision_array[i,j]*self.player_task_decision_array[i,j] == -1:
                     self.agent_both_reached_wins[i]+=1
+            # Get percentage for each block
             x = np.count_nonzero(self.player_task_decision_array[i,:]!=0)
             y = np.count_nonzero(self.agent_task_decision_array[i,:]!=0)
             if x!= 0 and y!= 0:
