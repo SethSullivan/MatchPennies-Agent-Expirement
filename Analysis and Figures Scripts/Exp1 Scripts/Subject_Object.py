@@ -40,7 +40,28 @@ class Subject():
         self.num_stds_for_reaction_time = kwargs.get('num_stds_for_reaction_time',2)
         self.n = kwargs.get('cutoff_for_controls_calc',10)
         
+    def analyze_data(self,m):
         #------------------------Calculate Mean and Stds----------------------------------------------------------------------------------------------------------
+        self.calculate_means_and_sds()
+        #------------------------------------------------------------------------------------------------------------------
+        # Task Indecisions, Wins, Incorrects
+        self.calc_wins_indecisions_incorrects()
+        
+        # Decision and Reach  Times on Indecisions
+        self.decision_and_reach_times_on_indecisions()
+                
+        # Gamble and Reaction Calculations
+        self.reaction_gamble_calculations()
+        
+        # Wins when both decide
+        self.wins_when_both_decide()
+        
+        # First half second half
+        self.first_half_second_half()
+        # Binned metrics
+        self.binned_metrics()
+        
+    def calculate_means_and_sds(self):
         # Control mean
         self.reaction_time_mean = np.nanmean(self.reaction_time[self.n:])
 
@@ -82,41 +103,22 @@ class Subject():
         
         self.player_minus_agent_task_decision_time_mean = np.nanmean(self.player_minus_agent_task_decision_time, axis = 1)
         
-        #------------------------------------------------------------------------------------------------------------------
-        # Task Indecisions, Wins, Incorrects
-        self.player_wins,self.player_indecisions,self.player_incorrects = self.calc_wins_indecisions_incorrects()
+    def calc_wins_indecisions_incorrects(self):
+        self.player_indecisions = np.zeros((self.num_blocks))
+        self.player_wins = np.zeros((self.num_blocks))
+        self.player_incorrects = np.zeros((self.num_blocks))
+        for i in range(self.num_blocks):
+            self.player_indecisions[i] = np.count_nonzero(self.player_task_decision_array[i,:] == 0)
+            self.player_wins[i] = np.count_nonzero(np.logical_and(self.player_task_decision_array[i,:] == 1 , self.agent_task_decision_array[i,:] == 1))
+            self.player_wins[i]+= np.count_nonzero(np.logical_and(self.player_task_decision_array[i,:] == -1 , self.agent_task_decision_array[i,:] == -1))
+            self.player_wins[i]+= np.count_nonzero(np.logical_and(self.player_task_decision_array[i,:] == -1 , self.agent_task_decision_array[i,:] == 0))
+            self.player_wins[i]+= np.count_nonzero(np.logical_and(self.player_task_decision_array[i,:] == 1 , self.agent_task_decision_array[i,:] == 0))
+            self.player_incorrects[i] = np.count_nonzero(np.logical_and(self.player_task_decision_array[i,:] == 1 , self.agent_task_decision_array[i,:] == -1))
+            self.player_incorrects[i] += np.count_nonzero(np.logical_and(self.player_task_decision_array[i,:] == -1 , self.agent_task_decision_array[i,:] == 1))
         self.player_perc_wins = (self.player_wins/self.num_trials)*100
         self.player_perc_indecisions = (self.player_indecisions/self.num_trials)*100
         self.player_perc_incorrects = (self.player_incorrects/self.num_trials)*100
         
-        # Decision and Reach  Times on Indecisions
-        self.decision_and_reach_times_on_indecisions()
-                
-        # Gamble and Reaction Calculations
-        self.reaction_gamble_calculations()
-        
-        # Wins when both decide
-        self.wins_when_both_decide()
-        
-        # First half second half
-        self.first_half_second_half()
-        
-        # Binned metrics
-        self.binned_metrics()
-    def calc_wins_indecisions_incorrects(self):
-        player_indecisions = np.zeros((self.num_blocks))
-        player_wins = np.zeros((self.num_blocks))
-        player_incorrects = np.zeros((self.num_blocks))
-        for i in range(self.num_blocks):
-            player_indecisions[i] = np.count_nonzero(self.player_task_decision_array[i,:] == 0)
-            player_wins[i] = np.count_nonzero(np.logical_and(self.player_task_decision_array[i,:] == 1 , self.agent_task_decision_array[i,:] == 1))
-            player_wins[i]+= np.count_nonzero(np.logical_and(self.player_task_decision_array[i,:] == -1 , self.agent_task_decision_array[i,:] == -1))
-            player_wins[i]+= np.count_nonzero(np.logical_and(self.player_task_decision_array[i,:] == -1 , self.agent_task_decision_array[i,:] == 0))
-            player_wins[i]+= np.count_nonzero(np.logical_and(self.player_task_decision_array[i,:] == 1 , self.agent_task_decision_array[i,:] == 0))
-            player_incorrects[i] = np.count_nonzero(np.logical_and(self.player_task_decision_array[i,:] == 1 , self.agent_task_decision_array[i,:] == -1))
-            player_incorrects[i] += np.count_nonzero(np.logical_and(self.player_task_decision_array[i,:] == -1 , self.agent_task_decision_array[i,:] == 1))
-        return player_wins,player_indecisions,player_incorrects
-    
     def decision_and_reach_times_on_indecisions(self):
         self.agent_task_decision_time_on_indecisions = np.zeros((self.num_blocks,self.num_trials))*np.nan
         self.player_task_reach_time_on_indecisions = np.zeros((self.num_blocks,self.num_trials))*np.nan
@@ -131,8 +133,11 @@ class Subject():
             c+=1
 
         self.agent_mean_task_reach_time_on_indecisions = np.nanmean(self.agent_task_decision_time_on_indecisions,axis=1)
+        self.agent_sd_task_reach_time_on_indecisions = np.nansd(self.agent_task_decision_time_on_indecisions,axis=1)
         self.player_mean_task_reach_time_on_indecisions = np.nanmean(self.player_task_reach_time_on_indecisions,axis=1)
+        self.player_sd_task_reach_time_on_indecisions = np.nanstd(self.player_task_reach_time_on_indecisions,axis=1)
         self.player_mean_left_time_on_indecisions = np.nanmean(self.player_left_time_on_indecisions,axis=1)
+        self.player_sd_left_time_on_indecisions = np.nanstd(self.player_left_time_on_indecisions,axis=1)
             
     def reaction_gamble_calculations(self):
         # Gamble arrays
@@ -222,6 +227,7 @@ class Subject():
             self.total_did_not_leave[i]+=1
         
         self.perc_reaction_decisions = (self.total_reactions/self.num_trials)*100
+        self.perc_gamble_decisions = (self.total_gambles/self.num_trials)*100
         # OF the total reactions what were the percents
         self.perc_reaction_wins = (self.reaction_wins/self.total_reactions)*100 # Array division
         self.perc_reaction_incorrects = (self.reaction_incorrects/self.total_reactions)*100
