@@ -337,9 +337,6 @@ class Subject():
                 self.perc_reaction_indecisions[i] = np.nan
                 self.player_reaction_decision_time_mean[i] = np.nan
                 self.player_reaction_decision_time_sd[i] = np.nan
-                self.perc_wins_that_were_reactions[i] = np.nan
-                self.perc_indecisions_that_were_reactions[i] = np.nan
-                self.perc_incorrects_that_were_reactions[i] = np.nan
                 self.perc_reaction_wins_when_both_decide[i] = np.nan
 
             if self.total_gambles[i]<10:
@@ -348,9 +345,6 @@ class Subject():
                 self.perc_gamble_indecisions[i] = np.nan
                 self.player_gamble_decision_time_mean[i] = np.nan
                 self.player_gamble_decision_time_sd[i] = np.nan
-                self.perc_wins_that_were_gambles[i] = np.nan
-                self.perc_indecisions_that_were_gambles[i] = np.nan
-                self.perc_incorrects_that_were_gambles[i] = np.nan
                 self.perc_gamble_wins_when_both_decide[i] = np.nan
         
     def wins_when_both_decide(self):
@@ -610,7 +604,6 @@ class Group():
         '''
         # Cut off at threshold
         mask = self.bin_length_each_condition>self.bin_cutoff_threshold
-        print(mask.shape)
         self.perc_binned_player_wins_mean_cutoff                      = self.perc_binned_player_wins_mean*mask
         self.perc_binned_player_indecisions_mean_cutoff               = self.perc_binned_player_indecisions_mean*mask
         self.perc_binned_player_incorrects_mean_cutoff                = self.perc_binned_player_incorrects_mean*mask
