@@ -332,10 +332,51 @@ class Optimal_Decision_Time_Model():
         # Percent of metric that were reaction and gamble
         self.perc_wins_that_were_reaction = (self.prob_win_if_react*self.prob_selecting_reaction_optimal/self.temp_prob_win)*100
         self.perc_wins_that_were_gamble = (self.prob_win_if_gamble*self.prob_selecting_gamble_optimal/self.temp_prob_win)*100
-        self.perc_incorrects_that_were_reaction = (self.prob_incorrect_if_react*self.prob_selecting_reaction_optimal/self.temp_prob_indecision)*100
-        self.perc_incorrects_that_were_gamble = (self.prob_incorrect_if_gamble*self.prob_selecting_gamble_optimal/self.temp_prob_indecision)*100
-        self.perc_indecisions_that_were_reaction = (self.prob_indecision_if_react*self.prob_selecting_reaction_optimal/self.temp_prob_incorrect)*100
-        self.perc_indecisions_that_were_gamble = (self.prob_indecision_if_gamble*self.prob_selecting_gamble_optimal/self.temp_prob_incorrect)*100
+        self.perc_incorrects_that_were_reaction = (self.prob_incorrect_if_react*self.prob_selecting_reaction_optimal/self.temp_prob_incorrect)*100
+        self.perc_incorrects_that_were_gamble = (self.prob_incorrect_if_gamble*self.prob_selecting_gamble_optimal/self.temp_prob_incorrect)*100
+        self.perc_indecisions_that_were_reaction = (self.prob_indecision_if_react*self.prob_selecting_reaction_optimal/self.temp_prob_indecision)*100
+        self.perc_indecisions_that_were_gamble = (self.prob_indecision_if_gamble*self.prob_selecting_gamble_optimal/self.temp_prob_indecision)*100
+        
+        self.perc_reactions_that_were_wins = (self.prob_win_if_react)*100
+        self.perc_gambles_that_were_wins = self.prob_win_if_gamble*100
+        self.perc_reactions_that_were_incorrects = (self.prob_incorrect_if_react)*100
+        self.perc_gambles_that_were_incorrects = self.prob_incorrect_if_gamble*100
+        self.perc_reactions_that_were_indecisions = (self.prob_indecision_if_react)*100
+        self.perc_gambles_that_were_indecisions = self.prob_indecision_if_gamble*100
+    
+    
+    def mseloss(self,decision_time):
+        self.calculate_metrics_with_certain_decision_time(decision_time)
+        win_diff = abs(self.perc_win_calc - self.tune_data[0])
+        indecision_diff = abs(self.perc_indecision_calc - self.tune_data[1])
+        incorrect_diff = abs(self.perc_incorrect_calc - self.tune_data[2])
+        leave_target_time_diff = abs(self.wtd_optimal_leave_target_time - self.tune_data[3])
+
+        metric_loss = np.array([win_diff,indecision_diff,incorrect_diff,leave_target_time_diff])
+        return metric_loss
+    
+    def fit_model_to_data(self,data):
+        '''
+        data = [wins,indecisions,incorrects,decision_times]
+        '''
+        self.tune_data = data
+        self.tune_timesteps = np.arange(900,1800,1)
+        decision_times = np.array([self.tune_timesteps[0]]*6) # Start off with 600 for each parameter
+        num_metrics= 4
+        loss_store = np.zeros((num_metrics,6,len(self.tune_timesteps))) # Each metric,each block, each timestep
+        for i in range(self.num_blocks):
+            for j,t in enumerate(self.tune_timesteps):
+                decision_times[i] = t
+                metric_loss = self.mseloss(decision_times)
+                loss_store[:,i,j] = metric_loss[:,i]
+                
+        self.fit_decision_times = np.zeros((num_metrics,self.num_blocks))
+        for i in range(num_metrics):
+            for j in range(self.num_blocks):
+                self.fit_decision_times[i,j] = np.argmin(loss_store[i,j,:]) + np.min(self.tune_timesteps)
+        self.fit_decision_times_dict = {'Wins':self.fit_decision_times[0,:],'Indecisions':self.fit_decision_times[1,:],
+                                        'Incorrects':self.fit_decision_times[2,:],'Decision Time':self.fit_decision_times[3,:]}    
+        
     def calculate_metrics_with_certain_decision_time(self,decision_times):
         self.optimal_decision_time = decision_times
         self.optimal_index = (decision_times/self.nsteps).astype(int)
@@ -343,9 +384,6 @@ class Optimal_Decision_Time_Model():
         self.calculate_experiment_metrics_from_expected_reward()
         self.calculate_experiment_metrics()
         self.calculate_gamble_reaction_metrics()
-
-    
-    
     
     def replace_zero_with_nan(self,arr):
         arr[arr == 0] = np.nan
