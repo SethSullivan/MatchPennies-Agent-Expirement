@@ -6,7 +6,7 @@ wheel = dv.ColorWheel()
 
 
 #%%
-def make_figure_panel(figsize, inset_size, dpi = 125):
+def make_figure_panel(figsize, inset_size, dpi = 100):
     fig,axmain = plt.subplots(dpi = dpi, figsize = figsize)
     
     axmain.set_xlim(0,figsize[0])
