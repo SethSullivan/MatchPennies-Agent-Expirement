@@ -83,10 +83,10 @@ class Subject():
         # Wins when both decide
         self.wins_when_both_decide()
         
-        # First half second half
-        self.first_half_second_half()
         # Binned metrics
         self.binned_metrics()
+        
+        self.predict_decision_times(150)
     
     def calculate_means_and_sds(self):
         # Control mean
@@ -348,11 +348,11 @@ class Subject():
         self.player_perc_both_reached_wins = (self.player_both_reached_wins/self.total_both_reached)*100
         self.player_perc_both_reached_incorrects = (self.player_both_reached_incorrects/self.total_both_reached)*100
         
-    def predict_true_leave_times(self,gamble_delay):
+    def predict_decision_times(self,gamble_delay):
         reaction_mask = self.player_task_leave_time - self.agent_task_leave_time>=self.adjusted_player_reaction_time
         gamble_mask = self.player_task_leave_time - self.agent_task_leave_time<self.adjusted_player_reaction_time
-        self.true_reaction_leave_time = self.agent_task_leave_time*reaction_mask
-        self.true_gamble_leave_time = self.player_gamble_leave_time - gamble_delay 
+        self.player_predicted_decision_time = (self.perc_reaction_decisions/100)*(self.agent_task_leave_time_reaction_mean) + \
+                                               (self.perc_gamble_decisions/100)*(self.player_gamble_leave_time_mean - 0)  
           
              
     def binned_metrics(self,bin_start = 800,bin_end = 1400, bin_size = 50,cut_off_threshold = 30):
