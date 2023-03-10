@@ -158,7 +158,7 @@ class Optimal_Decision_Time_Model():
         '''
         output = np.zeros((self.num_blocks,len(self.timesteps[0,:])))
         if self.known_gamble_uncertainty_on:
-            combined_uncertainty = np.sqrt(self.known_gamble_uncertainty**2 + self.agent_stds**2)# + self.decision_action_delay_uncertainty**2) # Prob of SELECTING only includes timing uncertainty and agent uncertainty
+            combined_uncertainty = np.sqrt(self.known_gamble_uncertainty**2)# + self.decision_action_delay_uncertainty**2) # Prob of SELECTING only includes timing uncertainty and agent uncertainty
             combined_uncertainty = np.tile(combined_uncertainty,(2000,1)).T
         else:
             combined_uncertainty = np.sqrt(self.timing_uncertainty**2 + self.agent_stds**2)# + self.decision_action_delay_uncertainty**2) # Prob of SELECTING only includes timing uncertainty and agent uncertainty
@@ -249,7 +249,7 @@ class Optimal_Decision_Time_Model():
         # Only reason to recalculate this is if the gamble uncertainty is unknown... if it's known or None, then we go to the else, which can just use the calc during expected reward
         if self.unknown_gamble_uncertainty_on:
             for i in range(6):
-                combined_uncertainty = np.sqrt(self.unknown_gamble_uncertainty**2 + self.agent_stds[i]**2)
+                combined_uncertainty = np.sqrt(self.unknown_gamble_uncertainty**2)
                 diff = self.optimal_index[i] - self.agent_means[i]
                 self.prob_selecting_reaction_optimal[i] = 1 - stats.norm.cdf(self.weird_reaction_gamble_cutoff,diff,combined_uncertainty) # I've determined that the decision time just needs to be after, doesn't necessarily need to be after some decision action delay
             self.prob_selecting_gamble_optimal = 1 - self.prob_selecting_reaction_optimal
@@ -281,9 +281,9 @@ class Optimal_Decision_Time_Model():
             self.optimal_gamble_leave_target_time   = self.optimal_decision_time + self.decision_action_delay_mean
         
         if self.unknown_gamble_uncertainty_on:
-            self.optimal_gamble_leave_target_time_sd   = np.sqrt(self.trunc_agent_std_optimal**2 + self.unknown_gamble_uncertainty**2)
+            self.optimal_gamble_leave_target_time_sd   = self.unknown_gamble_uncertainty
         elif self.known_gamble_uncertainty_on:
-            self.optimal_gamble_leave_target_time_sd   = np.sqrt(self.trunc_agent_std_optimal**2 + self.known_gamble_uncertainty**2)
+            self.optimal_gamble_leave_target_time_sd   = self.known_gamble_uncertainty
         else:
             self.optimal_gamble_leave_target_time_sd   = np.sqrt(self.trunc_agent_std_optimal**2 + self.timing_uncertainty**2)
         
