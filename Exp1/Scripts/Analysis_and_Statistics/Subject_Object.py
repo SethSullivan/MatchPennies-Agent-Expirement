@@ -85,9 +85,7 @@ class Subject():
         
         # Binned metrics
         self.binned_metrics()
-        
-        self.predict_decision_times(150)
-    
+            
     def calculate_means_and_sds(self):
         # Control mean
         self.reaction_time_mean               = np.nanmean(self.reaction_time[self.n:])
@@ -240,8 +238,8 @@ class Subject():
             self.player_gamble_leave_time_median                     = np.nanmedian(self.player_gamble_leave_time, axis = 1)
             self.player_gamble_leave_time_sd                         = np.nanstd(self.player_gamble_leave_time, axis = 1)
             self.player_minus_agent_gamble_leave_time_mean           = np.nanmean(self.player_minus_agent_gamble_leave_time, axis = 1)
-            self.agent_task_leave_time_gamble_mean                   = np.nanmean(self.agent_gamble_leave_time, axis = 1)
-            self.agent_task_leave_time_gamble_sd                     = np.nanstd(self.agent_gamble_leave_time, axis = 1)
+            self.agent_gamble_leave_time_mean                   = np.nanmean(self.agent_gamble_leave_time, axis = 1)
+            self.agent_gamble_leave_time_sd                     = np.nanstd(self.agent_gamble_leave_time, axis = 1)
             
             self.player_gamble_reach_time_mean                       = np.nanmean(self.player_gamble_reach_time, axis = 1)
             self.player_gamble_reach_time_median                     = np.nanmedian(self.player_gamble_reach_time, axis = 1)
@@ -303,8 +301,8 @@ class Subject():
             self.player_reaction_leave_time_median                     = np.nanmedian(self.player_reaction_leave_time, axis = 1)
             self.player_reaction_leave_time_sd                         = np.nanstd(self.player_reaction_leave_time, axis = 1)
             self.player_minus_agent_reaction_leave_time_mean           = np.nanmean(self.player_minus_agent_reaction_leave_time, axis = 1)
-            self.agent_task_leave_time_reaction_mean                   = np.nanmean(self.agent_reaction_leave_time, axis = 1)
-            self.agent_task_leave_time_reaction_sd                     = np.nanstd(self.agent_reaction_leave_time, axis = 1)
+            self.agent_reaction_leave_time_mean                   = np.nanmean(self.agent_reaction_leave_time, axis = 1)
+            self.agent_reaction_leave_time_sd                     = np.nanstd(self.agent_reaction_leave_time, axis = 1)
                 
             self.player_reaction_reach_time_mean                       = np.nanmean(self.player_reaction_reach_time, axis = 1)
             self.player_reaction_reach_time_median                     = np.nanmedian(self.player_reaction_reach_time, axis = 1)
@@ -351,8 +349,8 @@ class Subject():
     def predict_decision_times(self,gamble_delay):
         reaction_mask = self.player_task_leave_time - self.agent_task_leave_time>=self.adjusted_player_reaction_time
         gamble_mask = self.player_task_leave_time - self.agent_task_leave_time<self.adjusted_player_reaction_time
-        self.player_predicted_decision_time = (self.perc_reaction_decisions/100)*(self.agent_task_leave_time_reaction_mean) + \
-                                               (self.perc_gamble_decisions/100)*(self.player_gamble_leave_time_mean - 0)  
+        self.player_predicted_decision_time = (self.perc_reaction_decisions/100)*(self.agent_reaction_leave_time_mean) + \
+                                               (self.perc_gamble_decisions/100)*(self.player_gamble_leave_time_mean - gamble_delay)  
           
              
     def binned_metrics(self,bin_start = 800,bin_end = 1400, bin_size = 50,cut_off_threshold = 30):
@@ -484,6 +482,7 @@ class Group():
         
         self.bin_threshold()
         
+        
     def combine_all_subjects(self,metric):
         '''
         List comprehension into np array to put the subjects at index 0
@@ -501,7 +500,34 @@ class Group():
         temp = np.swapaxes(arr,0,1)
         ans = np.reshape(temp,(self.num_blocks,-1))
         return ans
+    def predict_decision_times(self,gamble_delay,weird_delay):    
+        self.player_predicted_decision_time = np.array([(o.perc_reaction_decisions/100)*(o.agent_reaction_leave_time_mean) + (o.perc_gamble_decisions/100)*(o.player_gamble_leave_time_mean - gamble_delay) for o in self.objects]) 
+        self.predict_stopping_time_from_reactions_gambles(weird_delay=weird_delay)
     
+    def predict_stopping_time_from_reactions_gambles(self,weird_delay):
+        '''
+        Using the percentage reactions and gambles to predict the stopping time
+        '''
+        timesteps = np.arange(500,1500,1)
+        self.predicted_stopping_time = np.zeros((len(self.objects),6))
+        self.predicted_stopping_time_index = np.zeros((len(self.objects),6))
+        self.predicted_perc_reaction_decisions = np.zeros((len(self.objects),6,len(timesteps)))
+        self.predicted_perc_gamble_decisions = np.zeros((len(self.objects),6,len(timesteps)))
+        self.final_predicted_perc_reaction_decisions = np.zeros((len(self.objects),6))
+        self.final_predicted_perc_gamble_decisions = np.zeros((len(self.objects),6))
+        react_loss = np.zeros((len(self.objects),6,len(timesteps)))
+        gamble_loss = np.zeros((len(self.objects),6,len(timesteps)))
+        for i,o in enumerate(self.objects):
+            for j in range(6):
+                for k,t in enumerate(timesteps):
+                    self.predicted_perc_reaction_decisions[i,j,k] = np.count_nonzero(o.agent_task_leave_time[j,:]<=t+weird_delay)/o.num_trials*100
+                    react_loss[i,j,k] = abs(o.perc_reaction_decisions[j] - self.predicted_perc_reaction_decisions[i,j,k])
+                    self.predicted_perc_gamble_decisions[i,j,k] = np.count_nonzero(o.agent_task_leave_time[j,:]>t+weird_delay)/o.num_trials*100
+                    gamble_loss[i,j,k] = abs(o.perc_gamble_decisions[j] - self.predicted_perc_gamble_decisions[i,j,k])
+                self.predicted_stopping_time_index[i,j] = np.argmin(react_loss[i,j,:]+gamble_loss[i,j,:])
+                self.final_predicted_perc_reaction_decisions[i,j] = self.predicted_perc_reaction_decisions[i,j,int(self.predicted_stopping_time_index[i,j])]
+                self.final_predicted_perc_gamble_decisions[i,j]   = self.predicted_perc_gamble_decisions[i,j,int(self.predicted_stopping_time_index[i,j])]
+        self.predicted_stopping_time = self.predicted_stopping_time_index + np.min(timesteps)
     def find_subject(self,metric,comparison_num,comparison_direction):
         '''
         Used to find the subject who's specific value is greater or less than the inputted comparison metric
