@@ -238,8 +238,8 @@ class Subject():
             self.player_gamble_leave_time_median                     = np.nanmedian(self.player_gamble_leave_time, axis = 1)
             self.player_gamble_leave_time_sd                         = np.nanstd(self.player_gamble_leave_time, axis = 1)
             self.player_minus_agent_gamble_leave_time_mean           = np.nanmean(self.player_minus_agent_gamble_leave_time, axis = 1)
-            self.agent_gamble_leave_time_mean                   = np.nanmean(self.agent_gamble_leave_time, axis = 1)
-            self.agent_gamble_leave_time_sd                     = np.nanstd(self.agent_gamble_leave_time, axis = 1)
+            self.agent_gamble_leave_time_mean                        = np.nanmean(self.agent_gamble_leave_time, axis = 1)
+            self.agent_gamble_leave_time_sd                          = np.nanstd(self.agent_gamble_leave_time, axis = 1)
             
             self.player_gamble_reach_time_mean                       = np.nanmean(self.player_gamble_reach_time, axis = 1)
             self.player_gamble_reach_time_median                     = np.nanmedian(self.player_gamble_reach_time, axis = 1)
@@ -447,14 +447,23 @@ class Group():
         self.all_player_task_leave_times_each_condition            = self.concatenate_across_subjects('player_task_leave_time')
         self.all_player_task_gamble_leave_times_each_condition     = self.concatenate_across_subjects('player_gamble_leave_time')
         self.all_player_task_reaction_leave_times_each_condition   = self.concatenate_across_subjects('player_reaction_leave_time')
-        self.all_agent_task_leave_times_each_condition             = self.concatenate_across_subjects('agent_task_leave_time')
         self.all_player_mean_leave_time_each_condition             = np.nanmean(self.all_player_task_leave_times_each_condition,axis=1)
         self.all_player_mean_gamble_leave_time_each_condition      = np.nanmean(self.all_player_task_gamble_leave_times_each_condition,axis=1)
         self.all_player_mean_reaction_leave_time_each_condition    = np.nanmean(self.all_player_task_reaction_leave_times_each_condition,axis=1)
         self.all_player_median_leave_time_each_condition           = np.nanmedian(self.all_player_task_leave_times_each_condition,axis=1)
         self.all_player_median_gamble_leave_time_each_condition    = np.nanmedian(self.all_player_task_gamble_leave_times_each_condition,axis=1)
         self.all_player_median_reaction_leave_time_each_condition  = np.nanmedian(self.all_player_task_reaction_leave_times_each_condition,axis=1)
-        self.all_agent_mean_leave_time_each_condition              = np.nanmean(self.all_agent_task_leave_times_each_condition,axis=1)
+        
+        self.all_agent_task_leave_times_each_condition            = self.concatenate_across_subjects('agent_task_leave_time')
+        self.all_agent_task_gamble_leave_times_each_condition     = self.concatenate_across_subjects('agent_gamble_leave_time')
+        self.all_agent_task_reaction_leave_times_each_condition   = self.concatenate_across_subjects('agent_reaction_leave_time')
+        self.all_agent_mean_leave_time_each_condition             = np.nanmean(self.all_agent_task_leave_times_each_condition,axis=1)
+        self.all_agent_mean_gamble_leave_time_each_condition      = np.nanmean(self.all_agent_task_gamble_leave_times_each_condition,axis=1)
+        self.all_agent_mean_reaction_leave_time_each_condition    = np.nanmean(self.all_agent_task_reaction_leave_times_each_condition,axis=1)
+        self.all_agent_median_leave_time_each_condition           = np.nanmedian(self.all_agent_task_leave_times_each_condition,axis=1)
+        self.all_agent_median_gamble_leave_time_each_condition    = np.nanmedian(self.all_agent_task_gamble_leave_times_each_condition,axis=1)
+        self.all_agent_median_reaction_leave_time_each_condition  = np.nanmedian(self.all_agent_task_reaction_leave_times_each_condition,axis=1)
+        
         
         
         self.all_player_sd_gamble_leave_time = np.nanmean(self.combine_all_subjects('player_gamble_leave_time_sd'),axis=0)
