@@ -1,0 +1,45 @@
+% Neuromechanics Assignment 02
+\documentclass{article}
+\usepackage{enumitem}
+\usepackage{fullpage}
+\usepackage{url}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\title{Optimal Timing Analytical Solution (Agent)}
+\author{Seth Sullivan}
+\begin{document}
+\maketitle
+\setcounter{secnumdepth}{0}
+\begin{center}
+\section{Constants}
+
+$P_{50} = 1/2$, $P_{100} = 1$, $P_{0} = 0$
+
+$\mu_{1} =$ Player Mean Reach Time; $\mu_{2} =$ Agent Mean Reach Time
+
+$\sigma_{1} = $ Player SD Reach Time; $\sigma_{2} = $ Agent SD Reach Time
+
+$\mu_{d} = \mu_{1} - \mu_{2}$
+
+$\sigma_{d} = \sqrt[]{\sigma_{1}^2 + \sigma_{2}^2}$
+
+$DT_{1}$ = Player Decision Time; $DT_{2}$ = Agent Decision Time
+
+$RT_{1}$ = Player Reaction Time;
+
+$RMT_{1}$ = Player Reaction+Movement Time; $RMT_{2}$ = Movement Time
+
+\section{Probabilites}
+$P_{1} = P(win|\mu_{d} \le RT_{1}) = P(\mu_d \le RT)*P(X_{1}<1500)*P(X_{2}<1500)*P_{50}$
+$P_{2} = P(win|\mu_{d} > RT_{1}) = P(\mu_d > RT)*P(X_{1}<1500)*P(X_{2}<1500)*P_{100}$
+$P_{3} = P(win|X_{1}<1500 \cap X_{2}>1500) = P(X_{1}<1500)*P(X_{2}>1500)*P_{100}$
+$P_{4} = P(win|X_{1}>1500 \cap X_{2}<1500) = P(X_{1}<1500)*P(X_{2}<1500)*P_{0}$
+
+\section{Win Rate}
+Win Rate = $P_{1}+P_{2}+P_{3}+P_{4}$
+\end{center}
+%%%%%%%%%%%
+
+\end{document}
