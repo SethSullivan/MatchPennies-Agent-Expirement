@@ -23,9 +23,9 @@ class Subject():
         self.react_reaction_time_only_react         = self.react_reaction_time_all[1,:]
         self.react_reaction_time_mixed  = self.react_reaction_time_all[0,:]
         
-        self.calculate_means_and_sds()
         self.calculate_repeats_alternates()
         self.remove_nans()
+        self.calculate_means_and_sds()
     def calculate_means_and_sds(self):
         self.gamble_reaction_time_only_gamble_mean          = np.nanmean(self.gamble_reaction_time_only_gamble)
         self.gamble_reaction_time_only_gamble_median        = np.nanmedian(self.gamble_reaction_time_only_gamble)
@@ -40,6 +40,12 @@ class Subject():
         self.react_reaction_time_mixed_mean   = np.nanmean(self.react_reaction_time_mixed)
         self.react_reaction_time_mixed_median = np.nanmedian(self.react_reaction_time_mixed)
         self.react_reaction_time_mixed_sd     = np.nanstd(self.react_reaction_time_mixed)
+        
+        self.gamble_reaction_time_repeat_median = np.nanmedian(self.gamble_reaction_time_repeat)
+        self.gamble_reaction_time_switch_median = np.nanmedian(self.gamble_reaction_time_switch)
+        self.react_reaction_time_repeat_median = np.nanmedian(self.react_reaction_time_repeat)
+        self.react_reaction_time_switch_median = np.nanmedian(self.react_reaction_time_switch)
+        
     def calculate_repeats_alternates(self):
         # Get masks
         self.react_repeat_mask  = np.full(self.num_trials,False)
