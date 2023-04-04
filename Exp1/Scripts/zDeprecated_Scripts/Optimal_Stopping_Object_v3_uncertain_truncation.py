@@ -7,6 +7,8 @@ wheel = dv.ColorWheel()
 This script is same as optimal_stopping_object_v3 but with uncertain truncation
 - It'll become the v4 model once it works
 
+DID THIS ON OPTIMAL STOPPING OBJECT V3
+
 '''
 class Optimal_Decision_Time_Model():
     def __init__(self, **kwargs):

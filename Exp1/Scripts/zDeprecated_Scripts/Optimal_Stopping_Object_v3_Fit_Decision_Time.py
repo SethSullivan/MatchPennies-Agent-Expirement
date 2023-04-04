@@ -8,7 +8,7 @@ This model finds the decision time that best fits the data for the group and the
 
 This is a good check to see if the model actually captures everything that's going on 
 
-
+I DO THIS IN THE OPTIMAL_STOPPING_OBJECT_V3
 
 
 '''
