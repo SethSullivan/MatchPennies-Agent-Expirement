@@ -12,7 +12,6 @@ wheel = dv.ColorWheel()
 
 v4 Takes away the Truncation stuff
 
-
 '''
 
 #####################################################
@@ -80,6 +79,10 @@ class Optimal_Decision_Time_Model():
             self.weird_reaction_gamble_cutoff = kwargs.get('weird_reaction_gamble_cutoff',0)
         # Player Parameters and rewards
         if True:
+            # HOW MUCH PEOPLE WEIGH WINS VERSUS CORRECTNESS IS THE BETA TERM
+            # self.perc_wins_when_both_reach = kwargs.get('perc_wins_when_both_reach')
+            # self.BETA = self.find_beta_term()
+            
             # Uncertainty
             self.reaction_uncertainty               = kwargs.get('reaction_uncertainty')
             self.movement_uncertainty               = kwargs.get('movement_uncertainty')
@@ -102,8 +105,66 @@ class Optimal_Decision_Time_Model():
             # Prob of selecting the correct target
             self.prob_success_gamble   = kwargs.get('prob_success_gamble',0.5)
             self.prob_success_reaction = kwargs.get('prob_success_react',1.0)
+    #################################################################### 
+    ################### ------Helper Functions-----#####################
+    #################################################################### 
+    def find_beta_term(self):
+        '''
+        Maps 0.5 (all gambles) to 0 and 1.0 to 1
+        
+        BETA = 2*wins_both_reached - 1
+        
+        This seems a bit volatile when implemented
+        '''
+        self.perc_wins_when_both_reach = [0.5 if x<0.5 else x for x in self.perc_wins_when_both_reach] # Anything under 0.5 becomes 0.5
+        return 2*np.array(self.perc_wins_when_both_reach) - 1
+
+    def mseloss(self,decision_time):
+        # Go through the model with these specific DECISION times
+        self.calculate_metrics_with_certain_decision_time(decision_time)
+        
+        # Get wins,indecisions,incorrects,and leave target times and compare to data
+        win_diff                 = abs(self.perc_win_calc - self.tune_data[0])
+        indecision_diff          = abs(self.perc_indecision_calc - self.tune_data[1])
+        incorrect_diff           = abs(self.perc_incorrect_calc - self.tune_data[2])
+        leave_target_time_diff   = abs(self.wtd_optimal_leave_target_time - self.tune_data[3])
+        perc_reactions_diff      = abs(self.prob_selecting_reaction_optimal*100 - self.tune_data[4])
+        perc_gambles_diff        = abs(self.prob_selecting_gamble_optimal*100 - self.tune_data[5])
+        reaction_leave_time_diff = abs(self.optimal_reaction_leave_target_time - self.tune_data[6])
+        gamble_leave_time_diff   = abs(self.optimal_gamble_leave_target_time - self.tune_data[7])
+        
+        metric_loss = np.array([win_diff,indecision_diff,incorrect_diff,leave_target_time_diff,
+                                perc_reactions_diff,perc_gambles_diff,reaction_leave_time_diff,gamble_leave_time_diff])
+        return metric_loss 
+       
+    def replace_zero_with_nan(self,arr):
+        arr[arr == 0] = np.nan
+        return arr
+    
+    def plot_optimals(self,metrics,num_plots = None ,dpi=125):
+        if num_plots is None:
+            num_plots = self.num_blocks
+        plt.style.use('cashaback_dark')
+        for i in range(num_plots):
+            fig,ax = plt.subplots(dpi=dpi)
+            for metric in metrics:
+                ax.plot(self.timesteps[i,:], getattr(self,metric)[i,:], label = self.metrics_name_dict[metric],zorder=0)
+                if metric == 'exp_reward':
+                    ax.plot((self.optimal_decision_time[i],self.optimal_decision_time[i]),(-4,self.exp_reward[i,self.optimal_index[i]]),c='w')
+                    ax.scatter(self.optimal_decision_time[i],self.exp_reward[i,self.optimal_index[i]],c='w')
+                    ax.text(self.optimal_decision_time[i],self.exp_reward[i,self.optimal_index[i]]+0.03,f'Optimal Decision Time = {self.optimal_decision_time[i]}',ha = 'center')
+            ax.set_ylim(np.min(self.incorrect_cost,self.indecision_cost)-0.03,np.max(self.win_reward)+0.03)
+            ax.set_xlim(0,1500)
+            ax.set_xticks(np.arange(0,2000,300))
+            ax.set_xlabel('Time (ms)')
+            ax.set_ylabel('Expected Reward')
+            ax.legend(fontsize = 8,loc = (0.01,0.1))
+            ax.set_title(f'Gain Function for Decision Time\nAgent Mean,SD = {self.agent_means[i]},{self.agent_sds[i]}')#\n B = {B}')
+            plt.show()  
+    
     def run_model(self):
-        # Probabilites
+        ###################### ----- Find Expected Reward Every Timestep -----  ######################
+        # Probabilites ( Run through Functions)
         if True:
             # Agent probabilities (not used, agent behavior is used in prob_of_selecting_reaction)
             self.prob_agent_has_gone     = self.prob_agent_go()
@@ -114,10 +175,10 @@ class Optimal_Decision_Time_Model():
             self.prob_selecting_gamble   = 1 - self.prob_selecting_reaction
             
             # Prob of making it to the target
-            self.prob_making_reaction = self.prob_making_based_on_agent()
+            self.prob_making_reaction = self.prob_making_for_reaction()
             self.prob_making_gamble   = self.prob_making_for_gamble()
               
-        # Prob of win, incorrect, indecisions
+        # Prob of win, incorrect, indecisions (All equations, no functions)
         if True:
             # Probability of receiving a reward (prob_succes multiplied by prob of making it multiplied by probability of actually selecting that action)
             self.prob_win_reaction = self.prob_success_reaction*self.prob_making_reaction*self.prob_selecting_reaction
@@ -138,6 +199,7 @@ class Optimal_Decision_Time_Model():
             self.exp_reward          = self.exp_reward_reaction + self.exp_reward_gamble
             self.exp_reward          = self.prob_win*self.win_reward + self.prob_incorrect*self.incorrect_cost + self.prob_indecision*self.indecision_cost 
         
+        # Find timepoint that gets the maximum expected reward
         self.optimal_index         = np.nanargmax(self.exp_reward,axis=1)
         self.optimal_decision_time = np.nanargmax(self.exp_reward, axis = 1)*self.nsteps
         self.max_exp_reward        = np.nanmax(self.exp_reward,axis=1)
@@ -151,13 +213,20 @@ class Optimal_Decision_Time_Model():
                                   'prob_win':'Prob Win','prob_incorrect':'Prob Incorrect','prob_indecision':'Prob Indecision',
                                   'prob_making_reaction_based_on_agent':'Prob Making Based on Agent'}
 
+        ###################### ----- Get Experiment Metrics ----- #####################
+                
+        # * Calculate experiment metrics from expected reward 
+        # (uses optimal index on all the calculations we already made to find the optimal)
         self.calculate_experiment_metrics_from_expected_reward()
         
+        # * Find the experiment metrics probabilistically 
+        # (this is useful when calculating the wins people ACTUALLY get when there is something unknown
+        # in the calculation of the gain function)
         self.calculate_experiment_metrics()
         
-        self.calculate_gamble_reaction_metrics()
-
-        
+    ######################################################################################################
+    ########## ---- Functions to Calculate the Expected Reward at Every Timestep ----- ###################
+    ######################################################################################################
     def prob_agent_go(self):
         output = np.zeros((self.num_blocks,len(self.timesteps[0,:])))
         for i in range(self.num_blocks):
@@ -190,20 +259,26 @@ class Optimal_Decision_Time_Model():
                 output[i,:] = 1 - stats.norm.cdf(self.weird_reaction_gamble_cutoff,diff,combined_uncertainty[i]) # I've determined that the decision time just needs to be after, doesn't necessarily need to be after some decision action delay
                 
         return output
-    def prob_making_based_on_agent(self):
+    
+    def prob_making_for_reaction(self):
         # Get first three central moments (EX2 is normalized for mean, EX3 is normalized for mean and sd) of the new distribution based on timing uncertainty
         inf_timesteps = np.arange(0,5000,1,dtype=np.float64)
         time_means = self.timesteps[0,:]
+        
         # Get the First Three moments for the left and right distributions (if X<Y and if X>Y respectively)
         self.EX_R,self.EX2_R,self.EX3_R,self.EX_G,self.EX2_G,self.EX3_G = get_moments(inf_timesteps,self.agent_means,time_means,self.agent_sds,self.timing_uncertainty)
+        
         # Calculate the mean, variance, and skew with method of moments
         self.cutoff_agent_reaction_mean,self.cutoff_var,self.cutoff_skew = self.EX_R,get_variance(self.EX_R,self.EX2_R),get_skew(self.EX_R,self.EX2_R,self.EX3_R)
         self.cutoff_agent_reaction_sd = np.sqrt(self.cutoff_var)
+        
         # same thing for gamble (X>Y)
         self.cutoff_agent_gamble_mean,self.cutoff_var,self.cutoff_skew = self.EX_G,get_variance(self.EX_G,self.EX2_G),get_skew(self.EX_G,self.EX2_G,self.EX3_G)
         self.cutoff_agent_gamble_sd = np.sqrt(self.cutoff_var)
+        
         # Calculate the prob of making it on a reaction 
         prob_make_reaction = stats.norm.cdf(1500,self.cutoff_agent_reaction_mean + self.reaction_plus_movement_time,np.sqrt(self.cutoff_agent_reaction_sd**2 + self.reaction_plus_movement_uncertainty**2))
+        
         return prob_make_reaction
     
     def prob_making_for_gamble(self):
@@ -211,19 +286,24 @@ class Optimal_Decision_Time_Model():
             self.gamble_reach_time_mean = self.timesteps + self.movement_time + self.known_gamble_delay # Gamble delay includes decision action delay, but there's another cognitive delay involved
         else:
             self.gamble_reach_time_mean = self.timesteps + self.movement_time + self.decision_action_delay_mean
+        
         if self.known_gamble_uncertainty_on:
             self.gamble_reach_time_uncertainty = np.sqrt(self.known_gamble_uncertainty**2 + self.movement_uncertainty**2)
         else:
             self.gamble_reach_time_uncertainty = self.timing_uncertainty # The timing uncertainy measure in coincidence task includes 
+        
         output = np.zeros((self.num_blocks,len(self.timesteps[0,:])))
         for i in range(self.num_blocks): 
             output[i,:] = stats.norm.cdf(1500,self.gamble_reach_time_mean[i,:],self.gamble_reach_time_uncertainty[i])
+        
         return output
-    ##########-------------------------------------###############################
-    ##########---- Calculate Optimal Metrics ------###############################
-    ##########-------------------------------------###############################
     
-    # Just get the probabilities from the calculations, these are the same as calculating the experiment metrics post-hoc, but those ones
+    ########################################################################
+    ##########---- Functions to Calculate Optimal Metrics ------############
+    ########################################################################
+    
+    # * Just get the probabilities from the ER calculations, 
+    # these are the same as calculating the experiment metrics post-hoc, but those ones
     # can include the unknown shit
     def calculate_experiment_metrics_from_expected_reward(self):
         '''
@@ -231,55 +311,94 @@ class Optimal_Decision_Time_Model():
         
         This won't be correct if there are unknown uncertainties
         '''
-        self.prob_selecting_reaction_optimal  = np.zeros(6)
-        self.prob_selecting_gamble_optimal    = np.zeros(6)
-        self.prob_making_reaction_optimal     = np.zeros(6)
-        self.prob_making_gamble_optimal       = np.zeros(6)
-        self.prob_indecision_gamble_optimal   = np.zeros(6)
-        self.prob_indecision_reaction_optimal = np.zeros(6)
-        self.prob_incorrect_gamble_optimal    = np.zeros(6)
-        self.prob_incorrect_reaction_optimal  = np.zeros(6)
-        self.prob_win_gamble_optimal          = np.zeros(6)
-        self.prob_win_reaction_optimal        = np.zeros(6)
-        self.prob_win_optimal                 = np.zeros(6)
-        self.prob_indecision_optimal          = np.zeros(6)
-        self.prob_incorrect_optimal           = np.zeros(6)
+        self.prob_selecting_reaction_optimal_ER  = np.zeros(6)
+        self.prob_selecting_gamble_optimal_ER    = np.zeros(6)
+        self.prob_making_reaction_optimal_ER     = np.zeros(6)
+        self.prob_making_gamble_optimal_ER       = np.zeros(6)
+        self.prob_indecision_gamble_optimal_ER   = np.zeros(6)
+        self.prob_indecision_reaction_optimal_ER = np.zeros(6)
+        self.prob_incorrect_gamble_optimal_ER    = np.zeros(6)
+        self.prob_incorrect_reaction_optimal_ER  = np.zeros(6)
+        self.prob_win_gamble_optimal_ER          = np.zeros(6)
+        self.prob_win_reaction_optimal_ER        = np.zeros(6)
+        self.prob_win_optimal_ER                 = np.zeros(6)
+        self.prob_indecision_optimal_ER          = np.zeros(6)
+        self.prob_incorrect_optimal_ER           = np.zeros(6)
         for i in range(6):
-            self.prob_making_reaction_optimal[i]     = self.prob_making_reaction[i,self.optimal_index[i]]
-            self.prob_making_gamble_optimal[i]       = self.prob_making_gamble[i,self.optimal_index[i]]
-            self.prob_selecting_reaction_optimal[i]  = self.prob_selecting_reaction[i,self.optimal_index[i]]
-            self.prob_selecting_gamble_optimal[i]    = self.prob_selecting_gamble[i,self.optimal_index[i]]
-            self.prob_indecision_gamble_optimal[i]   = self.prob_indecision_gamble[i,self.optimal_index[i]]
-            self.prob_indecision_reaction_optimal[i] = self.prob_indecision_reaction[i,self.optimal_index[i]]
-            self.prob_incorrect_gamble_optimal[i]    = self.prob_incorrect_gamble[i,self.optimal_index[i]]
-            self.prob_incorrect_reaction_optimal[i]  = self.prob_incorrect_reaction[i,self.optimal_index[i]]
-            self.prob_win_gamble_optimal[i]          = self.prob_win_gamble[i,self.optimal_index[i]]
-            self.prob_win_reaction_optimal[i]        = self.prob_win_reaction[i,self.optimal_index[i]]
-            self.prob_win_optimal[i]                 = self.prob_win[i,self.optimal_index[i]]
-            self.prob_incorrect_optimal[i]           = self.prob_incorrect[i,self.optimal_index[i]]
-            self.prob_indecision_optimal[i]          = self.prob_indecision[i,self.optimal_index[i]]
+            self.prob_making_reaction_optimal_ER[i]     = self.prob_making_reaction[i,self.optimal_index[i]]
+            self.prob_making_gamble_optimal_ER[i]       = self.prob_making_gamble[i,self.optimal_index[i]]
+            self.prob_selecting_reaction_optimal_ER[i]  = self.prob_selecting_reaction[i,self.optimal_index[i]]
+            self.prob_selecting_gamble_optimal_ER[i]    = self.prob_selecting_gamble[i,self.optimal_index[i]]
+            self.prob_indecision_gamble_optimal_ER[i]   = self.prob_indecision_gamble[i,self.optimal_index[i]]
+            self.prob_indecision_reaction_optimal_ER[i] = self.prob_indecision_reaction[i,self.optimal_index[i]]
+            self.prob_incorrect_gamble_optimal_ER[i]    = self.prob_incorrect_gamble[i,self.optimal_index[i]]
+            self.prob_incorrect_reaction_optimal_ER[i]  = self.prob_incorrect_reaction[i,self.optimal_index[i]]
+            self.prob_win_gamble_optimal_ER[i]          = self.prob_win_gamble[i,self.optimal_index[i]]
+            self.prob_win_reaction_optimal_ER[i]        = self.prob_win_reaction[i,self.optimal_index[i]]
+            self.prob_win_optimal_ER[i]                 = self.prob_win[i,self.optimal_index[i]]
+            self.prob_incorrect_optimal_ER[i]           = self.prob_incorrect[i,self.optimal_index[i]]
+            self.prob_indecision_optimal_ER[i]          = self.prob_indecision[i,self.optimal_index[i]]
             
-    def calculate_gamble_reaction_probs_from_expected_reward(self):
-        self.prob_selecting_reaction_optimal = np.zeros(6)
-        self.prob_selecting_gamble_optimal = np.zeros(6)
-        # Only reason to recalculate this is if the gamble uncertainty is unknown... if it's known or None, then we go to the else, which can just use the calc during expected reward
-        if self.unknown_gamble_uncertainty_on:
-            for i in range(6):
-                combined_uncertainty = np.sqrt(self.unknown_gamble_uncertainty**2)
-                diff = self.optimal_index[i] - self.agent_means[i]
-                self.prob_selecting_reaction_optimal[i] = 1 - stats.norm.cdf(self.weird_reaction_gamble_cutoff,diff,combined_uncertainty) # I've determined that the decision time just needs to be after, doesn't necessarily need to be after some decision action delay
-            self.prob_selecting_gamble_optimal = 1 - self.prob_selecting_reaction_optimal
-        else:
-            for i in range(6):
-                self.prob_selecting_reaction_optimal[i] = self.prob_selecting_reaction[i,self.optimal_index[i]]
-                self.prob_selecting_gamble_optimal[i] = self.prob_selecting_gamble[i,self.optimal_index[i]]
-        #Get into percentage 
-        self.percent_reactions_optimal = self.prob_selecting_reaction_optimal*100
-        self.percent_gambles_optimal = self.prob_selecting_gamble_optimal*100
-        self.percent_making_reaction_optimal = self.prob_making_reaction_optimal*100
-        self.percent_making_gamble_optimal = self.prob_making_gamble_optimal*100
+    # * Calculate experiment metrics possibly with unknown gamble stuff
+    def calculate_experiment_metrics(self):
+        # * Set gamble delay
+        self.set_gamble_delay_and_uncertainty()
+        
+         # * Find probability of selecting gamble/reactions
+        self.calculate_prob_of_reaction_or_gamble()
+        
+        # * Calculate the mean leave target time based on the decision time
+        # Calculates reaction and gamble leave target times too
+        self.wtd_optimal_leave_target_time,self.wtd_optimal_reach_target_time,self.predicted_decision_time = self.calculate_mean_leave_target_time()
+        
+        self.player_minus_agent_leave_time          = self.wtd_optimal_leave_target_time - self.agent_means
+        self.player_minus_agent_reaction_leave_time = self.optimal_reaction_leave_target_time - self.agent_means
+        self.player_minus_agent_gamble_leave_time   = self.optimal_gamble_leave_target_time - self.agent_means
+        
+       
+
+        # * Find probability of indecision for gamble/reaction
+        # Includes if gamble delay/uncertainty (known or unknown) is on        
+        self.prob_indecision_if_gamble,self.prob_indecision_if_react = self.prob_gamble_and_reaction_indecision_optimal() 
+        
+        # Calculate total prob of indecision      
+        self.prob_indecision_calc      = self.prob_selecting_reaction_optimal*self.prob_indecision_if_react + \
+                                            self.prob_selecting_gamble_optimal*self.prob_indecision_if_gamble
+        self.perc_indecision_calc      = self.prob_indecision_calc*100
+        
+        # Probability of winning
+        self.prob_win_if_react  = (1-self.prob_indecision_if_react)*1.0 # prob win if react is the probability that I don't make an indecision times the probability that i select the right target (1.0)
+        self.prob_win_if_gamble = (1-self.prob_indecision_if_gamble)*0.5 # prob win if gamble is the probability that I don't make an indecision times the probabiliyt that I select the right target(0.5)
+        self.prob_win_calc      = self.prob_selecting_reaction_optimal*self.prob_win_if_react + self.prob_selecting_gamble_optimal*self.prob_win_if_gamble
+        self.perc_win_calc      = self.prob_win_calc*100
     
+        # Probability of incorrect selection
+        self.prob_incorrect_if_react  = 0
+        self.prob_incorrect_if_gamble = (1-self.prob_indecision_if_gamble)*0.5
+        self.prob_incorrect_calc      = self.prob_selecting_reaction_optimal*self.prob_incorrect_if_react + self.prob_selecting_gamble_optimal*self.prob_incorrect_if_gamble
+        self.perc_incorrect_calc      = self.prob_incorrect_calc*100
+        
+        # * Get the gamble and reaction separated metrics
+        self.calculate_gamble_reaction_metrics()   
+        
+    def set_gamble_delay_and_uncertainty(self):
+        if self.unknown_gamble_delay_on:
+            self.gamble_delay = self.unknown_gamble_delay
+        elif self.known_gamble_delay_on:
+            self.gamble_delay = self.known_gamble_delay
+        else:
+            self.gamble_delay = self.decision_action_delay_mean
+            
+        if self.unknown_gamble_uncertainty_on:
+            self.gamble_uncertainty   = self.unknown_gamble_uncertainty
+        elif self.known_gamble_uncertainty_on:
+            self.gamble_uncertainty   = self.known_gamble_uncertainty
+        else:
+            # Using total agent uncertainty, as opposed to the cutoff uncertainty, not sure which makes more sense
+            self.gamble_uncertainty   = np.sqrt(self.agent_sds**2 + self.timing_uncertainty**2) # 
+            
     def calculate_mean_leave_target_time(self):
+        # Get the agent's mean and sd for reaction and gambles at the optimal cutoff time
         self.cutoff_agent_reaction_mean_optimal = np.zeros(6)
         self.cutoff_agent_reaction_sd_optimal = np.zeros(6)
         self.cutoff_agent_gamble_mean_optimal = np.zeros(6)
@@ -289,128 +408,203 @@ class Optimal_Decision_Time_Model():
             self.cutoff_agent_reaction_sd_optimal[i] = self.cutoff_agent_reaction_sd[i,self.optimal_index[i]]
             self.cutoff_agent_gamble_mean_optimal[i] = self.cutoff_agent_gamble_mean[i,self.optimal_index[i]]
             self.cutoff_agent_gamble_sd_optimal[i] = self.cutoff_agent_gamble_sd[i,self.optimal_index[i]]
+        
+        # Optimal reaction leave target time is agent mean + reaction time
         self.optimal_reaction_leave_target_time = self.cutoff_agent_reaction_mean_optimal + self.reaction_time
         self.optimal_reaction_leave_target_time_sd = np.sqrt(self.cutoff_agent_reaction_sd_optimal**2 + self.reaction_uncertainty**2)
-        if self.unknown_gamble_delay_on:
-            self.optimal_gamble_leave_target_time   = self.optimal_decision_time + self.unknown_gamble_delay
-            self.gamble_delay = self.unknown_gamble_delay
-        elif self.known_gamble_delay_on:
-            self.optimal_gamble_leave_target_time   = self.optimal_decision_time + self.known_gamble_delay
-            self.gamble_delay = self.known_gamble_delay
-        else:
-            self.optimal_gamble_leave_target_time   = self.optimal_decision_time + self.decision_action_delay_mean
-            self.gamble_delay = self.decision_action_delay_mean
         
-        if self.unknown_gamble_uncertainty_on:
-            self.optimal_gamble_leave_target_time_sd   = self.unknown_gamble_uncertainty
-        elif self.known_gamble_uncertainty_on:
-            self.optimal_gamble_leave_target_time_sd   = self.known_gamble_uncertainty
-        else:
-            self.optimal_gamble_leave_target_time_sd   = np.sqrt(self.cutoff_agent_reaction_sd_optimal**2 + self.timing_uncertainty**2)
+        # Find optimal gamble leave target time and sd
+        self.optimal_gamble_leave_target_time    = self.optimal_decision_time + self.gamble_delay
+        self.optimal_gamble_leave_target_time_sd = self.gamble_uncertainty
         
-            
-        self.wtd_optimal_leave_target_time = (self.prob_selecting_reaction_optimal*self.optimal_reaction_leave_target_time + \
+        # Get the leave target time by weighing by how often they react and gamble
+        wtd_optimal_leave_target_time = (self.prob_selecting_reaction_optimal*self.optimal_reaction_leave_target_time + \
                                             self.prob_selecting_gamble_optimal*self.optimal_gamble_leave_target_time)/(self.prob_selecting_gamble_optimal+self.prob_selecting_reaction_optimal) 
-        self.wtd_optimal_reach_target_time = self.wtd_optimal_leave_target_time + self.movement_time
+        # Just add movement time for reach target time
+        wtd_optimal_reach_target_time = wtd_optimal_leave_target_time + self.movement_time
         
-        self.predicted_decision_time = (self.prob_selecting_reaction_optimal*self.cutoff_agent_reaction_mean_optimal) + \
+        # Predict their decision time
+        predicted_decision_time = (self.prob_selecting_reaction_optimal*self.cutoff_agent_reaction_mean_optimal) + \
                                        (self.prob_selecting_gamble_optimal*(self.optimal_gamble_leave_target_time - self.gamble_delay))
             
-        return
+        return wtd_optimal_leave_target_time,wtd_optimal_reach_target_time,predicted_decision_time
     
-    def prob_gamble_indecision_optimal(self):
-        if self.known_gamble_delay_on:
-            self.gamble_reach_time_mean = self.optimal_decision_time + self.movement_time + self.known_gamble_delay # Gamble delay includes decision action delay, but there's another cognitive delay involved
-        elif self.unknown_gamble_delay_on:
-            self.gamble_reach_time_mean = self.optimal_decision_time + self.movement_time + self.unknown_gamble_delay
-        else:
-            self.gamble_reach_time_mean = self.optimal_decision_time + self.movement_time + self.decision_action_delay_mean
-            
-        if self.known_gamble_uncertainty_on:
-            self.gamble_reach_time_uncertainty = np.sqrt(self.known_gamble_uncertainty**2 + self.movement_uncertainty**2)
-        elif self.unknown_gamble_uncertainty_on:
-            self.gamble_reach_time_uncertainty = np.sqrt(self.unknown_gamble_uncertainty**2 + self.movement_uncertainty**2) # The timing uncertainy measure in coincidence task includes
-        else:
-            self.gamble_reach_time_uncertainty = self.timing_uncertainty
-
-        output = 1 - stats.norm.cdf(1500,self.gamble_reach_time_mean,self.gamble_reach_time_uncertainty)
-        return output
-    
-    def prob_react_indecision_optimal(self):
+    def prob_gamble_and_reaction_indecision_optimal(self):
+        '''
+        Takes into account (un)known gamble delay
+        '''
+        # Gamble Calc
+        self.gamble_reach_time_mean = self.optimal_decision_time + self.gamble_delay + self.movement_time
+        
+        # ? Gamble uncertainty without the (un)known uncertainty includes agent as well
+        # But also, the (un)known uncertainty from the data INCLUDES the agent bc people are experiencing the agent
+        # How do we parse between people's switch uncertainty and the uncertainty in gamble times due to the agent?
+        self.gamble_reach_time_uncertainty = np.sqrt(self.gamble_uncertainty**2 + self.movement_uncertainty**2) 
+        output1 = 1 - stats.norm.cdf(1500,self.gamble_reach_time_mean,self.gamble_reach_time_uncertainty)
+        
+        # Reaction calc
         self.reaction_reach_time_uncertainty = np.sqrt(self.cutoff_agent_reaction_sd_optimal**2 + self.reaction_plus_movement_uncertainty**2)
         self.reaction_reach_time_optimal = self.cutoff_agent_reaction_mean_optimal + self.reaction_plus_movement_time
-        output = 1 - stats.norm.cdf(1500,self.reaction_reach_time_optimal,self.reaction_reach_time_uncertainty)
-        return output 
-    
-    def calculate_experiment_metrics(self):
-        # Caluclate the probability of reacting and gambling based on the optimal decision time
-        self.calculate_gamble_reaction_probs_from_expected_reward()
-        # Calculate the mean leave target time based on the decision time
-        self.calculate_mean_leave_target_time()
-        self.player_minus_agent_leave_time = self.wtd_optimal_leave_target_time - self.agent_means
-        self.player_minus_agent_reaction_leave_time = self.reaction_time
-        self.player_minus_agent_gamble_leave_time = self.optimal_gamble_leave_target_time - self.agent_means
-        
-        # Probability of indecision
-        if True:
-            self.prob_indecision_if_gamble = self.prob_gamble_indecision_optimal()
-            self.prob_indecision_if_react  = self.prob_react_indecision_optimal()        
-            self.prob_indecision_calc      = self.prob_selecting_reaction_optimal*self.prob_indecision_if_react + self.prob_selecting_gamble_optimal*self.prob_indecision_if_gamble
-            self.perc_indecision_calc      = self.prob_indecision_calc*100
-        
-        # Probability of winning
-        if True:
-            self.prob_win_if_react  = (1-self.prob_indecision_if_react)*1.0 # prob win if react is the probability that I don't make an indecision times the probability that i select the right target (1.0)
-            self.prob_win_if_gamble = (1-self.prob_indecision_if_gamble)*0.5 # prob win if gamble is the probability that I don't make an indecision times the probabiliyt that I select the right target(0.5)
-            self.prob_win_calc      = self.prob_selecting_reaction_optimal*self.prob_win_if_react + self.prob_selecting_gamble_optimal*self.prob_win_if_gamble
-            self.perc_win_calc      = self.prob_win_calc*100
-        
-        # Probability of incorrect selection
-        if True:
-            self.prob_incorrect_if_react  = 0
-            self.prob_incorrect_if_gamble = (1-self.prob_indecision_if_gamble)*0.5
-            self.prob_incorrect_calc      = self.prob_selecting_reaction_optimal*self.prob_incorrect_if_react + self.prob_selecting_gamble_optimal*self.prob_incorrect_if_gamble
-            self.perc_incorrect_calc      = self.prob_incorrect_calc*100
-  
+        output2 = 1 - stats.norm.cdf(1500,self.reaction_reach_time_optimal,self.reaction_reach_time_uncertainty)
+        return output1,output2         
+
     def calculate_gamble_reaction_metrics(self):
         self.temp_prob_win        = self.replace_zero_with_nan(self.prob_win_calc)
         self.temp_prob_indecision = self.replace_zero_with_nan(self.prob_indecision_calc)
         self.temp_prob_incorrect  = self.replace_zero_with_nan(self.prob_incorrect_calc)
-        # Percent of metric that were reaction and gamble
         if True:
+            # Percent of metric that were reaction and gamble
             self.perc_wins_that_were_gamble          = ((self.prob_win_if_gamble*self.prob_selecting_gamble_optimal)/self.temp_prob_win)*100
             self.perc_indecisions_that_were_gamble   = ((self.prob_indecision_if_gamble*self.prob_selecting_gamble_optimal)/self.temp_prob_indecision)*100
             self.perc_incorrects_that_were_gamble    = ((self.prob_incorrect_if_gamble*self.prob_selecting_gamble_optimal)/self.temp_prob_incorrect)*100
+            
             self.perc_wins_that_were_reaction        = ((self.prob_win_if_react*self.prob_selecting_reaction_optimal)/self.temp_prob_win)*100
             self.perc_indecisions_that_were_reaction = ((self.prob_indecision_if_react*self.prob_selecting_reaction_optimal)/self.temp_prob_indecision)*100
             self.perc_incorrects_that_were_reaction  = ((self.prob_incorrect_if_react*self.prob_selecting_reaction_optimal)/self.temp_prob_incorrect)*100
             
+            # Percent of reaction or gamble that were wins/incorrects/indecisions
             self.perc_gambles_that_were_wins          = ((self.prob_win_if_gamble*self.prob_selecting_gamble_optimal)/self.prob_selecting_gamble_optimal)*100
             self.perc_gambles_that_were_incorrects    = ((self.prob_incorrect_if_gamble*self.prob_selecting_gamble_optimal)/self.prob_selecting_gamble_optimal)*100
             self.perc_gambles_that_were_indecisions   = ((self.prob_indecision_if_gamble*self.prob_selecting_gamble_optimal)/self.prob_selecting_gamble_optimal)*100
+            
             self.perc_reactions_that_were_wins        = ((self.prob_win_if_react*self.prob_selecting_reaction_optimal)/self.prob_selecting_reaction_optimal)*100
             self.perc_reactions_that_were_incorrects  = ((self.prob_incorrect_if_react*self.prob_selecting_reaction_optimal)/self.prob_selecting_reaction_optimal)*100
             self.perc_reactions_that_were_indecisions = ((self.prob_indecision_if_react*self.prob_selecting_reaction_optimal)/self.prob_selecting_reaction_optimal)*100
     
-    
-    def mseloss(self,decision_time):
-        # Go through the model with these specific DECISION times
-        self.calculate_metrics_with_certain_decision_time(decision_time)
+    def calculate_prob_of_reaction_or_gamble(self):
+        '''
+
+        '''
+        self.prob_selecting_reaction_optimal = np.zeros(6)
+        self.prob_selecting_gamble_optimal = np.zeros(6)
+        # Only reason to recalculate this is if the gamble uncertainty is unknown... if it's known or None, then we go to the else, which can just use the calc during expected reward
         
-        # Get wins,indecisions,incorrects,and leave target times and compare to data
-        win_diff                 = abs(self.perc_win_calc - self.tune_data[0])
-        indecision_diff          = abs(self.perc_indecision_calc - self.tune_data[1])
-        incorrect_diff           = abs(self.perc_incorrect_calc - self.tune_data[2])
-        leave_target_time_diff   = abs(self.wtd_optimal_leave_target_time - self.tune_data[3])
-        perc_reactions_diff      = abs(self.prob_selecting_reaction_optimal*100 - self.tune_data[4])
-        perc_gambles_diff        = abs(self.prob_selecting_gamble_optimal*100 - self.tune_data[5])
-        reaction_leave_time_diff = abs(self.optimal_reaction_leave_target_time - self.tune_data[6])
-        gamble_leave_time_diff   = abs(self.optimal_gamble_leave_target_time - self.tune_data[7])
-        
-        metric_loss = np.array([win_diff,indecision_diff,incorrect_diff,leave_target_time_diff,
-                                perc_reactions_diff,perc_gambles_diff,reaction_leave_time_diff,gamble_leave_time_diff])
-        return metric_loss
+        # for i in range(6):
+        #     combined_uncertainty = np.sqrt(self.timing_uncertainty[i]**2 + self.agent_sds[i]**2)
+        #     diff = self.optimal_index[i] - self.agent_means[i]
+        #     self.prob_selecting_reaction_optimal[i] = 1 - stats.norm.cdf(self.weird_reaction_gamble_cutoff,diff,combined_uncertainty) # I've determined that the decision time just needs to be after, doesn't necessarily need to be after some decision action delay
+        combined_uncertainty = np.sqrt(self.timing_uncertainty**2 + self.agent_sds**2)
+        diff = self.optimal_index - self.agent_means
+        self.prob_selecting_reaction_optimal = 1 - stats.norm.cdf(self.weird_reaction_gamble_cutoff,diff,combined_uncertainty) #
+        self.prob_selecting_gamble_optimal = 1 - self.prob_selecting_reaction_optimal
+            
+        #Get into percentage 
+        self.percent_reactions_optimal = self.prob_selecting_reaction_optimal*100
+        self.percent_gambles_optimal = self.prob_selecting_gamble_optimal*100
+        # self.percent_making_reaction_optimal = self.prob_making_reaction_optimal*100
+        # self.percent_making_gamble_optimal = self.prob_making_gamble_optimal*100
     
+    
+    
+    ###################################################################################
+    ################# ----- Calculate Beta Optimal Metrics ------ #####################
+    ###################################################################################
+    def calculate_experiment_metrics_from_expected_reward_prob_beta(self):
+        '''
+        Get the index of the calculated probabilities
+        
+        I feel like this isn't the way to calculate
+        '''
+        self.prob_selecting_reaction_beta = np.zeros(6)
+        self.prob_selecting_gamble_beta = np.zeros(6)
+        self.prob_making_reaction_beta = np.zeros(6)
+        self.prob_making_gamble_beta = np.zeros(6)
+        self.prob_indecision_gamble_beta = np.zeros(6)
+        self.prob_indecision_reaction_beta = np.zeros(6)
+        self.prob_incorrect_gamble_beta   = np.zeros(6)
+        self.prob_incorrect_reaction_beta = np.zeros(6)
+        self.prob_win_gamble_beta  = np.zeros(6)
+        self.prob_win_reaction_beta = np.zeros(6)
+        self.prob_win_beta = np.zeros(6)
+        self.prob_indecision_beta = np.zeros(6)
+        self.prob_incorrect_beta = np.zeros(6)
+        for i in range(6):
+            self.prob_making_reaction_beta[i] = self.prob_making_reaction[i,int(self.optimal_beta_decision_time[i])]
+            self.prob_making_gamble_beta[i] = self.prob_making_gamble[i,int(self.optimal_beta_decision_time[i])]
+            self.prob_selecting_reaction_beta[i] = self.prob_selecting_reaction[i,int(self.optimal_beta_decision_time[i])]
+            self.prob_selecting_gamble_beta[i] = self.prob_selecting_gamble[i,int(self.optimal_beta_decision_time[i])]
+            self.prob_indecision_gamble_beta[i] = self.prob_indecision_gamble[i,int(self.optimal_beta_decision_time[i])]
+            self.prob_indecision_reaction_beta[i] = self.prob_indecision_reaction[i,int(self.optimal_beta_decision_time[i])]
+            self.prob_incorrect_gamble_beta[i] = self.prob_incorrect_gamble[i,int(self.optimal_beta_decision_time[i])]
+            self.prob_incorrect_reaction_beta[i] = self.prob_incorrect_reaction[i,int(self.optimal_beta_decision_time[i])]
+            self.prob_win_gamble_beta[i] = self.prob_win_gamble[i,int(self.optimal_beta_decision_time[i])]
+            self.prob_win_reaction_beta[i] = self.prob_win_reaction[i,int(self.optimal_beta_decision_time[i])]
+            self.prob_win_beta[i] = self.prob_win[i,int(self.optimal_beta_decision_time[i])]
+            self.prob_incorrect_beta[i] = self.prob_incorrect[i,int(self.optimal_beta_decision_time[i])]
+            self.prob_indecision_beta[i] = self.prob_indecision[i,int(self.optimal_beta_decision_time[i])]
+    def calculate_gamble_reaction_probs_from_beta_optimal_time(self):
+        self.prob_selecting_reaction_beta = np.zeros(6)
+        self.prob_selecting_gamble_beta = np.zeros(6)
+        
+        for i in range(6):
+            self.prob_selecting_reaction_beta[i] = self.prob_selecting_reaction[i,int(self.optimal_beta_decision_time[i])]
+            self.prob_selecting_gamble_beta[i] = self.prob_selecting_gamble[i,int(self.optimal_beta_decision_time[i])]
+        #Get into percentage 
+        self.percent_reactions_beta = self.prob_selecting_reaction_beta*100
+        self.percent_gambles_beta = self.prob_selecting_gamble_beta*100
+        self.percent_making_reaction_beta = self.prob_making_reaction_beta*100
+        self.percent_making_gamble_beta = self.prob_making_gamble_beta*100
+    def calculate_mean_leave_target_time_beta(self):
+        # Truncated agent mean
+        cut_off_a = np.array([self.neg_inf_cut_off_value]*6)
+        cut_off_b = np.array(self.optimal_beta_decision_time)
+        self.a, self.b = (cut_off_a-self.agent_means)/self.agent_stds, (cut_off_b - self.agent_means) / self.agent_stds
+        self.trunc_agent_mean_beta,self.trunc_agent_var = stats.truncnorm.stats(self.a,self.b,loc=self.agent_means,scale=self.agent_stds) 
+        self.trunc_agent_std_beta = np.sqrt(self.trunc_agent_var)
+        self.optimal_reaction_leave_target_time_beta = self.trunc_agent_mean_beta + self.reaction_time
+        self.optimal_gamble_leave_target_time_beta   = self.optimal_beta_decision_time + self.decision_action_delay_mean
+            
+        self.wtd_optimal_leave_target_time_beta = (self.prob_selecting_reaction_beta*self.optimal_reaction_leave_target_time_beta + \
+                                            self.prob_selecting_gamble_beta*self.optimal_gamble_leave_target_time_beta)/(self.prob_selecting_gamble_beta+self.prob_selecting_reaction_beta)
+    def calculate_gamble_reaction_metrics_beta(self):
+        # Percent of metric that were reaction and gamble
+        self.perc_wins_that_were_reaction_beta = (self.prob_win_if_react_beta*self.prob_selecting_reaction_beta/self.prob_win_calc_beta)*100
+        self.perc_wins_that_were_gamble_beta = (self.prob_win_if_gamble_beta*self.prob_selecting_gamble_beta/self.prob_win_calc_beta)*100
+        self.perc_incorrects_that_were_reaction_beta = (self.prob_incorrect_if_react_beta*self.prob_selecting_reaction_beta/self.prob_incorrect_calc_beta)*100
+        self.perc_incorrects_that_were_gamble_beta = (self.prob_incorrect_if_gamble_beta*self.prob_selecting_gamble_beta/self.prob_incorrect_calc_beta)*100
+        self.perc_indecisions_that_were_reaction_beta = (self.prob_indecision_if_react_beta*self.prob_selecting_reaction_beta/self.prob_indecision_calc_beta)*100
+        self.perc_indecisions_that_were_gamble_beta = (self.prob_indecision_if_gamble_beta*self.prob_selecting_gamble_beta/self.prob_indecision_calc_beta)*100
+            
+    def calculate_experiment_metrics_from_beta(self):
+        self.calculate_experiment_metrics_from_expected_reward_prob_beta() # Get prob making reaction and prob making gamble
+        # Calculate the probability of reacting and gambling based on the beta optimal decision time
+        self.calculate_gamble_reaction_probs_from_beta_optimal_time()
+        # Calculate the mean leave target time based on the decision time
+        self.calculate_mean_leave_target_time_beta()
+        # Calculate the expected reach time based on the leave target times
+        self.optimal_reach_time_gamble_beta = self.optimal_gamble_leave_target_time_beta + self.movement_time
+        self.optimal_reach_time_reaction_beta = self.optimal_reaction_leave_target_time_beta + self.movement_time
+
+        self.player_minus_agent_leave_time_beta = self.wtd_optimal_leave_target_time_beta - self.agent_means
+        
+        # Prob indecision if I react is
+        # 1) Prob that I will react at all N(DT) > N(Agent Decision Time)
+        # 2) Prob that my reaction will be under 1500 aka N(ADT) + N(RMT) < 1500
+        self.reaction_reach_time_uncertainty = np.sqrt(self.trunc_agent_std_beta**2 + self.reaction_plus_movement_uncertainty**2)
+        self.prob_indecision_if_react_beta = 1 - stats.norm.cdf(1500,self.trunc_agent_mean_beta + self.reaction_plus_movement_time,self.reaction_reach_time_uncertainty) # Probability that the reach time reaction is > 1500 
+        
+        self.gamble_reach_time_uncertainty = np.sqrt(self.timing_uncertainty**2)
+        self.prob_indecision_if_gamble_beta = 1 - stats.norm.cdf(1500,self.optimal_reach_time_gamble_beta,self.gamble_reach_time_uncertainty)
+        
+        self.prob_indecision_calc_beta = self.prob_selecting_reaction_beta*self.prob_indecision_if_react_beta + \
+                                self.prob_selecting_gamble_beta*self.prob_indecision_if_gamble_beta
+        self.perc_indecision_calc_beta = self.prob_indecision_calc_beta*100
+
+        self.prob_win_if_react_beta = (1-self.prob_indecision_if_react_beta)*1.0 # prob win if react is the probability that I don't make an indecision times the probability that i select the right target (1.0)
+        self.prob_win_if_gamble_beta = (1-self.prob_indecision_if_gamble_beta)*0.5 # prob win if gamble is the probability that I don't make an indecision times the probabiliyt that I select the right target(0.5)
+        self.prob_win_calc_beta = self.prob_selecting_reaction_beta*self.prob_win_if_react_beta + self.prob_selecting_gamble_beta*self.prob_win_if_gamble_beta
+        self.perc_win_calc_beta = self.prob_win_calc_beta*100
+        
+        self.prob_incorrect_if_react_beta = 0
+        self.prob_incorrect_if_gamble_beta = (1-self.prob_indecision_if_gamble_beta)*0.5
+        self.prob_incorrect_calc_beta = self.prob_selecting_reaction_beta*self.prob_incorrect_if_react_beta + self.prob_selecting_gamble_beta*self.prob_incorrect_if_gamble_beta
+        self.perc_incorrect_calc_beta = self.prob_incorrect_calc_beta*100
+
+        self.calculate_gamble_reaction_metrics_beta()
+    
+    ###########################################################
+    #############----- Fit Model Functions ---- ###############
+    ###########################################################
     def fit_model_to_data(self,data):
         '''
         data = [wins,indecisions,incorrects,decision_times,perc_reaction_decisions,perc_gamble_decisions]
@@ -442,29 +636,3 @@ class Optimal_Decision_Time_Model():
 
         self.calculate_experiment_metrics_from_expected_reward()
         self.calculate_experiment_metrics()
-        self.calculate_gamble_reaction_metrics()
-    
-    def replace_zero_with_nan(self,arr):
-        arr[arr == 0] = np.nan
-        return arr
-    
-    def plot_optimals(self,metrics,num_plots = None ,dpi=125):
-        if num_plots is None:
-            num_plots = self.num_blocks
-        plt.style.use('cashaback_dark')
-        for i in range(num_plots):
-            fig,ax = plt.subplots(dpi=dpi)
-            for metric in metrics:
-                ax.plot(self.timesteps[i,:], getattr(self,metric)[i,:], label = self.metrics_name_dict[metric],zorder=0)
-                if metric == 'exp_reward':
-                    ax.plot((self.optimal_decision_time[i],self.optimal_decision_time[i]),(-4,self.exp_reward[i,self.optimal_index[i]]),c='w')
-                    ax.scatter(self.optimal_decision_time[i],self.exp_reward[i,self.optimal_index[i]],c='w')
-                    ax.text(self.optimal_decision_time[i],self.exp_reward[i,self.optimal_index[i]]+0.03,f'Optimal Decision Time = {self.optimal_decision_time[i]}',ha = 'center')
-            ax.set_ylim(np.min(self.incorrect_cost,self.indecision_cost)-0.03,np.max(self.win_reward)+0.03)
-            ax.set_xlim(0,1500)
-            ax.set_xticks(np.arange(0,2000,300))
-            ax.set_xlabel('Time (ms)')
-            ax.set_ylabel('Expected Reward')
-            ax.legend(fontsize = 8,loc = (0.01,0.1))
-            ax.set_title(f'Gain Function for Decision Time\nAgent Mean,SD = {self.agent_means[i]},{self.agent_sds[i]}')#\n B = {B}')
-            plt.show()
