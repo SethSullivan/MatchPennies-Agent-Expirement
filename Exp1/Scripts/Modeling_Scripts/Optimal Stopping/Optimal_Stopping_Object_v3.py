@@ -62,7 +62,7 @@ def get_moments(timesteps,agent_means,time_means,agent_sds,time_sds):
             
             xpdf = (1/(sig_x*np.sqrt(2*np.pi)))*np.e**((-0.5)*((timesteps-mu_x)/sig_x)**2)
             prob_x_less_y = (sc.erfc((mu_x-mu_y)/(np.sqrt(2)*np.sqrt(sig_x**2 + sig_y**2))))/2
-            prob_x_greater_y = 1 - prob_x_less_y
+            prob_x_greater_y = 1 - prob_x_less_y # Or do the same as above and swap mu_x and mu_y
             if prob_x_less_y == 0:
                 pass
             else:
@@ -70,8 +70,8 @@ def get_moments(timesteps,agent_means,time_means,agent_sds,time_sds):
                 y_inverse_integrated = np.empty(len(timesteps),dtype=np.float64)
                 for k in range(len(timesteps)):
                     t = timesteps[k]
-                    y_integrated[k] = (sc.erfc((t-mu_y)/(np.sqrt(2)*sig_y)))/2 # Going from x to infinity is the complementary error function (bc we want all the y's that are greater than x)
-                    y_inverse_integrated[k] = 1 - y_integrated[k] # Using normal error function to go from 0 to x
+                    y_integrated[k] = (sc.erfc((t - mu_y)/(np.sqrt(2)*sig_y)))/2 # Going from x to infinity is the complementary error function (bc we want all the y's that are greater than x)
+                    y_inverse_integrated[k] = (sc.erfc((mu_y - t)/(np.sqrt(2)*sig_y)))/2 # Swap limits of integration (mu_y - t) now
                 EX_R[i,j] = np.sum(timesteps*xpdf*y_integrated)/prob_x_less_y
                 EX2_R[i,j] = np.sum(timesteps**2*xpdf*y_integrated)/prob_x_less_y
                 EX3_R[i,j] = np.sum(timesteps**3*xpdf*y_integrated)/prob_x_less_y
@@ -225,11 +225,15 @@ class Optimal_Decision_Time_Model():
         # Get first three central moments (EX2 is normalized for mean, EX3 is normalized for mean and sd) of the new distribution based on timing uncertainty
         inf_timesteps = np.arange(0,5000,1,dtype=np.float64)
         time_means = self.timesteps[0,:]
+        # Get the First Three moments for the left and right distributions (if X<Y and if X>Y respectively)
         self.EX_R,self.EX2_R,self.EX3_R,self.EX_G,self.EX2_G,self.EX3_G = get_moments(inf_timesteps,self.agent_means,time_means,self.agent_sds,self.timing_uncertainty)
+        # Calculate the mean, variance, and skew with method of moments
         self.cutoff_agent_reaction_mean,self.cutoff_var,self.cutoff_skew = self.EX_R,get_variance(self.EX_R,self.EX2_R),get_skew(self.EX_R,self.EX2_R,self.EX3_R)
         self.cutoff_agent_reaction_sd = np.sqrt(self.cutoff_var)
+        # same thing for gamble (X>Y)
         self.cutoff_agent_gamble_mean,self.cutoff_var,self.cutoff_skew = self.EX_G,get_variance(self.EX_G,self.EX2_G),get_skew(self.EX_G,self.EX2_G,self.EX3_G)
         self.cutoff_agent_gamble_sd = np.sqrt(self.cutoff_var)
+        # Calculate the prob of making it on a reaction 
         prob_make_reaction = stats.norm.cdf(1500,self.cutoff_agent_reaction_mean + self.reaction_plus_movement_time,np.sqrt(self.cutoff_agent_reaction_sd**2 + self.reaction_plus_movement_uncertainty**2))
         return prob_make_reaction
         
