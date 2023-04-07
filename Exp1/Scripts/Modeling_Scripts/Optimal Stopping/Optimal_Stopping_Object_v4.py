@@ -465,6 +465,11 @@ class Optimal_Decision_Time_Model():
             self.prob_making_reaction_optimal_calc       = self.prob_making_given_reaction_optimal_calc*self.prob_selecting_reaction_optimal_calc #! THIS INCLUDES PROB SELECTING... DON'T MULTIPLY AGAIN
             self.prob_making_gamble_optimal_calc         = self.prob_making_given_gamble_optimal_calc*self.prob_selecting_gamble_optimal_calc
             self.prob_making_optimal_calc                = self.prob_making_reaction_optimal_calc + self.prob_making_gamble_optimal_calc
+            
+            self.prob_not_making_reaction_optimal_calc       = (1-self.prob_making_given_reaction_optimal_calc)*self.prob_selecting_reaction_optimal_calc #! THIS INCLUDES PROB SELECTING... DON'T MULTIPLY AGAIN
+            self.prob_not_making_gamble_optimal_calc         = (1-self.prob_making_given_gamble_optimal_calc)*self.prob_selecting_gamble_optimal_calc
+            self.prob_not_making_optimal_calc                = self.prob_not_making_reaction_optimal_calc + self.prob_not_making_gamble_optimal_calc
+            
             # Multiply the actual probability of making it times the prob of getting it right for reaction and gamble
             self.prob_win_reaction_optimal_calc = self.prob_selecting_correct_target_reaction*self.prob_making_reaction_optimal_calc
             self.prob_win_gamble_optimal_calc   = self.prob_selecting_correct_target_gamble*self.prob_making_gamble_optimal_calc
@@ -477,9 +482,9 @@ class Optimal_Decision_Time_Model():
             self.prob_incorrect_optimal_calc          = self.prob_incorrect_reaction_optimal_calc + self.prob_incorrect_gamble_optimal_calc
             self.perc_incorrect_optimal_calc          = self.prob_incorrect_optimal_calc*100
             # Probability of receiving an indecision cost (No chance of success for indecision, so we just multiply by the two marginal probs calculated in last section)
-            self.prob_indecision_reaction_optimal_calc = 1 - self.prob_making_reaction_optimal_calc
-            self.prob_indecision_gamble_optimal_calc = 1 - self.prob_making_gamble_optimal_calc
-            self.prob_indecision_optimal_calc          = 1 - self.prob_making_optimal_calc
+            self.prob_indecision_reaction_optimal_calc  = self.prob_indecision_given_reaction_optimal_calc*self.prob_selecting_reaction_optimal_calc
+            self.prob_indecision_gamble_optimal_calc    = self.prob_indecision_given_gamble_optimal_calc*self.prob_selecting_gamble_optimal_calc
+            self.prob_indecision_optimal_calc           = self.prob_indecision_reaction_optimal_calc + self.prob_indecision_gamble_optimal_calc
             self.perc_indecision_optimal_calc          = self.prob_indecision_optimal_calc*100
 
             self.calculate_gamble_reaction_metrics()   
@@ -569,7 +574,7 @@ class Optimal_Decision_Time_Model():
         
         # Find optimal gamble leave target time and sd
         self.optimal_gamble_leave_target_time_mean_calc    = self.optimal_decision_time + self.gamble_delay
-        self.optimal_gamble_leave_target_time_sd_calc       = self.gamble_uncertainty
+        self.optimal_gamble_leave_target_time_sd_calc       = np.sqrt(self.gamble_uncertainty**2 + self.cutoff_agent_gamble_sd_optimal_ER)
         
         # Get the leave target time by weighing by how often they react and gamble
         wtd_optimal_leave_target_time = (self.prob_selecting_reaction_optimal_calc*self.optimal_reaction_leave_target_time_mean_calc + \
@@ -608,22 +613,22 @@ class Optimal_Decision_Time_Model():
         self.temp_prob_incorrect  = self.replace_zero_with_nan(self.prob_incorrect_optimal_calc)
         if True:
             # Percent of metric that were reaction and gamble
-            self.perc_wins_that_were_gamble_optimal_calc          = ((self.prob_win_gamble_optimal_calc*self.prob_selecting_gamble_optimal_calc)/self.temp_prob_win)*100
-            self.perc_indecisions_that_were_gamble_optimal_calc   = ((self.prob_indecision_gamble_optimal_calc*self.prob_selecting_gamble_optimal_calc)/self.temp_prob_indecision)*100
-            self.perc_incorrects_that_were_gamble_optimal_calc    = ((self.prob_incorrect_gamble_optimal_calc*self.prob_selecting_gamble_optimal_calc)/self.temp_prob_incorrect)*100
+            self.perc_wins_that_were_gamble_optimal_calc          = ((self.prob_win_gamble_optimal_calc)/self.temp_prob_win)*100
+            self.perc_indecisions_that_were_gamble_optimal_calc   = ((self.prob_indecision_gamble_optimal_calc)/self.temp_prob_indecision)*100
+            self.perc_incorrects_that_were_gamble_optimal_calc    = ((self.prob_incorrect_gamble_optimal_calc)/self.temp_prob_incorrect)*100
             
-            self.perc_wins_that_were_reaction_optimal_calc        = ((self.prob_win_reaction_optimal_calc*self.prob_selecting_reaction_optimal_calc)/self.temp_prob_win)*100
-            self.perc_indecisions_that_were_reaction_optimal_calc = ((self.prob_indecision_reaction_optimal_calc*self.prob_selecting_reaction_optimal_calc)/self.temp_prob_indecision)*100
-            self.perc_incorrects_that_were_reaction_optimal_calc  = ((self.prob_incorrect_reaction_optimal_calc*self.prob_selecting_reaction_optimal_calc)/self.temp_prob_incorrect)*100
+            self.perc_wins_that_were_reaction_optimal_calc        = ((self.prob_win_reaction_optimal_calc)/self.temp_prob_win)*100
+            self.perc_indecisions_that_were_reaction_optimal_calc = ((self.prob_indecision_reaction_optimal_calc)/self.temp_prob_indecision)*100
+            self.perc_incorrects_that_were_reaction_optimal_calc  = ((self.prob_incorrect_reaction_optimal_calc)/self.temp_prob_incorrect)*100
             
             # Percent of reaction or gamble that were wins/incorrects/indecisions
-            self.perc_gambles_that_were_wins_optimal_calc          = ((self.prob_win_gamble_optimal_calc*self.prob_selecting_gamble_optimal_calc)/self.prob_selecting_gamble_optimal_calc)*100
-            self.perc_gambles_that_were_incorrects_optimal_calc    = ((self.prob_incorrect_gamble_optimal_calc*self.prob_selecting_gamble_optimal_calc)/self.prob_selecting_gamble_optimal_calc)*100
-            self.perc_gambles_that_were_indecisions_optimal_calc   = ((self.prob_indecision_gamble_optimal_calc*self.prob_selecting_gamble_optimal_calc)/self.prob_selecting_gamble_optimal_calc)*100
+            self.perc_gambles_that_were_wins_optimal_calc          = ((self.prob_win_gamble_optimal_calc)/self.prob_selecting_gamble_optimal_calc)*100
+            self.perc_gambles_that_were_incorrects_optimal_calc    = ((self.prob_incorrect_gamble_optimal_calc)/self.prob_selecting_gamble_optimal_calc)*100
+            self.perc_gambles_that_were_indecisions_optimal_calc   = ((self.prob_indecision_gamble_optimal_calc)/self.prob_selecting_gamble_optimal_calc)*100
             
-            self.perc_reactions_that_were_wins_optimal_calc        = ((self.prob_win_reaction_optimal_calc*self.prob_selecting_reaction_optimal_calc)/self.prob_selecting_reaction_optimal_calc)*100
-            self.perc_reactions_that_were_incorrects_optimal_calc  = ((self.prob_incorrect_reaction_optimal_calc*self.prob_selecting_reaction_optimal_calc)/self.prob_selecting_reaction_optimal_calc)*100
-            self.perc_reactions_that_were_indecisions_optimal_calc = ((self.prob_indecision_reaction_optimal_calc*self.prob_selecting_reaction_optimal_calc)/self.prob_selecting_reaction_optimal_calc)*100
+            self.perc_reactions_that_were_wins_optimal_calc        = ((self.prob_win_reaction_optimal_calc)/self.prob_selecting_reaction_optimal_calc)*100
+            self.perc_reactions_that_were_incorrects_optimal_calc  = ((self.prob_incorrect_reaction_optimal_calc)/self.prob_selecting_reaction_optimal_calc)*100
+            self.perc_reactions_that_were_indecisions_optimal_calc = ((self.prob_indecision_reaction_optimal_calc)/self.prob_selecting_reaction_optimal_calc)*100
     
     
     
