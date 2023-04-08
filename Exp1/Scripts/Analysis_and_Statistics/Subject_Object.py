@@ -5,10 +5,10 @@ import os
 
 class Subject():
     def __init__(self, **kwargs):
-        self.num_blocks                            = kwargs.get('num_blocks',1)
-        self.num_trials                            = kwargs.get('num_trials',1)
-        self.num_control_trials                    = kwargs.get('num_control_trials',1)
-        self.num_washout_trials                    = kwargs.get('num_washout_trials',1)                   
+        self.num_blocks                            = kwargs.get('num_blocks')
+        self.num_trials                            = kwargs.get('num_trials')
+        self.num_control_trials                    = kwargs.get('num_control_trials')
+        self.num_washout_trials                    = kwargs.get('num_washout_trials')                   
         # Control data
         self.reaction_time                         = kwargs.get('reaction_time')
         self.reaction_movement_time                = kwargs.get('reaction_movement_time')
@@ -17,25 +17,29 @@ class Subject():
         self.interval_reach_time                   = kwargs.get('interval_reach_time')
         self.coincidence_trial_start               = kwargs.get('coincidence_trial_start')
         self.coincidence_reach_time                = kwargs.get('coincidence_reach_time')
+        
+        self.select_trials                         = kwargs.get('select_trials') 
+        if self.select_trials != 'All Trials':
+            self.num_trials = self.num_trials//2
         # Washout data
-        self.player_washout_leave_time             = kwargs.get('player_washout_leave_time')
-        self.player_washout_leave_array            = kwargs.get('player_washout_leave_array')
-        self.player_washout_movement_time          = kwargs.get('player_washout_movement_time')
-        self.player_washout_reach_time             = kwargs.get('player_washout_reach_time')
-        self.agent_washout_leave_time              = kwargs.get('agent_washout_leave_time')
-        self.agent_washout_leave_array             = kwargs.get('agent_washout_leave_array')
-        self.agent_washout_movement_time           = kwargs.get('agent_washout_movement_time')
-        self.agent_washout_reach_time              = kwargs.get('agent_washout_reach_time')       
+        self.player_washout_leave_time             = self.slice_array(kwargs.get('player_washout_leave_time'))
+        self.player_washout_decision_array            = self.slice_array(kwargs.get('player_washout_decision_array'))
+        self.player_washout_movement_time          = self.slice_array(kwargs.get('player_washout_movement_time'))
+        self.player_washout_reach_time             = self.slice_array(kwargs.get('player_washout_reach_time'))
+        self.agent_washout_leave_time              = self.slice_array(kwargs.get('agent_washout_leave_time'))
+        self.agent_washout_decision_array             = self.slice_array(kwargs.get('agent_washout_decision_array'))
+        self.agent_washout_movement_time           = self.slice_array(kwargs.get('agent_washout_movement_time'))
+        self.agent_washout_reach_time              = self.slice_array(kwargs.get('agent_washout_reach_time'))       
         # Task data
-        self.player_task_leave_time                = kwargs.get('player_task_leave_time')
-        self.player_task_decision_array            = kwargs.get('player_task_decision_array')
-        self.player_task_movement_time             = kwargs.get('player_task_movement_time')
-        self.player_task_reach_time                = kwargs.get('player_task_reach_time')
-        self.agent_task_leave_time                 = kwargs.get('agent_task_leave_time')
-        self.agent_task_decision_array             = kwargs.get('agent_task_decision_array')
-        self.agent_task_movement_time              = kwargs.get('agent_task_movement_time')
-        self.agent_task_reach_time                 = kwargs.get('agent_task_reach_time')
-        self.player_minus_agent_task_leave_time = self.player_task_leave_time - self.agent_task_leave_time
+        self.player_task_leave_time                = self.slice_array(kwargs.get('player_task_leave_time'))
+        self.player_task_decision_array            = self.slice_array(kwargs.get('player_task_decision_array'))
+        self.player_task_movement_time             = self.slice_array(kwargs.get('player_task_movement_time'))
+        self.player_task_reach_time                = self.slice_array(kwargs.get('player_task_reach_time'))
+        self.agent_task_leave_time                 = self.slice_array(kwargs.get('agent_task_leave_time'))
+        self.agent_task_decision_array             = self.slice_array(kwargs.get('agent_task_decision_array'))
+        self.agent_task_movement_time              = self.slice_array(kwargs.get('agent_task_movement_time'))
+        self.agent_task_reach_time                 = self.slice_array(kwargs.get('agent_task_reach_time'))
+        self.player_minus_agent_task_leave_time    = self.player_task_leave_time - self.agent_task_leave_time
         
         self.num_stds_for_reaction_time = kwargs.get('num_stds_for_reaction_time',2)
         self.n = kwargs.get('cutoff_for_controls_calc',10)
@@ -46,7 +50,20 @@ class Subject():
         self.both_decided_mask = abs(self.player_task_decision_array*self.agent_task_decision_array) == 1
         
         self.create_result_of_trial_array()
-        
+    def slice_array(self,arr):
+        if isinstance(arr,np.ndarray):
+            if self.select_trials == 'First Half':
+                return arr[:,:self.num_trials]
+            elif self.select_trials == 'Second Half':
+                return arr[:,self.num_trials:]
+            elif self.select_trials == 'All Trials':
+                return arr
+            else:
+                raise Exception('select_trials should be First Half, Second Half, or All Trials')
+        else:
+            return arr
+    
+
     def mask_array(self,arr,mask):
         '''
         Applies the mask to the array then replaces the 0s with nans
