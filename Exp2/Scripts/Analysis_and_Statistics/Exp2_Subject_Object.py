@@ -499,13 +499,13 @@ class Group():
         Used to find the subject who's specific value is greater or less than the inputted comparison metric
         '''
         metrics = self.combine_all_subjects(metric)
-        for i,m in enumerate(metrics):
-            if comparison_direction == 'greater than':
-                if m.any() > comparison_num:
-                    print(f'Sub{i+1}')
-            if comparison_direction == 'less than':
-                if m.any() < comparison_num:
-                    print(f'Sub{i+1}')
+        if comparison_direction == 'greater than':
+            mask = metrics>comparison_num
+        if comparison_direction == 'less than':
+            mask = metrics<comparison_num
+        for i,e in enumerate(mask):
+            if e.any():
+                print(f'Sub{i}')
     
     def filter_gamble_reaction_under_10(self,metric):
         for o in self.objects:
