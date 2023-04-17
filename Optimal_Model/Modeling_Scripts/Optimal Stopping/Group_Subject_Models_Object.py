@@ -11,4 +11,7 @@ class Group_Subjects():
         '''
         List comprehension into np array to put the subjects at index 0
         '''
-        return np.array([getattr(o,metric) for o in self.objects]) 
+        #* Loop through all attributes, and set the group attribute with all subjects combined
+        for a in dir(self.objects[0]):
+            if not a.startswith('__'):
+                setattr(self,a,np.array([getattr(o,a) for o in self.objects]))
