@@ -104,14 +104,16 @@ class Optimal_Decision_Time_Model():
         self.calculate_experiment_metrics_from_expected_reward_prob()
         self.calculate_experiment_metrics()
         self.calculate_experiment_metrics_from_beta()
+        
     def find_beta_term(self):
         '''
         Maps 0.5 (all gambles) to 0 and 1.0 to 1
         
         BETA = 2*wins_both_reached - 1
         '''
-        self.perc_wins_when_both_reach = [0.5 if x<0.5 else x for x in self.perc_wins_when_both_reach] # Anything under 0.5 becomes 0.5
+        self.perc_wins_when_both_reach = [0 if x<0.5 else x for x in self.perc_wins_when_both_reach] # Anything under 0.5 becomes 0
         return 2*np.array(self.perc_wins_when_both_reach) - 1
+    
     def prob_agent_go(self):
         output = np.zeros((self.num_blocks,len(self.timesteps[0,:])))
         for i in range(self.num_blocks):
