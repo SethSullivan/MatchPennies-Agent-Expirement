@@ -26,6 +26,7 @@ class Subject():
         self.coincidence_reach_time                 = kwargs.get('coincidence_reach_time')
         
         # Task data
+        #* Slice array handles first half, second half, or all
         self.player_task_leave_time                = self.slice_array(kwargs.get('player_task_leave_time'))
         self.player_task_decision_array            = self.slice_array(kwargs.get('player_task_decision_array'))
         self.player_task_movement_time             = self.slice_array(kwargs.get('player_task_movement_time'))
@@ -97,13 +98,15 @@ class Subject():
     #     self.react_reaction_time_mixed              = self.react_reaction_time_all[0,:][~react_nanmask[0,:]]
         
     def analyze_data(self):
-        
-        # Parse Reaction TIme Data
-        self.parse_reaction_task_trials()
-        self.calculate_reaction_repeats_alternates()
-        # self.remove_reaction_time_nans()
-        self.adjusted_player_reaction_time    = np.nanmean(self.react_reaction_time_only_react) - \
-                                                self.num_stds_for_reaction_time*np.nanstd(self.react_reaction_time_only_react) # CONSERVATIVE REACTION TIME
+        #* Only parse reaction time data this way if it's experiment 2, because I switched the reaction time task 
+        if self.experiment == 'Exp2':
+            # Parse Reaction TIme Data
+            self.parse_reaction_task_trials()
+            self.calculate_reaction_repeats_alternates()
+            # self.remove_reaction_time_nans()
+            self.adjusted_player_reaction_time    = np.nanmean(self.react_reaction_time_only_react) - \
+                                                    self.num_stds_for_reaction_time*np.nanstd(self.react_reaction_time_only_react) # CONSERVATIVE REACTION TIME
+            
         #------------------------------------------------------------------------------------------------------------------
         # Task Indecision, Wins, Incorrects
         self.calc_wins_indecisions_incorrects()
