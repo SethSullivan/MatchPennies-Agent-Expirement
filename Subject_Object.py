@@ -4,6 +4,7 @@ import numpy as np
 import os
 class Subject():
     def __init__(self,**kwargs):
+        self.experiment                             = kwargs.get('experiment')
         self.num_blocks                             = kwargs.get('num_blocks')
         self.num_trials                             = kwargs.get('num_trials')
         self.num_reaction_blocks                    = kwargs.get('num_reaction_blocks')
@@ -105,8 +106,11 @@ class Subject():
             self.calculate_reaction_repeats_alternates()
             # self.remove_reaction_time_nans()
             self.adjusted_player_reaction_time    = np.nanmean(self.react_reaction_time_only_react) - \
-                                                    self.num_stds_for_reaction_time*np.nanstd(self.react_reaction_time_only_react) # CONSERVATIVE REACTION TIME
+                                                               self.num_stds_for_reaction_time*np.nanstd(self.react_reaction_time_only_react) # CONSERVATIVE REACTION TIME
             
+        elif self.experiment == 'Exp1':  
+            self.adjusted_player_reaction_time = np.nanmean(self.reaction_time) - self.num_stds_for_reaction_time*np.nanstd(self.reaction_time)
+                                                      
         #------------------------------------------------------------------------------------------------------------------
         # Task Indecision, Wins, Incorrects
         self.calc_wins_indecisions_incorrects()
