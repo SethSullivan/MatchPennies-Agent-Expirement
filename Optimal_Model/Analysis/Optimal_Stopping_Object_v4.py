@@ -110,7 +110,7 @@ class Optimal_Decision_Time_Model():
             self.condition_two = np.tile(self.reward_matrix[1],(2000,1))
             self.condition_three = np.tile(self.reward_matrix[2],(2000,1))
             self.condition_four = np.tile(self.reward_matrix[3],(2000,1))
-            if self.experiment == 'exp2':
+            if self.experiment == 'Exp2':
                 self.win_reward      = np.vstack((self.condition_one[:,0],self.condition_two[:,0],
                                                    self.condition_three[:,0],self.condition_four[:,0]))
                 self.incorrect_cost      = np.vstack((self.condition_one[:,1],self.condition_two[:,1],
@@ -609,9 +609,9 @@ class Optimal_Decision_Time_Model():
         '''
         self.tune_data      = data
         self.tune_timesteps = np.arange(900,1800,1)
-        decision_times      = np.array([self.tune_timesteps[0]]*6) # Start off with 600 for each parameter
+        decision_times      = np.array([self.tune_timesteps[0]]*self.num_blocks) # Start off with 600 for each parameter
         num_metrics         = len(self.tune_data)
-        loss_store          = np.zeros((num_metrics,6,len(self.tune_timesteps))) # Each metric,each block, each timestep
+        loss_store          = np.zeros((num_metrics,self.num_blocks,len(self.tune_timesteps))) # Each metric,each block, each timestep
         
         for i in range(self.num_blocks):
             for j,t in enumerate(self.tune_timesteps):
