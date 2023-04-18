@@ -404,8 +404,8 @@ class Subject():
 class Group():
     def __init__(self, objects,**kwargs):
         self.objects = objects
-        self.num_blocks = kwargs.get('num_blocks',4)
-        self.num_trials = kwargs.get('num_trials',80)
+        self.num_blocks = self.objects[0].num_blocks
+        self.num_trials = self.objects[0].num_trials
         self.bin_cutoff_threshold = kwargs.get('bin_cutoff_threshold',30)
         
     def analyze_data(self):
