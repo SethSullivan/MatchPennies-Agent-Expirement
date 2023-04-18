@@ -83,7 +83,7 @@ class Subject():
         self.trial_results[self.indecision_mask] = 2
         self.trial_results[self.incorrect_mask] = 3
                     
-    def analyze_data(self,m):
+    def analyze_data(self):
         #------------------------Calculate Mean and Stds----------------------------------------------------------------------------------------------------------
         self.calculate_means_and_sds()
         #------------------------------------------------------------------------------------------------------------------
@@ -461,9 +461,7 @@ class Group():
         self.player_task_movement_time_mean                           = np.nanmean(self.combine_all_subjects('player_task_movement_time_mean'),axis = 0)
         self.player_task_movement_time_median                         = np.nanmean(self.combine_all_subjects('player_task_movement_time_median'),axis = 0)
         self.player_task_movement_time_sd                             = np.nanmean(self.combine_all_subjects('player_task_movement_time_sd'),axis = 0)
-        self.all_player_task_leave_times_each_condition            = self.concatenate_across_subjects('player_task_leave_time')
-        self.all_player_task_gamble_leave_times_each_condition     = self.concatenate_across_subjects('player_gamble_leave_time')
-        self.all_player_task_reaction_leave_times_each_condition   = self.concatenate_across_subjects('player_reaction_leave_time')
+        
         self.all_player_mean_leave_time_each_condition             = np.nanmean(self.all_player_task_leave_times_each_condition,axis=1)
         self.all_player_mean_gamble_leave_time_each_condition      = np.nanmean(self.all_player_task_gamble_leave_times_each_condition,axis=1)
         self.all_player_mean_reaction_leave_time_each_condition    = np.nanmean(self.all_player_task_reaction_leave_times_each_condition,axis=1)
@@ -471,24 +469,13 @@ class Group():
         self.all_player_median_gamble_leave_time_each_condition    = np.nanmedian(self.all_player_task_gamble_leave_times_each_condition,axis=1)
         self.all_player_median_reaction_leave_time_each_condition  = np.nanmedian(self.all_player_task_reaction_leave_times_each_condition,axis=1)
         
-        self.all_agent_task_leave_times_each_condition            = self.concatenate_across_subjects('agent_task_leave_time')
-        self.all_agent_task_gamble_leave_times_each_condition     = self.concatenate_across_subjects('agent_gamble_leave_time')
-        self.all_agent_task_reaction_leave_times_each_condition   = self.concatenate_across_subjects('agent_reaction_leave_time')
-        self.all_agent_mean_leave_time_each_condition             = np.nanmean(self.all_agent_task_leave_times_each_condition,axis=1)
-        self.all_agent_mean_gamble_leave_time_each_condition      = np.nanmean(self.all_agent_task_gamble_leave_times_each_condition,axis=1)
-        self.all_agent_mean_reaction_leave_time_each_condition    = np.nanmean(self.all_agent_task_reaction_leave_times_each_condition,axis=1)
-        self.all_agent_median_leave_time_each_condition           = np.nanmedian(self.all_agent_task_leave_times_each_condition,axis=1)
-        self.all_agent_median_gamble_leave_time_each_condition    = np.nanmedian(self.all_agent_task_gamble_leave_times_each_condition,axis=1)
-        self.all_agent_median_reaction_leave_time_each_condition  = np.nanmedian(self.all_agent_task_reaction_leave_times_each_condition,axis=1)
+        
         
         
         
         self.all_player_sd_gamble_leave_time = np.nanmean(self.combine_all_subjects('player_gamble_leave_time_sd'),axis=0)
         
-        self.all_player_task_reach_times_each_condition = self.concatenate_across_subjects('player_task_reach_time')
-        self.all_agent_task_reach_times_each_condition  = self.concatenate_across_subjects('agent_task_reach_time')
-        self.all_player_mean_reach_time_each_condition  = np.nanmean(self.all_player_task_reach_times_each_condition,axis=1)
-        self.all_agent_mean_reach_time_each_condition   = np.nanmean(self.all_agent_task_reach_times_each_condition,axis=1)
+        
         
         # BINNING ----------------------------------------------------------------------------------------
         # Binned mean across all participants
@@ -508,14 +495,40 @@ class Group():
         
         self.bin_threshold()
         
+        #* Analyze data function for each object 
+        for i,o in enumerate(self.objects):
+            o.analyze_data()
+            self.objects[i] = o
+            
+        #* Flatten the trial by trial data so I can make a histogram including everyones data
+        self.flatten_across_all_subjects()
+
+        #* Loop through all attributes, and set the group attribute with all subjects combined
+        for a in dir(self.objects[0]):
+            if not a.startswith('__'):
+                setattr(self,a,np.array([getattr(o,a) for o in self.objects]))
         
     def combine_all_subjects(self,metric):
         '''
         List comprehension into np array to put the subjects at index 0
         '''
         return np.array([getattr(o,metric) for o in self.objects])
-    def first_half_second_half(self,metric):
-        arr = np.array([getattr(o,metric) for o in self.objects])
+    
+    def flatten_across_subjects(self):
+        self.all_player_task_leave_times_each_condition            = self.concatenate_across_subjects('player_task_leave_time')
+        self.all_player_task_gamble_leave_times_each_condition     = self.concatenate_across_subjects('player_gamble_leave_time')
+        self.all_player_task_reaction_leave_times_each_condition   = self.concatenate_across_subjects('player_reaction_leave_time')
+        
+        self.all_player_task_reach_times_each_condition = self.concatenate_across_subjects('player_task_reach_time')
+        self.all_agent_task_reach_times_each_condition  = self.concatenate_across_subjects('agent_task_reach_time')
+        self.all_player_mean_reach_time_each_condition  = np.nanmean(self.all_player_task_reach_times_each_condition,axis=1)
+        self.all_agent_mean_reach_time_each_condition   = np.nanmean(self.all_agent_task_reach_times_each_condition,axis=1)
+        
+        self.all_agent_task_leave_times_each_condition            = self.concatenate_across_subjects('agent_task_leave_time')
+        self.all_agent_task_gamble_leave_times_each_condition     = self.concatenate_across_subjects('agent_gamble_leave_time')
+        self.all_agent_task_reaction_leave_times_each_condition   = self.concatenate_across_subjects('agent_reaction_leave_time')
+        
+        
     def concatenate_across_subjects(self,metric):
         '''
         Flattens out the subject dimension to get array of all the subjects 
