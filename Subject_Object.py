@@ -129,32 +129,25 @@ class Subject():
         self.binned_metrics()
         
     def parse_reaction_task_trials(self):
+        #* Split into react and gamble trials for first block
         self.reaction_gamble_mask                 = self.reaction_trial_type_array == 0
         self.reaction_react_mask                  = self.reaction_trial_type_array == 1
-
+        
         # * Reaction Time        
-        self.gamble_reaction_time_all    = self.mask_array(self.reaction_time,self.reaction_gamble_mask) 
-        self.react_reaction_time_all     = self.mask_array(self.reaction_time,self.reaction_react_mask) 
-        
-        self.reaction_time_mixed = self.reaction_time[0,:]
-        
-        self.gamble_reaction_time_only_gamble        = self.gamble_reaction_time_all[2,:]
-        self.gamble_reaction_time_mixed              = self.gamble_reaction_time_all[0,:]
-        
-        self.react_reaction_time_only_react         = self.react_reaction_time_all[1,:]
-        self.react_reaction_time_mixed              = self.react_reaction_time_all[0,:]
+        self.react_reaction_time_all           = self.reaction_time[self.reaction_react_mask].reshape(self.num_subjects,2,50)   
+        self.gamble_reaction_time_all          = self.reaction_time[self.reaction_gamble_mask].reshape(self.num_subjects,2,50) 
+        self.react_reaction_time_mixed        = self.react_reaction_times[:,0,:]
+        self.react_reaction_time_only_react   = self.react_reaction_times[:,1,:]
+        self.gamble_reaction_time_mixed       = self.gamble_reaction_times[:,0,:]
+        self.gamble_reaction_time_only_gamble = self.gamble_reaction_times[:,1,:]
         
         # * Movement time
-        self.gamble_movement_time_all    = self.mask_array(self.reaction_movement_time,self.reaction_gamble_mask) 
-        self.react_movement_time_all     = self.mask_array(self.reaction_movement_time,self.reaction_react_mask) 
-        
-        self.movement_times_mixed = self.reaction_movement_time[0,:]
-        
-        self.gamble_movement_time_only_gamble        = self.gamble_movement_time_all[2,:]
-        self.gamble_movement_time_mixed              = self.gamble_movement_time_all[0,:]
-        
-        self.react_movement_time_only_react         = self.react_movement_time_all[1,:]
-        self.react_movement_time_mixed              = self.react_movement_time_all[0,:]
+        self.react_movement_time_all           = self.movement_time[self.reaction_react_mask].reshape(self.num_subjects,2,50)   
+        self.gamble_movement_time_all          = self.movement_time[self.reaction_gamble_mask].reshape(self.num_subjects,2,50) 
+        self.react_movement_time_mixed        = self.react_movement_times[:,0,:]
+        self.react_movement_time_only_react   = self.react_movement_times[:,1,:]
+        self.gamble_movement_time_mixed       = self.gamble_movement_times[:,0,:]
+        self.gamble_movement_time_only_gamble = self.gamble_movement_times[:,1,:]
         
     def calculate_reaction_repeats_alternates(self):
         # Get masks
