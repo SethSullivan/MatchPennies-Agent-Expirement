@@ -16,9 +16,13 @@ class Subject():
         if self.select_trials != 'All Trials':
             self.num_trials = self.num_trials//2
         # Reaction Data
+        self.reaction_yforce_data                   = kwargs.get('reaction_yforce_data')
+        self.reaction_task_data                     = kwargs.get('reaction_task_data')
         self.reaction_trial_type_array              = kwargs.get('reaction_trial_type_array')
         self.reaction_time                          = kwargs.get('reaction_time')
         self.reaction_movement_time                 = kwargs.get('reaction_movement_time')
+        self.yforce_reaction_time                   = kwargs.get('yforce_reaction_time')
+        self.yforce_reaction_movement_time          = kwargs.get('yforce_reaction_movement_time')
         self.reaction_plus_movement_times           = kwargs.get('reaction_plus_movement_time')
         # Timing Data
         self.interval_trial_start                   = kwargs.get('interval_trial_start')
@@ -28,15 +32,21 @@ class Subject():
         
         # Task data
         #* Slice array handles first half, second half, or all
+        self.task_yforce_data                      = self.slice_array(kwargs.get('task_yforce_data'))
+        self.task_dist_data                        = self.slice_array(kwargs.get('task_dist_data'))
+
         self.player_task_leave_time                = self.slice_array(kwargs.get('player_task_leave_time'))
+        self.player_yforce_task_leave_time         = self.slice_array(kwargs.get('player_yforce_task_leave_time'))
         self.player_task_decision_array            = self.slice_array(kwargs.get('player_task_decision_array'))
         self.player_task_movement_time             = self.slice_array(kwargs.get('player_task_movement_time'))
+        self.player_yforce_task_movement_time      = self.slice_array(kwargs.get('player_yforce_task_movement_time'))
         self.player_task_reach_time                = self.slice_array(kwargs.get('player_task_reach_time'))
         self.agent_task_leave_time                 = self.slice_array(kwargs.get('agent_task_leave_time'))
         self.agent_task_decision_array             = self.slice_array(kwargs.get('agent_task_decision_array'))
         self.agent_task_movement_time              = self.slice_array(kwargs.get('agent_task_movement_time'))
         self.agent_task_reach_time                 = self.slice_array(kwargs.get('agent_task_reach_time'))
         self.player_minus_agent_task_leave_time = self.player_task_leave_time - self.agent_task_leave_time
+        self.player_yforce_minus_agent_task_leave_time = self.player_yforce_task_leave_time - self.agent_task_leave_time
         
         
         self.num_stds_for_reaction_time = kwargs.get('num_stds_for_reaction_time')
@@ -134,20 +144,37 @@ class Subject():
         self.reaction_react_mask                  = self.reaction_trial_type_array == 1
         
         # * Reaction Time        
-        self.react_reaction_time_all           = self.reaction_time[self.reaction_react_mask].reshape(self.num_subjects,2,50)   
-        self.gamble_reaction_time_all          = self.reaction_time[self.reaction_gamble_mask].reshape(self.num_subjects,2,50) 
-        self.react_reaction_time_mixed        = self.react_reaction_times[:,0,:]
-        self.react_reaction_time_only_react   = self.react_reaction_times[:,1,:]
-        self.gamble_reaction_time_mixed       = self.gamble_reaction_times[:,0,:]
-        self.gamble_reaction_time_only_gamble = self.gamble_reaction_times[:,1,:]
+        self.react_reaction_time_all           = self.reaction_time[self.reaction_react_mask].reshape(2,50)   
+        self.gamble_reaction_time_all          = self.reaction_time[self.reaction_gamble_mask].reshape(2,50) 
+        self.react_reaction_time_mixed        = self.react_reaction_time_all[0,:]
+        self.react_reaction_time_only_react   = self.react_reaction_time_all[1,:]
+        self.gamble_reaction_time_mixed       = self.gamble_reaction_time_all[0,:]
+        self.gamble_reaction_time_only_gamble = self.gamble_reaction_time_all[1,:]
         
         # * Movement time
-        self.react_movement_time_all           = self.movement_time[self.reaction_react_mask].reshape(self.num_subjects,2,50)   
-        self.gamble_movement_time_all          = self.movement_time[self.reaction_gamble_mask].reshape(self.num_subjects,2,50) 
-        self.react_movement_time_mixed        = self.react_movement_times[:,0,:]
-        self.react_movement_time_only_react   = self.react_movement_times[:,1,:]
-        self.gamble_movement_time_mixed       = self.gamble_movement_times[:,0,:]
-        self.gamble_movement_time_only_gamble = self.gamble_movement_times[:,1,:]
+        self.react_movement_time_all           = self.reaction_movement_time[self.reaction_react_mask].reshape(2,50)   
+        self.gamble_movement_time_all          = self.reaction_movement_time[self.reaction_gamble_mask].reshape(2,50) 
+        self.react_movement_time_mixed        = self.react_movement_time_all[0,:]
+        self.react_movement_time_only_react   = self.react_movement_time_all[1,:]
+        self.gamble_movement_time_mixed       = self.gamble_movement_time_all[0,:]
+        self.gamble_movement_time_only_gamble = self.gamble_movement_time_all[1,:]
+        
+        # * Reaction Time        
+        self.yforce_react_reaction_time_all           = self.yforce_reaction_time[self.reaction_react_mask].reshape(2,50)   
+        self.yforce_gamble_reaction_time_all          = self.yforce_reaction_time[self.reaction_gamble_mask].reshape(2,50) 
+        self.yforce_react_reaction_time_mixed        = self.yforce_react_reaction_time_all[0,:]
+        self.yforce_react_reaction_time_only_react   = self.yforce_react_reaction_time_all[1,:]
+        self.yforce_gamble_reaction_time_mixed       = self.yforce_gamble_reaction_time_all[0,:]
+        self.yforce_gamble_reaction_time_only_gamble = self.yforce_gamble_reaction_time_all[1,:]
+        
+        # * Movement time
+        self.yforce_react_movement_time_all          = self.yforce_reaction_movement_time[self.reaction_react_mask].reshape(2,50)   
+        self.yforce_gamble_movement_time_all         = self.yforce_reaction_movement_time[self.reaction_gamble_mask].reshape(2,50) 
+        self.yforce_react_movement_time_mixed        = self.yforce_react_movement_time_all[0,:]
+        self.yforce_react_movement_time_only_react   = self.yforce_react_movement_time_all[1,:]
+        self.yforce_gamble_movement_time_mixed       = self.yforce_gamble_movement_time_all[0,:]
+        self.yforce_gamble_movement_time_only_gamble = self.yforce_gamble_movement_time_all[1,:]
+        
         
     def calculate_reaction_repeats_alternates(self):
         # Get masks
@@ -178,6 +205,7 @@ class Subject():
                 self.gamble_switch_mask[i+1] = False
         
         # Get the reaction times of gambles on repeats and switchs
+        self.reaction_time_mixed = self.reaction_time[0,:]
         self.gamble_reaction_time_repeat = self.mask_array(self.reaction_time_mixed,self.gamble_repeat_mask)
         self.gamble_reaction_time_switch = self.mask_array(self.reaction_time_mixed,self.gamble_switch_mask)
         # Get the reaction times of reactions on repeats and mixeds
