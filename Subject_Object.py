@@ -3,7 +3,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 import os
 class Subject():
-    def __init__(self,**kwargs):
+    def __init__(self,**kwargs):  
         self.experiment                             = kwargs.get('experiment')
         self.num_blocks                             = kwargs.get('num_blocks')
         self.num_trials                             = kwargs.get('num_trials')
