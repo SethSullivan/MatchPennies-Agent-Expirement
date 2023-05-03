@@ -36,20 +36,18 @@ class Subject():
             self.num_reaction_trials  = kwargs.get('num_reaction_trials')
             self.num_timing_trials    = kwargs.get('num_timing_trials')
             
-            
-            
         #* Reaction Data
         if True:
-            self.reaction_xypos_data                = kwargs.get('reaction_xypos_data')
-            self.reaction_dist_data                 = kwargs.get('reaction_dist_data')
-            self.reaction_xyvelocity_data           = kwargs.get('reaction_xyvelocity_data')
-            self.reaction_speed_data                = kwargs.get('reaction_speed_data')
-            self.reaction_xyforce_data              = kwargs.get('reaction_xyforce_data')
-            self.reaction_force_data                = kwargs.get('reaction_force_data')
-            self.reaction_trial_type_array          = kwargs.get('reaction_trial_type_array')
-            self.agent_reaction_decision_array      = kwargs.get('agent_reaction_decision_array')
-            self.agent_reaction_leave_time          = kwargs.get('agent_reaction_leave_time')
-            self.agent_reaction_reach_time          = self.agent_reaction_leave_time + 150
+            self.reaction_xypos_data            = kwargs.get('reaction_xypos_data')
+            self.reaction_dist_data             = kwargs.get('reaction_dist_data')
+            self.reaction_xyvelocity_data       = kwargs.get('reaction_xyvelocity_data')
+            self.reaction_speed_data            = kwargs.get('reaction_speed_data')
+            self.reaction_xyforce_data          = kwargs.get('reaction_xyforce_data')
+            self.reaction_force_data            = kwargs.get('reaction_force_data')
+            self.reaction_trial_type_array      = kwargs.get('reaction_trial_type_array')
+            self.agent_reaction_decision_array  = kwargs.get('agent_reaction_decision_array')
+            self.agent_reaction_leave_time      = kwargs.get('agent_reaction_leave_time')
+            self.agent_reaction_reach_time      = self.agent_reaction_leave_time + 150
             self.agent_reaction_decision_array[self.agent_reaction_reach_time>1500] = 0
         #* Timing Data
         if True:
@@ -254,7 +252,8 @@ class Subject():
 
         self.q = np.argmax(np.sqrt((self.reaction_xypos_data[...,0]-self.target1x)**2 + (self.reaction_xypos_data[...,1]-self.target1y)**2) < self.target1_radius,axis=2) # Find when people enter the right target
         self.r = np.argmax(np.sqrt((self.reaction_xypos_data[...,0]-self.target2x)**2 + (self.reaction_xypos_data[...,1]-self.target2y)**2) < self.target2_radius,axis=2)
-        self.player_reaction_reach_time  = np.maximum(self.q,self.r)
+        self.player_reaction_reach_time  = np.maximum(self.q,self.r).astype(np.float)
+        self.player_reaction_reach_time[self.player_reaction_reach_time==0] = np.nan
         #* Determine the decision array based on target selection or indecision
         self.player_reaction_decision_array[self.q!=0] = 1 # Player selected right target
         self.player_reaction_decision_array[self.r!=0] = -1
@@ -289,6 +288,8 @@ class Subject():
         self.q = np.argmax(np.sqrt((self.task_xypos_data[...,0]-self.target1x)**2 + (self.task_xypos_data[...,1]-self.target1y)**2) < self.target1_radius,axis=2) # Find when people enter the right target
         self.r = np.argmax(np.sqrt((self.task_xypos_data[...,0]-self.target2x)**2 + (self.task_xypos_data[...,1]-self.target2y)**2) < self.target2_radius,axis=2)
         self.player_task_reach_time  = np.maximum(self.q,self.r).astype(np.float)
+        self.player_task_reach_time[self.player_task_reach_time==0] = np.nan
+        
         #* Determine the decision array based on target selection or indecision
         self.player_task_decision_array[self.q!=0] = 1 # Player selected right target
         self.player_task_decision_array[self.r!=0] = -1
@@ -621,9 +622,9 @@ class Group():
         self.all_player_task_gamble_leave_times_each_condition     = self.concatenate_across_subjects('player_gamble_task_leave_time')
         self.all_player_task_reaction_leave_times_each_condition   = self.concatenate_across_subjects('player_reaction_task_leave_time')
     
-        self.all_agent_task_leave_times_each_condition            = self.concatenate_across_subjects('agent_task_leave_time')
-        self.all_agent_task_gamble_leave_times_each_condition     = self.concatenate_across_subjects('agent_gamble_task_leave_time')
-        self.all_agent_task_reaction_leave_times_each_condition   = self.concatenate_across_subjects('agent_reaction_task_leave_time')
+        self.all_agent_task_leave_times_each_condition             = self.concatenate_across_subjects('agent_task_leave_time')
+        self.all_agent_task_gamble_leave_times_each_condition      = self.concatenate_across_subjects('agent_gamble_task_leave_time')
+        self.all_agent_task_reaction_leave_times_each_condition    = self.concatenate_across_subjects('agent_reaction_task_leave_time')
         
     
     def binning_across_all_subjects(self):  
