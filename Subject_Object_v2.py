@@ -208,6 +208,8 @@ class Subject():
         self.player_task_movement_time_nan  = self.player_task_movement_time
         self.player_task_movement_time_nan[self.player_task_movement_time==0] = np.nan          
         self.reaction_time                  = getattr(self,self.reaction_time_metric_name).astype(np.float)
+        self.reaction_time_cutoff_mask      = self.reaction_time>600
+        self.reaction_time                  = self.mask_array(self.reaction_time,~self.reaction_time_cutoff_mask)
         self.reaction_movement_time         = getattr(self,self.reaction_movement_time_metric_name).astype(np.float)
         self.player_minus_agent_task_leave_time = self.player_task_leave_time - self.agent_task_leave_time
         self.player_minus_agent_task_leave_time_nan = self.player_task_leave_time_nan - self.agent_task_leave_time
@@ -525,10 +527,11 @@ class Subject():
         self.mu_s_alternate = (self.phat_correct*self.mhat_correct_alternate - self.phat_error*self.mhat_error_alternate)/(self.phat_correct - self.phat_error)
         
     def reaction_gamble_calculations(self):
+        self.reaction_time_threshold = np.nanmean(self.react_reaction_time_only_react) - 100 
         # Gamble calculations
         if True:
             # Create mask and get the total number of gamble decisions
-            self.gamble_task_mask = (self.player_task_leave_time-self.agent_task_leave_time) <= self.adjusted_player_reaction_time
+            self.gamble_task_mask = ((self.player_task_leave_time-self.agent_task_leave_time) <= self.reaction_time_threshold)|self.incorrect_mask
             self.total_gambles = np.count_nonzero(self.gamble_task_mask,axis=1)
             
             # Get the leave time and reach target time
@@ -580,7 +583,7 @@ class Subject():
         # Reaction calculations
         if True:
             # Create mask and get the total number of reaction decisions
-            self.reaction_task_mask   = (self.player_task_leave_time-self.agent_task_leave_time)>self.adjusted_player_reaction_time
+            self.reaction_task_mask   = ~self.gamble_task_mask
             self.total_reactions = np.count_nonzero(self.reaction_task_mask,axis=1)
             
             # Get the leave time and reach target time
