@@ -29,12 +29,13 @@ class Subject():
         
         #* Get Experimental Design Data
         if True:
-            self.experiment           = kwargs.get('experiment')
-            self.num_task_blocks      = kwargs.get('num_task_blocks')
+            self.subject                      = kwargs.get('subject')
+            self.experiment                   = kwargs.get('experiment')
+            self.num_task_blocks              = kwargs.get('num_task_blocks')
             self.num_task_trials_initial      = kwargs.get('num_task_trials_initial')
-            self.num_reaction_blocks  = kwargs.get('num_reaction_blocks')
-            self.num_reaction_trials  = kwargs.get('num_reaction_trials')
-            self.num_timing_trials    = kwargs.get('num_timing_trials')
+            self.num_reaction_blocks          = kwargs.get('num_reaction_blocks')
+            self.num_reaction_trials          = kwargs.get('num_reaction_trials')
+            self.num_timing_trials            = kwargs.get('num_timing_trials')
             
         #* Reaction Data
         if True:
@@ -201,10 +202,15 @@ class Subject():
         self.find_leave_times()
         
         self.player_task_leave_time         = getattr(self,self.task_leave_time_metric_name).astype(np.float)
+        self.player_task_leave_time_nan     = self.player_task_leave_time
+        self.player_task_leave_time_nan[self.player_task_leave_time==0] = np.nan     
         self.player_task_movement_time      = getattr(self,self.task_movement_time_metric_name).astype(np.float)
+        self.player_task_movement_time_nan  = self.player_task_movement_time
+        self.player_task_movement_time_nan[self.player_task_movement_time==0] = np.nan          
         self.reaction_time                  = getattr(self,self.reaction_time_metric_name).astype(np.float)
         self.reaction_movement_time         = getattr(self,self.reaction_movement_time_metric_name).astype(np.float)
         self.player_minus_agent_task_leave_time = self.player_task_leave_time - self.agent_task_leave_time
+        self.player_minus_agent_task_leave_time_nan = self.player_task_leave_time_nan - self.agent_task_leave_time
         
         
         
@@ -243,7 +249,10 @@ class Subject():
         self.wins_when_both_decide()
         
         # Binned metrics
-        self.binned_metrics()
+        # self.binned_metrics()
+        
+        # Estimate true reaction time during task 
+        self.estimate_reaction_latency()
         
     def find_leave_times(self):
         #*------------------------------------- REACTION --------------------------
@@ -252,11 +261,19 @@ class Subject():
 
         self.q = np.argmax(np.sqrt((self.reaction_xypos_data[...,0]-self.target1x)**2 + (self.reaction_xypos_data[...,1]-self.target1y)**2) < self.target1_radius,axis=2) # Find when people enter the right target
         self.r = np.argmax(np.sqrt((self.reaction_xypos_data[...,0]-self.target2x)**2 + (self.reaction_xypos_data[...,1]-self.target2y)**2) < self.target2_radius,axis=2)
-        self.player_reaction_reach_time  = np.maximum(self.q,self.r).astype(np.float)
-        self.player_reaction_reach_time[self.player_reaction_reach_time==0] = np.nan
+        # DOING THIS WAY instaed of doing np.maximum, bc sometimes people end up reahcing BOTH targets, so np.argmax returns a non-zero value
+        # Therefore, i can't take the maximum in that case, so I need to make 0 equal 100000 so I can then take the minimum
+        self.q_zero_mask = self.q == 0
+        self.q[self.q_zero_mask] = 100000
+        self.r_zero_mask = self.r == 0
+        self.r[self.r_zero_mask] = 100000
+        
+        
+        self.player_reaction_reach_time  = np.minimum(self.q,self.r).astype(np.float)
+        
         #* Determine the decision array based on target selection or indecision
-        self.player_reaction_decision_array[self.q!=0] = 1 # Player selected right target
-        self.player_reaction_decision_array[self.r!=0] = -1
+        self.player_reaction_decision_array[self.q<self.r] = 1 # Player selected right target
+        self.player_reaction_decision_array[self.r<self.q] = -1
         self.player_reaction_decision_array[self.player_reaction_reach_time>1500] = 0
         self.player_reaction_decision_array[self.player_reaction_reach_time==0] = 0
         
@@ -287,14 +304,23 @@ class Subject():
 
         self.q = np.argmax(np.sqrt((self.task_xypos_data[...,0]-self.target1x)**2 + (self.task_xypos_data[...,1]-self.target1y)**2) < self.target1_radius,axis=2) # Find when people enter the right target
         self.r = np.argmax(np.sqrt((self.task_xypos_data[...,0]-self.target2x)**2 + (self.task_xypos_data[...,1]-self.target2y)**2) < self.target2_radius,axis=2)
-        self.player_task_reach_time  = np.maximum(self.q,self.r).astype(np.float)
-        self.player_task_reach_time[self.player_task_reach_time==0] = np.nan
+        # DOING THIS WAY instaed of doing np.maximum, bc sometimes people end up reahcing BOTH targets, so np.argmax returns a non-zero value
+        # Therefore, i can't take the maximum in that case, so I need to make 0 equal 100000 so I can then take the minimum
+        big_num = 100000
+        self.q_zero_mask = self.q == 0
+        self.q[self.q_zero_mask] = big_num
+        self.r_zero_mask = self.r == 0
+        self.r[self.r_zero_mask] = big_num
+        self.player_task_reach_time  = np.minimum(self.q,self.r).astype(np.float)
         
         #* Determine the decision array based on target selection or indecision
-        self.player_task_decision_array[self.q!=0] = 1 # Player selected right target
-        self.player_task_decision_array[self.r!=0] = -1
+        self.player_task_decision_array[self.q<self.r] = 1 # Player selected right target
+        self.player_task_decision_array[self.r<self.q] = -1
         self.player_task_decision_array[self.player_task_reach_time>1500] = 0
-        self.player_task_decision_array[self.player_task_reach_time==0] = 0
+        self.player_task_decision_array[self.player_task_reach_time==big_num] = 0
+        
+        #* Make this nan AFTER getting decision array, so it counts those as indecisions
+        self.player_task_reach_time[self.player_task_reach_time==big_num] = np.nan # If task reach time is 0, then they never reached a target, so can't calculate movement time from that trial, so make it nan
         
         #* Using position
         self.player_pos_task_leave_time                 = np.argmax(self.task_dist_data > self.start_radius,axis=2)
@@ -407,6 +433,97 @@ class Subject():
         self.player_minus_agent_leave_time_on_indecisions   = self.player_task_leave_time_on_indecisions - self.agent_task_leave_time_on_indecisions
         self.player_minus_agent_leave_time_on_incorrects    = self.player_task_leave_time_on_incorrects - self.agent_task_leave_time_on_incorrects
         
+    def estimate_reaction_latency(self):
+        # * Find initial reach diretion using x positino
+        self.time_for_init_reach_direction = self.player_task_leave_time_nan + 30 # Look 10 milliseconds later
+        indices = np.arange(0,self.task_xypos_data[...,0].shape[-1],1,dtype=np.float) # Use arange to create an array of INDICES, will mask this later to get the exact point we want
+        tile_shape = list(self.task_xypos_data[...,0].shape[:-1]) # get the shape of the desired array but not the last or second to last (bc last is 0 or 1 for x and y)
+        tile_shape.append(1) # Append 1 to the list of the tile_shape
+        self.indices_tiled = np.tile(indices,tuple(tile_shape))  # Turn tile shape back to tuple so it works with np tile, then tile the indices we got in same shape of data
+        
+        # Make the times we want have the same shape as data
+        self.index_init_reach_direction_array = np.repeat(self.time_for_init_reach_direction[...,np.newaxis],
+                                                     self.task_xypos_data[...,0].shape[-1],axis=2)  
+        # Check where the indices are equal to the reach direction index
+        self.init_reach_pos_mask = self.indices_tiled == self.index_init_reach_direction_array.astype(int) # 
+        # Use the mask (that puts true at the index where the indices are equal to the reach direction time)
+        self.init_reach_posx  = self.mask_array(self.task_xypos_data[...,0],self.init_reach_pos_mask)
+        self.init_reach_posy  = self.mask_array(self.task_xypos_data[...,1],self.init_reach_pos_mask) 
+        # Get mask for when their initial direction went to the right
+        self.init_reach_posx_single_timepoint = np.nanmax(self.init_reach_posx*self.init_reach_pos_mask,axis=2)
+        self.right_mask = self.init_reach_posx_single_timepoint - self.startx > 0
+        
+        # self.right_mask = self.init_reach_posx[self.init_reach_pos_mask].reshape(self.init_reach_pos_mask.shape[:-1]) - self.startx > 0 # DID THEY REACH RIGHTWARDS OF THE START TARGET INITIALLY
+        # Get the initial reach direction (1 for right, -1 for left)
+        self.init_reach_direction = np.zeros((self.num_task_blocks,self.num_task_trials))
+        self.init_reach_direction[self.right_mask] = 1
+        self.init_reach_direction[~self.right_mask] = -1
+        # Get task decision array without indecisions, just to check
+        self.player_task_decision_array_check = np.zeros((self.num_task_blocks,self.num_task_trials))*np.nan
+        self.player_task_decision_array_check[self.q<self.r] = 1 # Player selected right target
+        self.player_task_decision_array_check[self.r<self.q] = -1
+        # Compare that with the target they selected to check
+        self.check_init_reach_direction = self.init_reach_direction == self.player_task_decision_array_check
+        
+        # * Determine if initial reach angle is the same as the agent's target selection and classify incorrects and corrects
+        self.correct_init_decision_mask = self.init_reach_direction == self.agent_task_decision_array
+        # * Find player-agent times for corrects and incorrects and take mean
+        # Get the number of correct and incorrect initial movement decisions
+        
+        # If i want to take their mean across all the blocks do this
+        self.player_minus_agent_on_errors_all = self.player_minus_agent_task_leave_time[~self.correct_init_decision_mask]
+        self.mean_player_minus_agent_on_errors_all = np.nanmean(self.player_minus_agent_on_errors_all)
+        self.player_minus_agent_on_corrects_all = self.player_minus_agent_task_leave_time[self.correct_init_decision_mask]
+        self.mean_player_minus_agent_on_corrects_all = np.nanmean(self.player_minus_agent_on_corrects_all)
+        
+        # Estimate mu_{s}
+        self.phat_correct_all= np.count_nonzero(self.correct_init_decision_mask)/(self.num_task_trials*self.num_task_blocks)
+        self.phat_error_all   = np.count_nonzero(~self.correct_init_decision_mask)/(self.num_task_trials*self.num_task_blocks)
+        self.mhat_correct_all = self.mean_player_minus_agent_on_corrects_all
+        self.mhat_error_all = self.mean_player_minus_agent_on_errors_all
+        self.mu_s_all = (self.phat_correct_all*self.mhat_correct_all - self.phat_error_all*self.mhat_error_all)/(self.phat_correct_all - self.phat_error_all)
+        
+        self.player_leave_time_on_errors_all = self.player_task_leave_time[~self.correct_init_decision_mask]
+        self.mean_player_leave_time_on_errors_all = np.nanmean(self.player_leave_time_on_errors_all)
+        self.player_leave_time_on_corrects_all = self.player_task_leave_time[self.correct_init_decision_mask]
+        self.mean_player_leave_time_on_corrects_all = np.nanmean(self.player_leave_time_on_corrects_all)
+        
+        # Estimate mu_{s}
+        self.phat_correct_all_leave = np.count_nonzero(self.correct_init_decision_mask)/(self.num_task_trials*self.num_task_blocks)
+        self.phat_error_all_leave   = np.count_nonzero(~self.correct_init_decision_mask)/(self.num_task_trials*self.num_task_blocks)
+        self.mhat_correct_all_leave = self.mean_player_leave_time_on_corrects_all
+        self.mhat_error_all_leave   = self.mean_player_leave_time_on_errors_all
+        self.mu_s_all_leave = (self.phat_correct_all_leave*self.mhat_correct_all_leave - self.phat_error_all_leave*self.mhat_error_all_leave)/(self.phat_correct_all_leave - self.phat_error_all)
+        
+        self.phat_correct = np.count_nonzero(self.correct_init_decision_mask,axis=1)/self.num_task_trials
+        self.phat_error   = np.count_nonzero(~self.correct_init_decision_mask,axis=1)/self.num_task_trials
+        # Leave time for each block
+        self.player_leave_time_on_errors = self.mask_array(self.player_task_leave_time,~self.correct_init_decision_mask)
+        self.mean_player_leave_time_on_errors = np.nanmean(self.player_leave_time_on_errors,axis=1)
+        self.player_leave_time_on_corrects = self.mask_array(self.player_task_leave_time,self.correct_init_decision_mask)
+        self.mean_player_leave_time_on_corrects = np.nanmean(self.player_leave_time_on_corrects,axis=1)
+        # Pplayer minus agent leave time for each block 
+        self.player_minus_agent_on_errors = self.mask_array(self.player_minus_agent_task_leave_time,~self.correct_init_decision_mask)
+        self.mean_player_minus_agent_on_errors = np.nanmean(self.player_minus_agent_on_errors,axis=1)
+        self.player_minus_agent_on_corrects = self.mask_array(self.player_minus_agent_task_leave_time,self.correct_init_decision_mask)
+        self.mean_player_minus_agent_on_corrects = np.nanmean(self.player_minus_agent_on_corrects,axis=1)
+        
+        # Estimate mu_{s}
+        self.mhat_correct = self.mean_player_minus_agent_on_corrects
+        self.mhat_error = self.mean_player_minus_agent_on_errors
+        self.mu_s = (self.phat_correct*self.mhat_correct - self.phat_error*self.mhat_error)/(self.phat_correct - self.phat_error)
+        
+        #GEt mu_s for leave time instead of player minus agent
+        self.player_leave_time_on_errors = self.mask_array(self.player_task_leave_time,~self.correct_init_decision_mask)
+        self.mean_player_leave_time_on_errors = np.nanmean(self.player_leave_time_on_errors,axis=1)
+        self.player_leave_time_on_corrects = self.mask_array(self.player_task_leave_time,self.correct_init_decision_mask)
+        self.mean_player_leave_time_on_corrects = np.nanmean(self.player_leave_time_on_corrects,axis=1)
+        
+        # Estimate mu_{s}
+        self.mhat_correct_alternate = self.mean_player_leave_time_on_corrects
+        self.mhat_error_alternate = self.mean_player_leave_time_on_errors
+        self.mu_s_alternate = (self.phat_correct*self.mhat_correct_alternate - self.phat_error*self.mhat_error_alternate)/(self.phat_correct - self.phat_error)
+        
     def reaction_gamble_calculations(self):
         # Gamble calculations
         if True:
@@ -415,10 +532,10 @@ class Subject():
             self.total_gambles = np.count_nonzero(self.gamble_task_mask,axis=1)
             
             # Get the leave time and reach target time
-            self.player_gamble_task_leave_time          = self.mask_array(self.player_task_leave_time,self.gamble_task_mask)
-            self.player_gamble_task_reach_time          = self.mask_array(self.player_task_reach_time,self.gamble_task_mask)
-            self.agent_gamble_task_leave_time           = self.mask_array(self.agent_task_leave_time,self.gamble_task_mask)
-            self.agent_gamble_task_reach_time           = self.mask_array(self.agent_task_reach_time,self.gamble_task_mask)
+            self.player_gamble_task_leave_time   = self.mask_array(self.player_task_leave_time,self.gamble_task_mask)
+            self.player_gamble_task_reach_time   = self.mask_array(self.player_task_reach_time,self.gamble_task_mask)
+            self.agent_gamble_task_leave_time    = self.mask_array(self.agent_task_leave_time,self.gamble_task_mask)
+            self.agent_gamble_task_reach_time    = self.mask_array(self.agent_task_reach_time,self.gamble_task_mask)
             self.player_minus_agent_gamble_task_leave_time = self.player_gamble_task_leave_time - self.agent_gamble_task_leave_time
 
             # Wins, indecisions,incorrects
