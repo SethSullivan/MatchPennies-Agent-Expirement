@@ -46,6 +46,7 @@ class Subject():
             self.reaction_xyforce_data          = kwargs.get('reaction_xyforce_data')
             self.reaction_force_data            = kwargs.get('reaction_force_data')
             self.reaction_trial_type_array      = kwargs.get('reaction_trial_type_array')
+            self.reaction_trial_start           = kwargs.get('reaction_trial_start')
             self.agent_reaction_decision_array  = kwargs.get('agent_reaction_decision_array')
             self.agent_reaction_leave_time      = kwargs.get('agent_reaction_leave_time')
             self.agent_reaction_reach_time      = self.agent_reaction_leave_time + 150
@@ -208,7 +209,7 @@ class Subject():
         self.player_task_movement_time_nan  = self.player_task_movement_time
         self.player_task_movement_time_nan[self.player_task_movement_time==0] = np.nan          
         self.reaction_time                  = getattr(self,self.reaction_time_metric_name).astype(np.float)
-        self.reaction_time_cutoff_mask      = self.reaction_time>600
+        self.reaction_time_cutoff_mask      = (self.reaction_time>600)|(self.reaction_time<170)
         self.reaction_time                  = self.mask_array(self.reaction_time,~self.reaction_time_cutoff_mask)
         self.reaction_movement_time         = getattr(self,self.reaction_movement_time_metric_name).astype(np.float)
         self.player_minus_agent_task_leave_time = self.player_task_leave_time - self.agent_task_leave_time
@@ -263,7 +264,7 @@ class Subject():
 
         self.q = np.argmax(np.sqrt((self.reaction_xypos_data[...,0]-self.target1x)**2 + (self.reaction_xypos_data[...,1]-self.target1y)**2) < self.target1_radius,axis=2) # Find when people enter the right target
         self.r = np.argmax(np.sqrt((self.reaction_xypos_data[...,0]-self.target2x)**2 + (self.reaction_xypos_data[...,1]-self.target2y)**2) < self.target2_radius,axis=2)
-        # DOING THIS WAY instaed of doing np.maximum, bc sometimes people end up reahcing BOTH targets, so np.argmax returns a non-zero value
+        # DOING THIS WAY instaed of doing np.maximum, bc sometimes people end up reahcing BOTH targets, so np.argmax returns a non-zero value (NOT RELEVANT FOR REACTION)
         # Therefore, i can't take the maximum in that case, so I need to make 0 equal 100000 so I can then take the minimum
         self.q_zero_mask = self.q == 0
         self.q[self.q_zero_mask] = 100000
@@ -279,17 +280,26 @@ class Subject():
         self.player_reaction_decision_array[self.player_reaction_reach_time>1500] = 0
         self.player_reaction_decision_array[self.player_reaction_reach_time==0] = 0
         
-        #* Using position
+        #* Get leave time (pos, velocity lin, velocity thresh)
         self.player_pos_reaction_leave_time                 = np.argmax(self.reaction_dist_data > self.start_radius,axis=2)
-        self.player_pos_reaction_time                       = self.player_pos_reaction_leave_time - self.agent_reaction_leave_time
+        self.player_velocity_reaction_leave_time_thresh     = np.argmax(self.reaction_speed_data > 0.05,axis=2)
+        self.player_velocity_reaction_leave_time_linear     = self.get_linear_movement_onset_time(self.reaction_speed_data)
+        # In exp1, the reaction stimulus is at the trial start time
+        if self.experiment == 'Exp1':
+            self.player_pos_reaction_time                       = self.player_pos_reaction_leave_time[2] #! Last row is the actual reaction, first two are timing for exp1
+            self.player_velocity_reaction_time_thresh           = self.player_velocity_reaction_leave_time_thresh[2] 
+            self.player_velocity_reaction_time_linear           = self.player_velocity_reaction_leave_time_linear [2]  
+        
+        # In exp2, the reaction stimulus is the agent
+        elif self.experiment == 'Exp2':
+            self.player_pos_reaction_time                       = self.player_pos_reaction_leave_time - self.agent_reaction_leave_time
+            self.player_velocity_reaction_time_thresh           = self.player_velocity_reaction_leave_time_thresh - self.agent_reaction_leave_time
+            self.player_velocity_reaction_time_linear           = self.player_velocity_reaction_leave_time_linear - self.agent_reaction_leave_time
+            
         self.player_pos_reaction_movement_time              = self.player_reaction_reach_time - self.player_pos_reaction_leave_time
         #* Using velocity with 0.05 threshold
-        self.player_velocity_reaction_leave_time_thresh     = np.argmax(self.reaction_speed_data > 0.05,axis=2)
-        self.player_velocity_reaction_time_thresh           = self.player_velocity_reaction_leave_time_thresh - self.agent_reaction_leave_time
         self.player_velocity_reaction_movement_time_thresh  = self.player_reaction_reach_time - self.player_velocity_reaction_leave_time_thresh
         #* Using velocity with linear estimation
-        self.player_velocity_reaction_leave_time_linear     = self.get_linear_movement_onset_time(self.reaction_speed_data)
-        self.player_velocity_reaction_time_linear           = self.player_velocity_reaction_leave_time_linear - self.agent_reaction_leave_time
         self.player_velocity_reaction_movement_time_linear  = self.player_reaction_reach_time - self.player_velocity_reaction_leave_time_linear 
         
         # self.player_force_leave_time_thresh             = np.argmax(self.reaction_force_data > 0.05,axis=2)
@@ -413,6 +423,13 @@ class Subject():
         self.player_perc_indecisions = (self.player_indecisions/self.num_task_trials)*100
         self.player_perc_incorrects = (self.player_incorrects/self.num_task_trials)*100
         
+        if self.experiment == 'Exp2':
+           self.points_c0 = self.player_wins[0]
+           self.points_c1 = self.player_wins[1] - self.player_incorrects[1]
+           self.points_c2 = self.player_wins[2] - self.player_indecisions[2] 
+           self.points_c3 = self.player_wins[3] - self.player_incorrects[3] - self.player_indecisions[3] 
+           self.player_points_scored = np.array([self.points_c0,self.points_c1,self.points_c2,self.points_c3])
+        
     def leave_and_reach_times_on_wins_incorrects_indecisions(self):        
         win_mask = np.logical_or(self.player_task_decision_array*self.agent_task_decision_array == 1, np.logical_and(self.player_task_decision_array!=0, self.agent_task_decision_array==0))
         incorrect_mask = self.player_task_decision_array*self.agent_task_decision_array == -1
@@ -527,7 +544,10 @@ class Subject():
         self.mu_s_alternate = (self.phat_correct*self.mhat_correct_alternate - self.phat_error*self.mhat_error_alternate)/(self.phat_correct - self.phat_error)
         
     def reaction_gamble_calculations(self):
-        self.reaction_time_threshold = np.nanmean(self.react_reaction_time_only_react) - 100 
+        if self.experiment == 'Exp2':
+            self.reaction_time_threshold = np.nanmean(self.react_reaction_time_only_react) - 100 
+        elif self.experiment == 'Exp1':
+            self.reaction_time_threshold = np.nanmean(self.reaction_time)
         # Gamble calculations
         if True:
             # Create mask and get the total number of gamble decisions
