@@ -202,16 +202,16 @@ class Subject():
         #* Find leave,reaction,movement times
         self.find_leave_times()
         
-        self.player_task_leave_time         = getattr(self,self.task_leave_time_metric_name).astype(np.float)
+        self.player_task_leave_time         = getattr(self,self.task_leave_time_metric_name).astype(float)
         self.player_task_leave_time_nan     = self.player_task_leave_time
         self.player_task_leave_time_nan[self.player_task_leave_time==0] = np.nan     
-        self.player_task_movement_time      = getattr(self,self.task_movement_time_metric_name).astype(np.float)
+        self.player_task_movement_time      = getattr(self,self.task_movement_time_metric_name).astype(float)
         self.player_task_movement_time_nan  = self.player_task_movement_time
         self.player_task_movement_time_nan[self.player_task_movement_time==0] = np.nan          
-        self.reaction_time                  = getattr(self,self.reaction_time_metric_name).astype(np.float)
+        self.reaction_time                  = getattr(self,self.reaction_time_metric_name).astype(float)
         self.reaction_time_cutoff_mask      = (self.reaction_time>600)|(self.reaction_time<170)
         self.reaction_time                  = self.mask_array(self.reaction_time,~self.reaction_time_cutoff_mask)
-        self.reaction_movement_time         = getattr(self,self.reaction_movement_time_metric_name).astype(np.float)
+        self.reaction_movement_time         = getattr(self,self.reaction_movement_time_metric_name).astype(float)
         self.player_minus_agent_task_leave_time = self.player_task_leave_time - self.agent_task_leave_time
         self.player_minus_agent_task_leave_time_nan = self.player_task_leave_time_nan - self.agent_task_leave_time
         
@@ -228,8 +228,8 @@ class Subject():
         #* Only parse reaction time data this way if it's experiment 2, because I switched the reaction time task 
         if self.experiment == 'Exp2':
             # Parse Reaction Time Data
-            self.parse_reaction_task_trials()
-            self.calculate_reaction_repeats_alternates()
+            self.parse_reaction_task_trials_exp2()
+            self.calculate_reaction_repeats_alternates_exp2()
             # self.remove_reaction_time_nans()
             self.adjusted_player_reaction_time    = np.nanmean(self.react_reaction_time_only_react) - \
                                                                self.num_stds_for_reaction_time*np.nanstd(self.react_reaction_time_only_react) # CONSERVATIVE REACTION TIME
@@ -272,7 +272,7 @@ class Subject():
         self.r[self.r_zero_mask] = 100000
         
         
-        self.player_reaction_reach_time  = np.minimum(self.q,self.r).astype(np.float)
+        self.player_reaction_reach_time  = np.minimum(self.q,self.r).astype(float)
         
         #* Determine the decision array based on target selection or indecision
         self.player_reaction_decision_array[self.q<self.r] = 1 # Player selected right target
@@ -284,23 +284,27 @@ class Subject():
         self.player_pos_reaction_leave_time                 = np.argmax(self.reaction_dist_data > self.start_radius,axis=2)
         self.player_velocity_reaction_leave_time_thresh     = np.argmax(self.reaction_speed_data > 0.05,axis=2)
         self.player_velocity_reaction_leave_time_linear     = self.get_linear_movement_onset_time(self.reaction_speed_data)
-        # In exp1, the reaction stimulus is at the trial start time
+        #* In exp1, the reaction stimulus is at the trial start time, so don't subtract off anything
         if self.experiment == 'Exp1':
             self.player_pos_reaction_time                       = self.player_pos_reaction_leave_time[2] #! Last row is the actual reaction, first two are timing for exp1
+            self.player_pos_reaction_movement_time              = self.player_reaction_reach_time[2] - self.player_pos_reaction_leave_time[2]
             self.player_velocity_reaction_time_thresh           = self.player_velocity_reaction_leave_time_thresh[2] 
-            self.player_velocity_reaction_time_linear           = self.player_velocity_reaction_leave_time_linear [2]  
+            self.player_velocity_reaction_movement_time_thresh  = self.player_reaction_reach_time[2] - self.player_velocity_reaction_leave_time_thresh[2]
+
+            self.player_velocity_reaction_time_linear           = self.player_velocity_reaction_leave_time_linear[2]  
+            self.player_velocity_reaction_movement_time_linear  = self.player_reaction_reach_time[2] - self.player_velocity_reaction_leave_time_linear[2] 
         
-        # In exp2, the reaction stimulus is the agent
+        #* In exp2, the reaction stimulus is the agent
         elif self.experiment == 'Exp2':
             self.player_pos_reaction_time                       = self.player_pos_reaction_leave_time - self.agent_reaction_leave_time
+            self.player_pos_reaction_movement_time              = self.player_reaction_reach_time - self.player_pos_reaction_leave_time
             self.player_velocity_reaction_time_thresh           = self.player_velocity_reaction_leave_time_thresh - self.agent_reaction_leave_time
+            self.player_velocity_reaction_movement_time_thresh  = self.player_reaction_reach_time - self.player_velocity_reaction_leave_time_thresh
             self.player_velocity_reaction_time_linear           = self.player_velocity_reaction_leave_time_linear - self.agent_reaction_leave_time
+            self.player_velocity_reaction_movement_time_linear  = self.player_reaction_reach_time - self.player_velocity_reaction_leave_time_linear 
             
-        self.player_pos_reaction_movement_time              = self.player_reaction_reach_time - self.player_pos_reaction_leave_time
         #* Using velocity with 0.05 threshold
-        self.player_velocity_reaction_movement_time_thresh  = self.player_reaction_reach_time - self.player_velocity_reaction_leave_time_thresh
         #* Using velocity with linear estimation
-        self.player_velocity_reaction_movement_time_linear  = self.player_reaction_reach_time - self.player_velocity_reaction_leave_time_linear 
         
         # self.player_force_leave_time_thresh             = np.argmax(self.reaction_force_data > 0.05,axis=2)
         # self.player_force_reaction_time_thresh          = self.player_force_leave_time_thresh - self.agent_reaction_leave_time
@@ -323,7 +327,7 @@ class Subject():
         self.q[self.q_zero_mask] = big_num
         self.r_zero_mask = self.r == 0
         self.r[self.r_zero_mask] = big_num
-        self.player_task_reach_time  = np.minimum(self.q,self.r).astype(np.float)
+        self.player_task_reach_time  = np.minimum(self.q,self.r).astype(float)
         
         #* Determine the decision array based on target selection or indecision
         self.player_task_decision_array[self.q<self.r] = 1 # Player selected right target
@@ -355,7 +359,7 @@ class Subject():
         # self.player_force_task_time_linear                  = self.player_force_task_leave_time_linear - self.agent_task_leave_time
         # self.player_force_task_movement_time_linear         = self.player_task_reach_time - self.player_velocity_task_leave_time_linear
     
-    def parse_reaction_task_trials(self):
+    def parse_reaction_task_trials_exp2(self):
         
         #* Split into react and gamble trials for first block
         self.reaction_gamble_mask                 = self.reaction_trial_type_array == 0
@@ -378,7 +382,7 @@ class Subject():
         self.gamble_movement_time_only_gamble = self.gamble_movement_time_all[1,:]
         
         
-    def calculate_reaction_repeats_alternates(self):
+    def calculate_reaction_repeats_alternates_exp2(self):
         # Get masks
         self.react_repeat_mask  = np.full(self.num_reaction_trials,False)
         self.react_switch_mask  = np.full(self.num_reaction_trials,False)
