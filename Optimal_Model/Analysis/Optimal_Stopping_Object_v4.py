@@ -6,6 +6,8 @@ import numba_scipy
 import numba as nb
 import data_visualization as dv
 from numba import njit
+import copy
+from numba_stats import norm
 wheel = dv.ColorWheel()
 '''
 04/04/23
@@ -277,8 +279,11 @@ class Optimal_Decision_Time_Model():
         For exp2 with changing reward, just need agent_means and agent_sds to be length of 4 of the same numbers
         '''
         output = np.zeros((self.num_blocks,len(self.timesteps[0,:])))
+        output_check = np.zeros((self.num_blocks,len(self.timesteps[0,:])))
         for i in range(self.num_blocks):
             output[i,:] = stats.norm.cdf(self.timesteps[i,:],self.agent_means[i],self.agent_sds[i])
+            output_check[i,:] = norm.cdf(self.timesteps[i,:],self.agent_means[i],self.agent_sds[i])
+        
         return output
     
     def prob_of_selecting_reaction(self): 
@@ -432,8 +437,8 @@ class Optimal_Decision_Time_Model():
         self.wtd_optimal_leave_target_time,self.wtd_optimal_reach_target_time,self.predicted_decision_time = self.calculate_mean_leave_target_time()
         
         self.player_minus_agent_leave_time          = self.wtd_optimal_leave_target_time - self.agent_means
-        self.player_minus_agent_reaction_leave_time = self.optimal_reaction_leave_target_time_mean_calc - self.agent_means
-        self.player_minus_agent_gamble_leave_time   = self.optimal_gamble_leave_target_time_mean_calc - self.agent_means
+        self.player_minus_agent_reaction_leave_time = self.optimal_reaction_leave_target_time_mean_calc - self.cutoff_agent_reaction_mean_optimal_ER
+        self.player_minus_agent_gamble_leave_time   = self.optimal_gamble_leave_target_time_mean_calc - self.cutoff_agent_gamble_mean_optimal_ER
         
         if True:
             # ! Here we calculate the probability of making a reaction GIVEN we know that you selected reaction (conditional)
@@ -453,7 +458,9 @@ class Optimal_Decision_Time_Model():
             self.prob_incorrect_given_reaction_optimal_calc = (1 - self.prob_selecting_correct_target_reaction)*self.prob_making_given_reaction_optimal_calc
             self.prob_incorrect_given_gamble_optimal_calc = (1 - self.prob_selecting_correct_target_gamble)*self.prob_making_given_gamble_optimal_calc
             
-            
+            # Doesn't matter if you make it, what's the probability you intend to go in the correct direction
+            self.phat_correct_optimal_calc = self.prob_selecting_reaction_optimal_calc + self.prob_selecting_gamble_optimal_calc*0.5
+
         # * Prob of win, incorrect, indecisions (All equations, no functions)
         if True:
 
@@ -627,10 +634,28 @@ class Optimal_Decision_Time_Model():
                                         'Incorrects':self.fit_decision_times[2,:],'Leave Target Time':self.fit_decision_times[3,:],
                                         'Perc Reaction Decisions':self.fit_decision_times[4,:],'Perc Gamble Decisions':self.fit_decision_times[5,:],
                                         'Reaction Leave Time': self.fit_decision_times[6,:],'Gamble Leave Time': self.fit_decision_times[7,:]}    
-    
-    def calculate_metrics_with_certain_decision_time(self,decision_times):
+
+    def calculate_metrics_with_certain_decision_time(self,decision_times,final = False):
         self.optimal_decision_time = decision_times
+        self.expected_reward_of_decision_time = np.zeros((self.num_blocks))
+        if final:
+            for i in range(self.num_blocks):
+                self.expected_reward_of_decision_time[i] = self.exp_reward[i,int(self.optimal_decision_time[i])]
         self.optimal_index = (decision_times/self.nsteps).astype(int)
 
         self.get_experiment_metrics_from_expected_reward()
         self.calculate_experiment_metrics()
+        
+@njit(parallel=True)
+def find_optimal_decision_time_for_certain_metric(ob,metric_name = 'RPMT'):
+    # o = copy.deepcopy(ob)
+    rts = np.arange(220,400,1,np.int64)
+    mts = np.arange(100,300,1,np.int64)
+    ans = np.zeros((len(rts),len(mts),ob.num_blocks))
+
+    for i in nb.prange(len(rts)):
+        for j in nb.prange(len(mts)):
+            ob.reaction_time = rts[i]
+            ob.movement_time = mts[j]
+            ob.run_model()
+            ans[i,j,:] = ob.optimal_decision_time 
