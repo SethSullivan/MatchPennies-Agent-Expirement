@@ -549,9 +549,11 @@ class Subject():
         
     def reaction_gamble_calculations(self):
         if self.experiment == 'Exp2':
-            self.reaction_time_threshold = np.nanmean(self.react_reaction_time_only_react) - 100 
+            # self.reaction_time_threshold = np.nanmean(self.react_reaction_time_only_react) - 100 
+            self.reaction_time_threshold = 220
         elif self.experiment == 'Exp1':
-            self.reaction_time_threshold = np.nanmean(self.reaction_time)
+            # self.reaction_time_threshold = np.nanmean(self.reaction_time) 
+            self.reaction_time_threshold = 220
         # Gamble calculations
         if True:
             # Create mask and get the total number of gamble decisions
