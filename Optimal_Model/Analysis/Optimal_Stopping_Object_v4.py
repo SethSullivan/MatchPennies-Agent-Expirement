@@ -301,16 +301,16 @@ class Optimal_Decision_Time_Model():
         # I think the gamble uncertainty is the uncertainty in the time it takes you to go from decision to movement and when you switch it's really uncertain 
 
         output = np.zeros((self.num_blocks,len(self.timesteps[0,:])))
-        if self.known_gamble_uncertainty_on:
-            # IF it's an array, i'm using data and therefore agent SD is already included
-            if isinstance(self.known_gamble_uncertainty,np.ndarray):
-                combined_uncertainty = np.sqrt(self.known_gamble_uncertainty**2)# + self.decision_action_delay_uncertainty**2) # Prob of SELECTING only includes timing uncertainty and agent uncertainty
-                combined_uncertainty = np.tile(combined_uncertainty,(2000,1)).T
-            # If I'm using one number 
-            else:
-                combined_uncertainty = np.sqrt(self.known_gamble_uncertainty**2 + self.agent_sds**2)# + self.decision_action_delay_uncertainty**2)
-        else:
-            combined_uncertainty = np.sqrt(self.timing_uncertainty**2 + self.agent_sds**2)# + self.decision_action_delay_uncertainty**2) # Prob of SELECTING only includes timing uncertainty and agent uncertainty
+        # if self.known_gamble_uncertainty_on:
+        #     # IF it's an array, i'm using data and therefore agent SD is already included
+        #     if isinstance(self.known_gamble_uncertainty,np.ndarray):
+        #         combined_uncertainty = np.sqrt(self.known_gamble_uncertainty**2)# + self.decision_action_delay_uncertainty**2) # Prob of SELECTING only includes timing uncertainty and agent uncertainty
+        #         combined_uncertainty = np.tile(combined_uncertainty,(2000,1)).T
+        #     # If I'm using one number 
+        #     else:
+        #         combined_uncertainty = np.sqrt(self.known_gamble_uncertainty**2 + self.agent_sds**2)# + self.decision_action_delay_uncertainty**2)
+        # else:
+        combined_uncertainty = np.sqrt(self.timing_uncertainty**2 + self.agent_sds**2)# + self.decision_action_delay_uncertainty**2) # Prob of SELECTING only includes timing uncertainty and agent uncertainty
         
         # I've determined that the decision time just needs to be after, doesn't necessarily need to be after some decision action delay
         for i in range(self.num_blocks):   
@@ -555,6 +555,8 @@ class Optimal_Decision_Time_Model():
         # Get the leave target time by weighing by how often they react and gamble
         wtd_optimal_leave_target_time = (self.prob_selecting_reaction_optimal_calc*self.optimal_reaction_leave_target_time_mean_calc + \
                                             self.prob_selecting_gamble_optimal_calc*self.optimal_gamble_leave_target_time_mean_calc)/(self.prob_selecting_gamble_optimal_calc+self.prob_selecting_reaction_optimal_calc) 
+        self.wtd_optimal_sd_leave_target_time = np.sqrt(self.optimal_reaction_leave_target_time_sd_calc**2+self.optimal_gamble_leave_target_time_sd_calc**2)
+        
         # Just add movement time for reach target time
         wtd_optimal_reach_target_time = wtd_optimal_leave_target_time + self.movement_time
         
