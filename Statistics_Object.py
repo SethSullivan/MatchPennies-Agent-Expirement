@@ -11,6 +11,20 @@ class Statistics():
         self.num_blocks = num_blocks
         self.num_trials = num_trials
         self.condition_nums = np.arange(0,self.num_blocks+1,1).astype(str)
+        
+        assert self.experiment == 'Exp1' or self.experiment == 'Exp2'
+
+        if self.experiment == 'Exp1':
+            self.f1_collapse_combos = ['01','23','45'] # Combinations to run in pairwise bootstrap for MEAN factor
+            self.f2_collapse_combos = ['024','135'] # Combinations to run in pairwise bootstrap for SD factor
+            self.f1_condition_nums = ['0','1','2'] # Call the condition numbers 0 1 2 for plotting
+            self.f2_condition_nums = ['0','1']
+            
+        if self.experiment == 'Exp2':
+            self.f1_collapse_combos = ['02','13'] # Combinations to run in pairwise bootstrap for INCORRECT PUNISHMENT factor, collapse across indecision factor
+            self.f2_collapse_combos = ['01','23'] # Combinations to run in pairwise bootstrap for INDECISION PUNISHMENT factor, collapse across incorrect factor
+            self.f1_condition_nums = ['0','1']
+            self.f2_condition_nums = ['0','1']
         # self.run_statistics_all()
         
     def df_to_array(self,df_col):
@@ -22,7 +36,6 @@ class Statistics():
         
         # Check to make sure that factor 1 is the means for exp1 or the incorrect punishment for exp2
         assert self.df['Factor 1'].str.contains('1000').any() or self.df['Factor 1'].str.contains('-1 Inc').any()
-        assert self.experiment == 'Exp1' or self.experiment == 'Exp2'
         
         anova = pg.rm_anova(data=self.df, dv=dv, within=['Factor 1','Factor 2'], subject='Subject', detailed=True)
         
@@ -80,24 +93,13 @@ class Statistics():
 
 
     def collapsed_bootstrap(self,metric,alternative='two-sided'):
-        if self.experiment == 'Exp1':
-            f1_collapse_combos = ['01','23','45'] # Combinations to run in pairwise bootstrap for MEAN factor
-            f2_collapse_combos = ['024','135'] # Combinations to run in pairwise bootstrap for SD factor
-            f1_condition_nums = ['0','1','2'] # Call the condition numbers 0 1 2 for plotting
-            f2_condition_nums = ['0','1']
-        if self.experiment == 'Exp2':
-            f1_collapse_combos = ['02','13'] # Combinations to run in pairwise bootstrap for INCORRECT PUNISHMENT factor, collapse across indecision factor
-            f2_collapse_combos = ['01','23'] # Combinations to run in pairwise bootstrap for INDECISION PUNISHMENT factor, collapse across incorrect factor
-            f1_condition_nums = ['0','1']
-            f2_condition_nums = ['0','1']
-            
-        f1_collapse_metric = self.collapse_across(metric,f1_collapse_combos) # Collapsing across f2 to get the f1 combined
+        f1_collapse_metric = self.collapse_across(metric,self.f1_collapse_combos) # Collapsing across f2 to get the f1 combined
         # Bootstrap collapsing across f2 (f1_collapse)
-        f1_collapse_pvals_dict,f1_collapse_cles_dict = self.pairwise_bootstrap(f1_collapse_metric,alternative=alternative,condition_nums=f1_condition_nums)
+        f1_collapse_pvals_dict,f1_collapse_cles_dict = self.pairwise_bootstrap(f1_collapse_metric,alternative=alternative,condition_nums=self.f1_condition_nums)
         
-        f2_collapse_metric = self.collapse_across(metric,f2_collapse_combos)
+        f2_collapse_metric = self.collapse_across(metric,self.f2_collapse_combos)
         # Bootstrap collapsing across f1 (f2 collapse)
-        f2_collapse_pvals_dict,f2_collapse_cles_dict = self.pairwise_bootstrap(f2_collapse_metric,alternative=alternative,condition_nums=f2_condition_nums)
+        f2_collapse_pvals_dict,f2_collapse_cles_dict = self.pairwise_bootstrap(f2_collapse_metric,alternative=alternative,condition_nums=self.f2_condition_nums)
         return f1_collapse_pvals_dict,f1_collapse_cles_dict,f2_collapse_pvals_dict,f2_collapse_cles_dict
 
 
