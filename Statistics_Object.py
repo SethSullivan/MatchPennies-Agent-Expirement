@@ -43,7 +43,7 @@ class Statistics():
             print('Non-significant interaction, collapsing across conditions...')
             f1_collapse_pvals_dict,f1_collapse_cles_dict,f2_collapse_pvals_dict,f2_collapse_cles_dict = self.collapsed_bootstrap(metric,alternative = alternative)
             return anova,[f1_collapse_pvals_dict,f1_collapse_cles_dict,f2_collapse_pvals_dict,f2_collapse_cles_dict]
-        
+
 
     def pairwise_bootstrap(self,data,condition_nums=None,alternative='two-sided',M=1e7):
         
@@ -77,6 +77,7 @@ class Statistics():
         cles_dict = {}
         cles_dict = dict(zip(combos, cles_))
         return pval_dict,cles_dict
+
 
     def collapsed_bootstrap(self,metric,alternative='two-sided'):
         if self.experiment == 'Exp1':
@@ -117,4 +118,7 @@ class Statistics():
         assert return_ans.shape[0]>15 
         
         return return_ans
+    
+    def create_combos(num_list):
+        return ["".join(map(str, comb)) for comb in combinations(num_list, 2)] 
                 
