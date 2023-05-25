@@ -2,9 +2,15 @@ import pandas as pd
 from matplotlib import pyplot as plt
 import numpy as np
 import os
+import warnings
 class Subject():
-    def __init__(self,**kwargs):
-        #* Get Target information
+    def __init__(self,subject,experiment,num_task_blocks,num_task_trials_initial,num_reaction_blocks,
+                 num_reaction_trials,num_timing_trials,reaction_xypos_data,reaction_dist_data, reaction_xyvelocity_data, 
+                 reaction_speed_data, reaction_trial_type_array, reaction_trial_start, 
+                 agent_reaction_decision_array, agent_reaction_leave_time, interval_trial_start, interval_reach_time, coincidence_trial_start, coincidence_reach_time, 
+                 task_xypos_data, task_dist_data, task_xyvelocity_data, task_speed_data, agent_task_decision_array, agent_task_leave_time,
+                 ):
+        #* Get Target information, same for both experiments so just take exp2
         if True:
             file = 'D:\OneDrive - University of Delaware - o365\Subject_Data\MatchPennies_Agent_Exp2\\Sub1_Task\\Sub1_TaskTarget_Table.csv'
             df = pd.read_csv(file)
@@ -29,44 +35,45 @@ class Subject():
         
         #* Get Experimental Design Data
         if True:
-            self.subject                      = kwargs.get('subject')
-            self.experiment                   = kwargs.get('experiment')
-            self.num_task_blocks              = kwargs.get('num_task_blocks')
-            self.num_task_trials_initial      = kwargs.get('num_task_trials_initial')
-            self.num_reaction_blocks          = kwargs.get('num_reaction_blocks')
-            self.num_reaction_trials          = kwargs.get('num_reaction_trials')
-            self.num_timing_trials            = kwargs.get('num_timing_trials')
-            
+            self.subject                      = subject
+            self.experiment                   = experiment
+            self.num_task_blocks              = num_task_blocks
+            self.num_task_trials_initial      = num_task_trials_initial
+            self.num_reaction_blocks          = num_reaction_blocks
+            self.num_reaction_trials          = num_reaction_trials
+            self.num_timing_trials            = num_timing_trials
+            # Make sure I don't have the wrong experiment in there
+            assert self.experiment == 'Exp2' and self.num_task_blocks == 4 
         #* Reaction Data
         if True:
-            self.reaction_xypos_data            = kwargs.get('reaction_xypos_data')
-            self.reaction_dist_data             = kwargs.get('reaction_dist_data')
-            self.reaction_xyvelocity_data       = kwargs.get('reaction_xyvelocity_data')
-            self.reaction_speed_data            = kwargs.get('reaction_speed_data')
-            self.reaction_xyforce_data          = kwargs.get('reaction_xyforce_data')
-            self.reaction_force_data            = kwargs.get('reaction_force_data')
-            self.reaction_trial_type_array      = kwargs.get('reaction_trial_type_array')
-            self.reaction_trial_start           = kwargs.get('reaction_trial_start')
-            self.agent_reaction_decision_array  = kwargs.get('agent_reaction_decision_array')
-            self.agent_reaction_leave_time      = kwargs.get('agent_reaction_leave_time')
+            self.reaction_xypos_data            = reaction_xypos_data
+            self.reaction_dist_data             = reaction_dist_data
+            self.reaction_xyvelocity_data       = reaction_xyvelocity_data
+            self.reaction_speed_data            = reaction_speed_data
+            # self.reaction_xyforce_data          = reaction_xyforce_data
+            # self.reaction_force_data            = reaction_force_data
+            self.reaction_trial_type_array      = reaction_trial_type_array
+            self.reaction_trial_start           = reaction_trial_start
+            self.agent_reaction_decision_array  = agent_reaction_decision_array
+            self.agent_reaction_leave_time      = agent_reaction_leave_time
             self.agent_reaction_reach_time      = self.agent_reaction_leave_time + 150
             self.agent_reaction_decision_array[self.agent_reaction_reach_time>1500] = 0
         #* Timing Data
         if True:
-            self.interval_trial_start           = kwargs.get('interval_trial_start')
-            self.interval_reach_time            = kwargs.get('interval_reach_time')
-            self.coincidence_trial_start        = kwargs.get('coincidence_trial_start')
-            self.coincidence_reach_time         = kwargs.get('coincidence_reach_time')
+            self.interval_trial_start           = interval_trial_start
+            self.interval_reach_time            = interval_reach_time
+            self.coincidence_trial_start        = coincidence_trial_start
+            self.coincidence_reach_time         = coincidence_reach_time
         #* Task data
         if True:
-            self.task_xypos_data                = kwargs.get('task_xypos_data')
-            self.task_dist_data                 = kwargs.get('task_dist_data')
-            self.task_xyvelocity_data           = kwargs.get('task_xyvelocity_data')
-            self.task_speed_data                = kwargs.get('task_speed_data')
-            self.task_xyforce_data              = kwargs.get('task_xyforce_data')
-            self.task_force_data                = kwargs.get('task_force_data')
-            self.agent_task_decision_array      = kwargs.get('agent_task_decision_array')
-            self.agent_task_leave_time          = kwargs.get('agent_task_leave_time')
+            self.task_xypos_data                = task_xypos_data
+            self.task_dist_data                 = task_dist_data
+            self.task_xyvelocity_data           = task_xyvelocity_data
+            self.task_speed_data                = task_speed_data
+            # self.task_xyforce_data              = task_xyforce_data
+            # self.task_force_data                = task_force_data
+            self.agent_task_decision_array      = agent_task_decision_array
+            self.agent_task_leave_time          = agent_task_leave_time
             self.agent_task_reach_time          = self.agent_task_leave_time + 150
             
             self.agent_task_decision_array[self.agent_task_reach_time>1500] = 0
@@ -83,8 +90,6 @@ class Subject():
         # self.player_yforce_minus_agent_task_leave_time = self.player_yforce_task_leave_time - self.agent_task_leave_time
         
         
-        self.num_stds_for_reaction_time = kwargs.get('num_stds_for_reaction_time')
-        self.n = kwargs.get('cutoff_for_controls_calc',10)
         # self.reaction_time_700_mask = self.reaction_time < 700
         # self.reaction_time = self.mask_array(self.reaction_time,self.reaction_time_700_mask)
         
@@ -119,6 +124,8 @@ class Subject():
         self.trial_results[self.win_mask] = 1
         self.trial_results[self.indecision_mask] = 2
         self.trial_results[self.incorrect_mask] = 3  
+        self.trial_results_check = self.mask_array(self.trial_results,self.check_init_reach_direction)
+        self.num_trials_corrected = np.count_nonzero(~np.isnan(self.trial_results_check),axis=1)
         
     def remove_reaction_time_nans(self,arr=None,mask=None):
         '''
@@ -127,6 +134,7 @@ class Subject():
         
         Need to do this to plot boxplots I think 
         '''
+        
         gamble_nanmask = np.isnan(self.gamble_reaction_time_all)
         self.gamble_reaction_time_only_gamble        = self.gamble_reaction_time_all[2,:][~gamble_nanmask[2,:]]
         self.gamble_reaction_time_mixed              = self.gamble_reaction_time_all[0,:][~gamble_nanmask[0,:]]
@@ -173,7 +181,7 @@ class Subject():
 
     def analyze_data(self,**kwargs):
         #* Get the half or all the data and decide on sd for reaction time
-        self.select_trials                  = kwargs.get('select_trials') 
+        self.select_trials   = kwargs.get('select_trials') 
         if self.select_trials != 'All Trials':
             self.num_task_trials = self.num_task_trials_initial//2
         else:
@@ -192,8 +200,8 @@ class Subject():
         self.task_dist_data                 = self.slice_array(self.task_dist_data)
         self.task_xyvelocity_data           = self.slice_array(self.task_xyvelocity_data)
         self.task_speed_data                = self.slice_array(self.task_speed_data)
-        self.task_xyforce_data              = self.slice_array(self.task_xyforce_data)
-        self.task_force_data                = self.slice_array(self.task_force_data)
+        # self.task_xyforce_data              = self.slice_array(self.task_xyforce_data)
+        # self.task_force_data                = self.slice_array(self.task_force_data)
         self.agent_task_decision_array      = self.slice_array(self.agent_task_decision_array)
         self.agent_task_leave_time          = self.slice_array(self.agent_task_leave_time)
         self.agent_task_reach_time          = self.agent_task_leave_time + 150
@@ -215,12 +223,19 @@ class Subject():
         self.player_minus_agent_task_leave_time = self.player_task_leave_time - self.agent_task_leave_time
         self.player_minus_agent_task_leave_time_nan = self.player_task_leave_time_nan - self.agent_task_leave_time
         
+        self.find_correct_initial_decisions()
         
         
-        self.win_mask          = np.logical_or(self.player_task_decision_array*self.agent_task_decision_array == 1, np.logical_and(self.player_task_decision_array!=0, self.agent_task_decision_array==0))
-        self.indecision_mask   = self.player_task_decision_array == 0 
-        self.incorrect_mask    = self.player_task_decision_array*self.agent_task_decision_array == -1
-        self.both_decided_mask = abs(self.player_task_decision_array*self.agent_task_decision_array) == 1
+        self.win_mask          = np.logical_or(self.player_task_decision_array*self.agent_task_decision_array == 1, 
+                                               np.logical_and(self.player_task_decision_array!=0, self.agent_task_decision_array==0))
+        self.indecision_mask   = (self.player_task_decision_array == 0)
+        self.incorrect_mask    = (self.player_task_decision_array*self.agent_task_decision_array == -1)
+        self.both_decided_mask = (abs(self.player_task_decision_array*self.agent_task_decision_array) == 1)
+        
+        self.win_mask_corrected                   = self.mask_array(self.win_mask.astype(float),self.check_init_reach_direction)
+        self.indecision_mask_corrected            = self.mask_array(self.indecision_mask.astype(float),self.check_init_reach_direction)
+        self.incorrect_mask_corrected             = self.mask_array(self.incorrect_mask.astype(float),self.check_init_reach_direction)
+        self.both_decided_mask_corrected          = self.mask_array(self.both_decided_mask.astype(float),self.check_init_reach_direction)
         
         self.create_result_of_trial_array()
         
@@ -246,6 +261,7 @@ class Subject():
                 
         # Gamble and Reaction Calculations
         # self.reaction_gamble_calculations()
+        self.estimate_reaction_latency()
         self.reaction_gamble_calculations()
         
         # Wins when both decide
@@ -255,28 +271,26 @@ class Subject():
         # self.binned_metrics()
         
         # Estimate true reaction time during task 
-        self.estimate_reaction_latency()
-        
-    def find_leave_times(self):
-        #*------------------------------------- REACTION --------------------------
-        # Same for all metrics
-        self.player_reaction_decision_array = np.zeros((self.num_reaction_blocks,self.num_reaction_trials))*np.nan
-
-        self.q = np.argmax(np.sqrt((self.reaction_xypos_data[...,0]-self.target1x)**2 + (self.reaction_xypos_data[...,1]-self.target1y)**2) < self.target1_radius,axis=2) # Find when people enter the right target
-        self.r = np.argmax(np.sqrt((self.reaction_xypos_data[...,0]-self.target2x)**2 + (self.reaction_xypos_data[...,1]-self.target2y)**2) < self.target2_radius,axis=2)
+    def get_target_reach_times(self):
+        # Argmax finds the first id where the condition is true
+        ans1 = np.argmax(np.sqrt((self.reaction_xypos_data[...,0]-self.target1x)**2 + (self.reaction_xypos_data[...,1]-self.target1y)**2) < self.target1_radius,axis=2) # Find when people enter the right target
+        ans2 = np.argmax(np.sqrt((self.reaction_xypos_data[...,0]-self.target2x)**2 + (self.reaction_xypos_data[...,1]-self.target2y)**2) < self.target2_radius,axis=2)
         # DOING THIS WAY instaed of doing np.maximum, bc sometimes people end up reahcing BOTH targets, so np.argmax returns a non-zero value (NOT RELEVANT FOR REACTION)
         # Therefore, i can't take the maximum in that case, so I need to make 0 equal 100000 so I can then take the minimum
-        self.q_zero_mask = self.q == 0
-        self.q[self.q_zero_mask] = 100000
-        self.r_zero_mask = self.r == 0
-        self.r[self.r_zero_mask] = 100000
-        
-        
-        self.player_reaction_reach_time  = np.minimum(self.q,self.r).astype(float)
-        
+        ans1[ans1 == 0] = 100000
+        ans2[ans2 == 0] = 100000
+        return ans1,ans2
+    
+    def find_leave_times(self):
+        #*------------------------------------- REACTION --------------------------
+        self.enter_right_target_id,\
+        self.enter_left_target_id = self.get_target_reach_times()
+        # Same for all metrics
+        self.player_reaction_reach_time  = np.minimum(self.enter_right_target_id,self.enter_left_target_id).astype(float)
         #* Determine the decision array based on target selection or indecision
-        self.player_reaction_decision_array[self.q<self.r] = 1 # Player selected right target
-        self.player_reaction_decision_array[self.r<self.q] = -1
+        self.player_reaction_decision_array = np.zeros((self.num_reaction_blocks,self.num_reaction_trials))*np.nan
+        self.player_reaction_decision_array[self.enter_right_target_id<self.enter_left_target_id] = 1 # Player selected right target
+        self.player_reaction_decision_array[self.enter_left_target_id<self.enter_right_target_id] = -1
         self.player_reaction_decision_array[self.player_reaction_reach_time>1500] = 0
         self.player_reaction_decision_array[self.player_reaction_reach_time==0] = 0
         
@@ -381,7 +395,6 @@ class Subject():
         self.gamble_movement_time_mixed       = self.gamble_movement_time_all[0,:]
         self.gamble_movement_time_only_gamble = self.gamble_movement_time_all[1,:]
         
-        
     def calculate_reaction_repeats_alternates_exp2(self):
         # Get masks
         self.react_repeat_mask  = np.full(self.num_reaction_trials,False)
@@ -419,13 +432,25 @@ class Subject():
         self.react_reaction_time_switch  = self.mask_array(self.reaction_time_mixed,self.react_switch_mask)      
         
     def calc_wins_indecisions_incorrects(self):
-        self.player_wins = np.count_nonzero(self.win_mask,axis=1)
-        self.player_indecisions = np.count_nonzero(self.indecision_mask,axis=1)
-        self.player_incorrects = np.count_nonzero(self.incorrect_mask,axis=1)
+        self.player_wins             = np.count_nonzero(self.win_mask,axis=1)
+        self.player_indecisions      = np.count_nonzero(self.indecision_mask,axis=1)
+        self.player_incorrects       = np.count_nonzero(self.incorrect_mask,axis=1)
         
-        self.player_perc_wins = (self.player_wins/self.num_task_trials)*100
+        self.player_perc_wins        = (self.player_wins/self.num_task_trials)*100
         self.player_perc_indecisions = (self.player_indecisions/self.num_task_trials)*100
-        self.player_perc_incorrects = (self.player_incorrects/self.num_task_trials)*100
+        self.player_perc_incorrects  = (self.player_incorrects/self.num_task_trials)*100
+        
+        self.player_wins_corrected             = np.nansum(self.win_mask_corrected,axis=1)
+        self.player_indecisions_corrected      = np.nansum(self.indecision_mask_corrected,axis=1)
+        self.player_incorrects_corrected       = np.nansum(self.incorrect_mask_corrected,axis=1)
+        
+        self.player_perc_wins_corrected        = (self.player_wins_corrected/self.num_trials_corrected)*100
+        self.player_perc_indecisions_corrected = (self.player_indecisions_corrected/self.num_trials_corrected)*100
+        self.player_perc_incorrects_corrected  = (self.player_incorrects_corrected/self.num_trials_corrected)*100
+        
+        
+        # self.player_perc_wins_corrected = (self.player_wins/self.num_task_trials)*100
+        
         
         if self.experiment == 'Exp2':
            self.points_c0 = self.player_wins[0]
@@ -456,7 +481,7 @@ class Subject():
         self.player_minus_agent_leave_time_on_indecisions   = self.player_task_leave_time_on_indecisions - self.agent_task_leave_time_on_indecisions
         self.player_minus_agent_leave_time_on_incorrects    = self.player_task_leave_time_on_incorrects - self.agent_task_leave_time_on_incorrects
         
-    def estimate_reaction_latency(self):
+    def find_correct_initial_decisions(self):
         # * Find initial reach diretion using x positino
         self.time_for_init_reach_direction = self.player_task_leave_time_nan + 30 # Look 10 milliseconds later
         indices = np.arange(0,self.task_xypos_data[...,0].shape[-1],1,dtype=np.float) # Use arange to create an array of INDICES, will mask this later to get the exact point we want
@@ -489,7 +514,11 @@ class Subject():
         self.check_init_reach_direction = self.init_reach_direction == self.player_task_decision_array_check
         
         # * Determine if initial reach angle is the same as the agent's target selection and classify incorrects and corrects
-        self.correct_init_decision_mask = self.init_reach_direction == self.agent_task_decision_array
+        self.correct_init_decision_mask = self.init_reach_direction == self.agent_task_decision_array   
+    
+    def estimate_reaction_latency(self):
+        self.find_correct_initial_decisions()
+        
         # * Find player-agent times for corrects and incorrects and take mean
         # Get the number of correct and incorrect initial movement decisions
         
@@ -546,14 +575,36 @@ class Subject():
         self.mhat_correct_alternate = self.mean_player_leave_time_on_corrects
         self.mhat_error_alternate = self.mean_player_leave_time_on_errors
         self.mu_s_alternate = (self.phat_correct*self.mhat_correct_alternate - self.phat_error*self.mhat_error_alternate)/(self.phat_correct - self.phat_error)
+    
+    def select_true_reaction_time(self):
+        # Pick an initial reaction cutoff
+        if self.experiment == 'Exp1':
+            self.reaction_cutoff = np.nanmean(self.reaction_time) + 20
+        elif self.experiment == 'Exp2':
+            self.reaction_cutoff = np.nanmean(self.react_reaction_time_only_react) + 20
+
+        #* See if number of gamble initial decision direction is close to 50%
+        flag = True
+        while flag:
+            # Get the gamble mask
+            self.gamble_mask = self.player_minus_agent_task_leave_time < self.reaction_cutoff
+            # Apply gamble mask on correct_init_decision mask to get the correct decision mask for only gamble decisions
+            self.gamble_init_decision = self.correct_init_decision_mask[self.gamble_mask]
+            # Out of all the gambles, how many were correct (True)
+            self.phat_gambles = np.count_nonzero(self.gamble_init_decision)/len(self.gamble_init_decision)
+            if self.phat_gambles>0.55:
+                self.reaction_cutoff = self.reaction_cutoff - 1
+            else:
+                flag=False
+        return self.reaction_cutoff
         
     def reaction_gamble_calculations(self):
         if self.experiment == 'Exp2':
-            # self.reaction_time_threshold = np.nanmean(self.react_reaction_time_only_react) - 100 
-            self.reaction_time_threshold = 220
+            # self.reaction_time_threshold = self.select_true_reaction_time()
+            self.reaction_time_threshold = 200
         elif self.experiment == 'Exp1':
-            # self.reaction_time_threshold = np.nanmean(self.reaction_time) 
-            self.reaction_time_threshold = 220
+            # self.reaction_time_threshold = self.select_true_reaction_time()
+            self.reaction_time_threshold = 200
         # Gamble calculations
         if True:
             # Create mask and get the total number of gamble decisions
@@ -735,8 +786,7 @@ class Subject():
 class Group():
     def __init__(self, objects,**kwargs):
         self.objects = objects
-        self.num_task_blocks = self.objects[0].num_task_blocks
-        self.num_task_trials = self.objects[0].num_task_trials_initial
+        
         self.bin_cutoff_threshold = kwargs.get('bin_cutoff_threshold',30)
         self.select_trials                  = kwargs.get('select_trials') 
         self.num_stds_for_reaction_time     = kwargs.get('num_stds_for_reaction_time') 
@@ -751,17 +801,35 @@ class Group():
         #* Analyze data function for each object 
         for i,o in enumerate(self.objects):
             o.analyze_data(select_trials = self.select_trials, num_stds_for_reaction_time = self.num_stds_for_reaction_time, 
-                                    task_leave_time_metric_name = self.task_leave_time_metric_name,task_movement_time_metric_name = self.task_movement_time_metric_name,
-                                    reaction_time_metric_name = self.reaction_time_metric_name, reaction_movement_time_metric_name = self.reaction_movement_time_metric_name)
+                            task_leave_time_metric_name = self.task_leave_time_metric_name,task_movement_time_metric_name = self.task_movement_time_metric_name,
+                            reaction_time_metric_name = self.reaction_time_metric_name, reaction_movement_time_metric_name = self.reaction_movement_time_metric_name)
             self.objects[i] = o
             
         #* Flatten the trial by trial data so I can make a histogram including everyones data
+        self.num_task_blocks = self.objects[0].num_task_blocks
+        self.num_task_trials = self.objects[0].num_task_trials_initial
         self.flatten_across_all_subjects()
-
         #* Loop through all attributes, and set the group attribute with all subjects combined
+        np.warnings.filterwarnings('error', category=np.VisibleDeprecationWarning)
         for a in dir(self.objects[0]):
-            if not a.startswith('__'):
-                setattr(self,a,np.array([getattr(o,a) for o in self.objects]))
+            if not a.startswith('__') and not callable(getattr(self.objects[0], a)):
+                # with warnings.catch_warnings(record=True) as w:
+                #     # Cause all warnings to always be triggered.
+                #     warnings.simplefilter("always")
+                #     # Trigger a warning.
+                #     warnings.warn("deprecated", DeprecationWarning)
+                #     # Verify some things
+                #     assert len(w) == 1
+                #     assert issubclass(w[-1].category, DeprecationWarning)
+                #     assert "deprecated" in str(w[-1].message)    
+                    
+                if isinstance(getattr(self.objects[0],a),np.ndarray):
+                    if getattr(self.objects[0],a).shape == getattr(self.objects[1],a).shape:
+                        arr = np.array([getattr(o,a) for o in self.objects])
+                        setattr(self,a,arr)
+                else:
+                    arr = np.array([getattr(o,a) for o in self.objects])
+                    setattr(self,a,arr)
                 
     def flatten_across_all_subjects(self):
         self.all_player_task_leave_times_each_condition            = self.concatenate_across_subjects('player_task_leave_time')
