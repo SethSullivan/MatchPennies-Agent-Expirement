@@ -5,17 +5,19 @@ from itertools import combinations
 import plot_functions as pf
 import data_visualization as dv
 import matplotlib.pyplot as plt
+import copy
 wheel  = dv.ColorWheel()
 class Statistics():
-    def __init__(self,df,experiment,num_subjects,num_blocks,num_trials,trial_block_titles,
+    def __init__(self,df,experiment,num_subjects,num_blocks,num_trials,trial_block_titles,xlab,
                  f1_xticklabels,f2_xticklabels,f1_xlabel,f2_xlabel):
         self.experiment         = experiment
         self.df                 = df
         self.num_subjects       = num_subjects
         self.num_blocks         = num_blocks
         self.num_trials         = num_trials
-        self.condition_nums     = np.arange(0,self.num_blocks+1,1).astype(str)
+        self.condition_nums     = np.arange(0,self.num_blocks,1).astype(str)
         self.trial_block_titles = trial_block_titles
+        self.xlabel             = xlab
         self.f1_xticklabels     = f1_xticklabels
         self.f1_xlabel          = f1_xlabel
         self.f2_xlabel          = f2_xlabel
@@ -41,34 +43,36 @@ class Statistics():
         return ans
     
     
-    def run_statistics(self,dv,alternative='two-sided',M=1e7):
+    def run_statistics(self,dv,alternative='two-sided',M=1e5):
         self.M = M
         
         # Check to make sure that factor 1 is the means for exp1 or the incorrect punishment for exp2
         assert self.df['Factor 1'].str.contains('1000').any() or self.df['Factor 1'].str.contains('-1 Inc').any()
         
-        anova = pg.rm_anova(data=self.df, dv=dv, within=['Factor 1','Factor 2'], subject='Subject', detailed=True)
+        self.anova = pg.rm_anova(data=self.df, dv=dv, within=['Factor 1','Factor 2'], subject='Subject', detailed=True)
         
-        assert anova['Source'][2] == 'Factor 1 * Factor 2' # Make sure row 2 is the interaction 
+        assert self.anova['Source'][2] == 'Factor 1 * Factor 2' # Make sure row 2 is the interaction 
         
         metric = self.df_to_array(self.df[dv])
         
         #* Don't collapse 
-        if anova['p-GG-corr'][2] <0.05:
-            if anova['p-GG-corr'][2] <0.1:
-                print('Interaction significance close')
+        if self.anova['p-GG-corr'][2] <0.05:
             print('Significant interaction, doing pairwise bootstraps for each condition...')
+            self.collapse_factor = [None]
             pval_dict,cles_dict = self.pairwise_bootstrap(metric,alternative=alternative)
-            return anova,[pval_dict,cles_dict]
+            return self.anova,[pval_dict,cles_dict]
 
         #* Collapse
         else:
+            if self.anova['p-GG-corr'][2] <0.1:
+                print('Interaction significance close')
+            self.collapse_factor = ['f1','f2']
             print('Non-significant interaction, collapsing across conditions...')
             f1_collapse_pvals_dict,f1_collapse_cles_dict,\
             f2_collapse_pvals_dict,f2_collapse_cles_dict = self.collapsed_bootstrap(metric,alternative = alternative)
                     
             d = dict(zip(['f1pvals','f1eff','f2pvals','f2eff'],[f1_collapse_pvals_dict,f1_collapse_cles_dict,f2_collapse_pvals_dict,f2_collapse_cles_dict]))
-            return anova,[f1_collapse_pvals_dict,f1_collapse_cles_dict,f2_collapse_pvals_dict,f2_collapse_cles_dict]
+            return self.anova,[f1_collapse_pvals_dict,f1_collapse_cles_dict,f2_collapse_pvals_dict,f2_collapse_cles_dict]
 
 
     def pairwise_bootstrap(self,data,condition_nums=None,alternative='two-sided'):
@@ -140,64 +144,123 @@ class Statistics():
     def plot_all_conditions(self):
         pass
     
-    def plot_collapse(self,statistics,metric,collapse_factor, title, ylab,title_pad = 10,statline_ypos = None,
-                         h=5,num_yticks = None, ylocs=None,lims=True):
-        
-        if collapse_factor == 'f1':
-            condition_nums = self.f1_condition_nums
-            xticklabs      = self.f1_xticklabels
-            xlab           = self.f1_xlabel
-            combos         = self.f1_collapse_combos
-        if collapse_factor == 'f2':
-            condition_nums = self.f2_condition_nums
-            xticklabs      = self.f2_xticklabels
-            xlab           = self.f2_xlabel
-            combos         = self.f2_collapse_combos
-
+    def plot(self,statistics,metric_name, title, ylab,title_pad = 10,statline_ypos = None,
+                         h=5,num_yticks = None, ylocs=None,lims=True,select_conditions='All',cut_pvals = True):
+        #* Set values for the factor that we're collapsing across
+        for collapse_factor in self.collapse_factor:
+            metric = self.df_to_array(self.df[metric_name])
+            statline_y = statline_ypos
+            if True:
+                if collapse_factor == 'f1':
+                    condition_nums = self.f1_condition_nums
+                    xticklabs      = self.f1_xticklabels
+                    xlab           = self.f1_xlabel
+                    combos         = self.f1_collapse_combos
+                    stat_pval_id   = 0
+                    stat_cles_id   = 1
+                elif collapse_factor == 'f2':
+                    condition_nums = self.f2_condition_nums
+                    xticklabs      = self.f2_xticklabels
+                    xlab           = self.f2_xlabel
+                    combos         = self.f2_collapse_combos
+                    stat_pval_id   = 2
+                    stat_cles_id   = 3
+                else:
+                    condition_nums = self.condition_nums
+                    xticklabs = self.trial_block_titles
+                    xlab      = self.xlabel
+                    combos    = self.create_combos(condition_nums)
+                    stat_pval_id   = 0
+                    stat_cles_id   = 1
+                    
+                if collapse_factor != None:      
+                    metric = self.collapse_across(metric,combos)
                 
-        metric = self.collapse_across(metric,combos)
-        n = metric.shape[-1]
-        w= 9.5
-        h = w
-        bw = 0.3*w/n # box widths of all boxes combined takes up 30% of the width
-        print(bw)
-        axmain,ax = pf.make_figure_panel(figsize=(w,h),inset_size=(1.3,0.9,w-1.4,h-1.3))
-        axmain.set_aspect(0.6)
-        # ax.set_aspect(1.5)
-        xlocs = np.linspace(0,w,num=n)
-        shift = np.min(metric)*0.12
-        if num_yticks is None:
-            num_yticks = 8
-        if ylocs is None:
-            ylocs = np.linspace(np.min(metric),np.max(metric),num_yticks)
-        if statline_ypos == None:
-            start = np.max(metric) + shift//n
-            end = np.max(metric) + shift*0.3
-            statline_ypos = np.linspace(start,end,n)
-        pf.multi_boxplot(ax,metric,xlocs=xlocs,box_width = bw,colors = wheel.seth_blue)
-        dv.jitter_array(ax=ax,x_positions=xlocs,data_list=metric.T, noise_scale=0.15, include_mean = True, circle_size=70)
-        condition_locs = self.create_combos(condition_nums)
-        if self.experiment == 'Exp1' and collapse_factor=='f1':
-                condition_locs[-1],condition_locs[-2] = condition_locs[-2],condition_locs[-1] 
-        i=-1
-        for c in condition_locs:
-            i+=1
-            a = int(c[0])
-            b = int(c[1])
-            dv.stat_annotation(ax,xlocs[a],xlocs[b],statline_ypos[i],p_val=statistics[0][c],cles=statistics[1][c],fontsize=12,h=h)
-            statline_ypos += shift
-
-        ax.set_xticks(xlocs),ax.set_yticks(ylocs)
-        ax.set_xticklabels(xticklabs)
-        if lims:
-         
-            ax.set_xlim(min(xlocs)-2*bw,max(xlocs)+2*bw)
-            ax.set_ylim(min(ylocs),max(ylocs)+2*shift)
+                # Check to make sure that if we collapsed, we didn't accidentally select specific conditions cuz we want to see all of them
+                if collapse_factor != None:
+                    assert select_conditions == 'All' 
+            #* Get plot constants
+            if True:
+                n = metric.shape[-1]
+                width= 8.5 + n/2
+                height = width
+                bw = 0.4*width/n # box widths of all boxes combined takes up 30% of the width
+                axmain,ax = pf.make_figure_panel(figsize=(width,h),inset_size=(1.3,0.9,width-1.4,height-1.3))
+                axmain.set_aspect(0.6)
+                # ax.set_aspect(1.5)
+                xlocs = np.linspace(0,width,num=n)
+                if np.max(metric)<=100:
+                    shift = 5
+                elif np.max(metric)<=500:
+                    shift=20
+                else:
+                    shift=75
+                    
+                if num_yticks is None:
+                    num_yticks = 8
+                    
+                if ylocs is None:
+                    ylocs = np.linspace(np.min(metric),np.max(metric),num_yticks)
+            #* get xlocs and labels if we only want certain conditions
+            if True:
+                xlocs_bp = copy.deepcopy(xlocs)
+                xlocs_sa = copy.deepcopy(xlocs)
+                if select_conditions == 'f1':
+                    metric = metric[:,::2]
+                    bw = 0.4*width/metric.shape[-1]
+                    condition_nums = condition_nums[::2]
+                    xlocs_bp = xlocs_bp[::2] + (width/(2*n)) # CENTER the xlocs
+                    xlocs_sa = xlocs_sa + (width/(2*n))           
+                    xticklabs= xticklabs[::2]
+                elif select_conditions == 'f2':
+                    metric = metric[:,1::2]
+                    bw = 0.4*width/metric.shape[-1]
+                    condition_nums = condition_nums[1::2]
+                    xlocs_bp = xlocs_bp[1::2] - (width/(2*n)) # CENTER the xlocs
+                    xlocs_sa = xlocs_sa - (width/(2*n))           
+                    xticklabs= xticklabs[1::2]
+                elif select_conditions == 'All':
+                    pass
+                else:
+                    raise KeyError('select_conditions must be All, f1, or f2')
             
+            _,B = pf.multi_boxplot(ax,metric,xlocs=xlocs_bp,box_width = bw,colors = wheel.seth_blue)
+            dv.jitter_array(ax=ax,x_positions=xlocs_bp,data_list=metric.T, noise_scale=0.15, include_mean = True, circle_size=70)
+            
+            #* Get condition xlocs and plot stat annotation 
+            if True:
+                
+                condition_locs = self.create_combos(condition_nums)
+                # Swap condition locations so the long pval is on top (between 0 and 2)
+                if self.experiment == 'Exp1' and collapse_factor=='f1':
+                        condition_locs[-1],condition_locs[-2] = condition_locs[-2],condition_locs[-1]         
+        
+                top_whisk = np.array([item.get_ydata()[0] for item in B['caps']]) # Get the top whiskers of all the plots
+                if statline_y is None:
+                    statline_y = np.max(top_whisk) + shift//3 # put the stat annotation a little above the top whisker
+                
+                #* Plot the stat annotations
+                for c in condition_locs:
+                    a = int(c[0])
+                    b = int(c[1])
+                    # Skip the annotation if the pvalue is above 0.1
+                    if collapse_factor is None and statistics[stat_pval_id][c]>0.1 and cut_pvals == True:
+                        continue
+                    else:
+                        dv.stat_annotation(ax,xlocs_sa[a],xlocs_sa[b],statline_y,p_val=statistics[stat_pval_id][c],cles=statistics[stat_cles_id][c],
+                                        fontsize=12,h=h)
+                        statline_y += shift
 
-        ax.set_xlabel(xlab)
-        ax.set_ylabel(ylab)
-        ax.set_title(title, pad=title_pad)
-        axmain.set_axis_off()
-        plt.show()
+            ax.set_xticks(xlocs_bp),ax.set_yticks(ylocs)
+            ax.set_xticklabels(xticklabs)
+            if lims:
+            
+                ax.set_xlim(min(xlocs)-2*bw,max(xlocs)+2*bw)
+                ax.set_ylim(min(ylocs),max(ylocs)+2*shift)
+            
+            ax.set_xlabel(xlab)
+            ax.set_ylabel(ylab)
+            ax.set_title(title, pad=title_pad)
+            axmain.set_axis_off()
+            plt.show()
                 
