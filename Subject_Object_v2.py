@@ -43,7 +43,8 @@ class Subject():
             self.num_reaction_trials          = num_reaction_trials
             self.num_timing_trials            = num_timing_trials
             # Make sure I don't have the wrong experiment in there
-            assert self.experiment == 'Exp2' and self.num_task_blocks == 4 
+            if self.experiment == 'Exp2':
+                assert self.num_task_blocks == 4 
         #* Reaction Data
         if True:
             self.reaction_xypos_data            = reaction_xypos_data
@@ -599,11 +600,10 @@ class Subject():
         return self.reaction_cutoff
         
     def reaction_gamble_calculations(self):
-        if self.experiment == 'Exp2':
-            # self.reaction_time_threshold = self.select_true_reaction_time()
-            self.reaction_time_threshold = 200
-        elif self.experiment == 'Exp1':
-            # self.reaction_time_threshold = self.select_true_reaction_time()
+     
+        if self.reaction_time_metric_name == 'player_pos_reaction_time':
+            self.reaction_time_threshold = 230
+        else:
             self.reaction_time_threshold = 200
         # Gamble calculations
         if True:
