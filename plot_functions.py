@@ -63,7 +63,9 @@ def multi_boxplot(ax, data, xlocs, **kwargs):
     #         print(patch)
     #         patch.set_color(color)
         
-    return ax
+    return ax,bp
+    
+    
     
 #%%
 def scatter_with_correlation(ax,xdata,ydata,**kwargs):
