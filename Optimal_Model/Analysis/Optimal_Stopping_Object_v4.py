@@ -459,7 +459,7 @@ class Optimal_Decision_Time_Model():
             self.prob_incorrect_given_gamble_optimal_calc = (1 - self.prob_selecting_correct_target_gamble)*self.prob_making_given_gamble_optimal_calc
             
             # Doesn't matter if you make it, what's the probability you intend to go in the correct direction
-            self.phat_correct_optimal_calc = self.prob_selecting_reaction_optimal_calc + self.prob_selecting_gamble_optimal_calc*0.5
+            self.phat_correct_optimal_calc = self.prob_selecting_reaction_optimal_calc*1.0 + self.prob_selecting_gamble_optimal_calc*0.5
 
         # * Prob of win, incorrect, indecisions (All equations, no functions)
         if True:
@@ -550,7 +550,7 @@ class Optimal_Decision_Time_Model():
         
         # Find optimal gamble leave target time and sd
         self.optimal_gamble_leave_target_time_mean_calc    = self.optimal_decision_time + self.gamble_delay
-        self.optimal_gamble_leave_target_time_sd_calc       = np.sqrt(self.gamble_uncertainty**2 + self.cutoff_agent_gamble_sd_optimal_ER)
+        self.optimal_gamble_leave_target_time_sd_calc      = np.sqrt(self.gamble_uncertainty**2 + self.cutoff_agent_gamble_sd_optimal_ER**2)
         
         # Get the leave target time by weighing by how often they react and gamble
         wtd_optimal_leave_target_time = (self.prob_selecting_reaction_optimal_calc*self.optimal_reaction_leave_target_time_mean_calc + \
