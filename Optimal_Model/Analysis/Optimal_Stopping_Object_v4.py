@@ -174,7 +174,7 @@ class Optimal_Decision_Time_Model():
                     ax.plot((self.optimal_decision_time[i],self.optimal_decision_time[i]),(-1,self.exp_reward[i,self.optimal_index[i]]),c='w')
                     ax.scatter(self.optimal_decision_time[i],self.exp_reward[i,self.optimal_index[i]],c='w')
                     ax.text(self.optimal_decision_time[i],self.exp_reward[i,self.optimal_index[i]]+0.03,f'Optimal Decision Time = {self.optimal_decision_time[i]}',ha = 'center')
-            # ax.set_ylim(np.min(self.incorrect_cost,self.indecision_cost)-0.03,np.max(self.win_reward)+0.03)
+            ax.set_ylim(np.min(self.incorrect_cost,self.indecision_cost)-0.03,np.max(self.win_reward)+0.03)
             ax.set_xlim(0,1500)
             ax.set_xticks(np.arange(0,2000,300))
             ax.set_xlabel('Time (ms)')
@@ -301,15 +301,6 @@ class Optimal_Decision_Time_Model():
         # I think the gamble uncertainty is the uncertainty in the time it takes you to go from decision to movement and when you switch it's really uncertain 
 
         output = np.zeros((self.num_blocks,len(self.timesteps[0,:])))
-        # if self.known_gamble_uncertainty_on:
-        #     # IF it's an array, i'm using data and therefore agent SD is already included
-        #     if isinstance(self.known_gamble_uncertainty,np.ndarray):
-        #         combined_uncertainty = np.sqrt(self.known_gamble_uncertainty**2)# + self.decision_action_delay_uncertainty**2) # Prob of SELECTING only includes timing uncertainty and agent uncertainty
-        #         combined_uncertainty = np.tile(combined_uncertainty,(2000,1)).T
-        #     # If I'm using one number 
-        #     else:
-        #         combined_uncertainty = np.sqrt(self.known_gamble_uncertainty**2 + self.agent_sds**2)# + self.decision_action_delay_uncertainty**2)
-        # else:
         combined_uncertainty = np.sqrt(self.timing_uncertainty**2 + self.agent_sds**2)# + self.decision_action_delay_uncertainty**2) # Prob of SELECTING only includes timing uncertainty and agent uncertainty
         
         # I've determined that the decision time just needs to be after, doesn't necessarily need to be after some decision action delay
@@ -349,7 +340,7 @@ class Optimal_Decision_Time_Model():
         if self.known_gamble_uncertainty_on:
             self.gamble_reach_time_uncertainty = np.sqrt(self.known_gamble_uncertainty**2 + self.movement_uncertainty**2)
         else:
-            self.gamble_reach_time_uncertainty = np.sqrt(self.timing_uncertainty**2 + self.movement_uncertainty**2) # The timing uncertainy measure in coincidence task includes 
+            self.gamble_reach_time_uncertainty = np.sqrt(self.decision_action_delay_uncertainty**2 + self.movement_uncertainty**2) # The timing uncertainy measure in coincidence task includes 
         
         output = np.zeros((self.num_blocks,len(self.timesteps[0,:])))
         for i in range(self.num_blocks): 
@@ -504,8 +495,7 @@ class Optimal_Decision_Time_Model():
         elif self.known_gamble_uncertainty_on:
             self.gamble_uncertainty   = self.known_gamble_uncertainty
         else:
-            # Using total agent uncertainty, as opposed to the cutoff uncertainty, not sure which makes more sense
-            self.gamble_uncertainty   = np.sqrt(self.timing_uncertainty**2) # 
+            self.gamble_uncertainty   = np.sqrt(self.decision_action_delay_uncertainty**2) # ! Gamble uncertainty is the cognitive uncertainty from decision time to leave time, NOT timing uncertainty
  
     def calculate_prob_of_selecting_reaction_or_gamble(self):
         '''
@@ -535,14 +525,14 @@ class Optimal_Decision_Time_Model():
         # Unknown gamble delay and gamble uncertainty shouldn't theoretically affect the cutoff ability of the players
         # Get the agent's mean and sd for reaction and gambles at the optimal cutoff time
         self.cutoff_agent_reaction_mean_optimal_ER = np.zeros(self.num_blocks)
-        self.cutoff_agent_reaction_sd_optimal_ER = np.zeros(self.num_blocks)
-        self.cutoff_agent_gamble_mean_optimal_ER = np.zeros(self.num_blocks)
-        self.cutoff_agent_gamble_sd_optimal_ER = np.zeros(self.num_blocks)
+        self.cutoff_agent_reaction_sd_optimal_ER   = np.zeros(self.num_blocks)
+        self.cutoff_agent_gamble_mean_optimal_ER   = np.zeros(self.num_blocks)
+        self.cutoff_agent_gamble_sd_optimal_ER     = np.zeros(self.num_blocks)
         for i in range(self.num_blocks):
             self.cutoff_agent_reaction_mean_optimal_ER[i] = self.cutoff_agent_reaction_mean[i,self.optimal_index[i]]
-            self.cutoff_agent_reaction_sd_optimal_ER[i] = self.cutoff_agent_reaction_sd[i,self.optimal_index[i]]
-            self.cutoff_agent_gamble_mean_optimal_ER[i] = self.cutoff_agent_gamble_mean[i,self.optimal_index[i]]
-            self.cutoff_agent_gamble_sd_optimal_ER[i] = self.cutoff_agent_gamble_sd[i,self.optimal_index[i]]
+            self.cutoff_agent_reaction_sd_optimal_ER[i]   = self.cutoff_agent_reaction_sd[i,self.optimal_index[i]]
+            self.cutoff_agent_gamble_mean_optimal_ER[i]   = self.cutoff_agent_gamble_mean[i,self.optimal_index[i]]
+            self.cutoff_agent_gamble_sd_optimal_ER[i]     = self.cutoff_agent_gamble_sd[i,self.optimal_index[i]]
         
         # Optimal reaction leave target time is agent mean + reaction time
         self.optimal_reaction_leave_target_time_mean_calc = self.cutoff_agent_reaction_mean_optimal_ER + self.reaction_time
@@ -550,8 +540,12 @@ class Optimal_Decision_Time_Model():
         
         # Find optimal gamble leave target time and sd
         self.optimal_gamble_leave_target_time_mean_calc    = self.optimal_decision_time + self.gamble_delay
-        self.optimal_gamble_leave_target_time_sd_calc      = np.sqrt(self.gamble_uncertainty**2 + self.cutoff_agent_gamble_sd_optimal_ER**2)
-        
+        #! If these are on, then I'm using the gamble uncertainty from the task, which already includes the agent, so don't add the agent onto that
+        if self.unknown_gamble_uncertainty_on or self.known_gamble_uncertainty_on:
+            self.optimal_gamble_leave_target_time_sd_calc      = np.sqrt(self.gamble_uncertainty**2)
+        else:
+            self.optimal_gamble_leave_target_time_sd_calc      = np.sqrt(self.gamble_uncertainty**2 + self.cutoff_agent_gamble_sd_optimal_ER**2)
+
         # Get the leave target time by weighing by how often they react and gamble
         wtd_optimal_leave_target_time = (self.prob_selecting_reaction_optimal_calc*self.optimal_reaction_leave_target_time_mean_calc + \
                                             self.prob_selecting_gamble_optimal_calc*self.optimal_gamble_leave_target_time_mean_calc)/(self.prob_selecting_gamble_optimal_calc+self.prob_selecting_reaction_optimal_calc) 
