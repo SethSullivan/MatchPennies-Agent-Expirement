@@ -62,6 +62,7 @@ def get_skew(EX,EX2,EX3):
     EX3[EX3==np.inf] == 100000
     ans = (EX3 - 3*EX*(EX2 - EX**2) - EX**3)/((EX2 - EX**2)**(3/2))
     return ans
+
 def get_variance(EX,EX2):
     EX[EX==np.inf] == 100000
     EX2[EX2==np.inf] == 100000
@@ -126,6 +127,7 @@ class Optimal_Decision_Time_Model():
             # Prob of selecting the correct target
             self.prob_selecting_correct_target_reaction = kwargs.get('prob_selecting_correct_target_reaction',1.0)
             self.prob_selecting_correct_target_gamble   = kwargs.get('prob_selecting_correct_target_gamble',0.5)
+            
     #################################################################### 
     ################### ------Helper Functions-----#####################
     #################################################################### 
@@ -140,8 +142,6 @@ class Optimal_Decision_Time_Model():
         self.prob_win_when_both_reach = [0 if x<0.5 else x for x in self.prob_win_when_both_reach] # Anything under 0.5 becomes 0 
         return 2*np.array(self.prob_win_when_both_reach) - 1
 
-    
-       
     def replace_zero_with_nan(self,arr):
         arr[arr == 0] = np.nan
         return arr
@@ -166,8 +166,7 @@ class Optimal_Decision_Time_Model():
             ax.legend(fontsize = 8,loc = (0.01,0.1))
             ax.set_title(f'Gain Function for Decision Time\nAgent Mean,SD = {self.agent_means[i]},{self.agent_sds[i]}')#\n B = {B}')
             plt.show()  
-    
-    
+            
     #################################################################### 
     ################### ------ Run Model -----##########################
     ####################################################################
@@ -258,27 +257,10 @@ class Optimal_Decision_Time_Model():
         self.prob_indecision_reaction  = 1 - self.prob_making_reaction
         self.prob_indecision_gamble    = 1 - self.prob_making_gamble
         self.prob_indecision           = 1 - self.prob_making
-            # a = np.isclose(self.prob_win + self.prob_incorrect + self.prob_indecision, 1.0)
-            
-            # b = self.prob_win + self.prob_incorrect + self.prob_indecision
-            # for i in range(self.num_blocks):
-            #     plt.plot(b[i,:])
-            #     # plt.plot(self.prob_win[i,:],label='Win')
-            #     plt.plot(self.prob_incorrect_gamble[i,:],label='Prob Incorrect Gamble')
-            #     # plt.plot(self.prob_indecision[i,:],label='Indecision')
-            #     # plt.plot(self.prob_agent_has_gone[i,:],label='Prob Agent Go')
-            #     # plt.plot(self.prob_selecting_reaction[i,:],label='Prob Selecting Reaction')
-            #     plt.plot(self.prob_selecting_gamble[i,:],label='Prob Selecting Gamble')
-            #     plt.plot(self.prob_making_given_gamble[i,:],label='Prob Making Gamble')
-            #     plt.plot(self.prob_incorrect_given_gamble[i,:],label='Prob Incorrect Given Gamble')
-            #     # plt.plot(self.prob_making_given_reaction[i,:],label='Prob Making Reaction')
-            #     plt.legend(fontsize=8)
-            #     plt.ylim(0,1)
-            #     plt.show()
                 
         assert np.allclose(self.prob_win + self.prob_incorrect + self.prob_indecision, 1.0)
-        # * Expected reward calculation 
     
+    # * Expected reward calculation 
     def find_expected_reward(self):
         self.exp_reward_reaction    = (self.prob_win_reaction*self.win_reward + self.prob_incorrect_reaction*self.incorrect_cost + self.prob_indecision_reaction*self.indecision_cost)
         self.exp_reward_gamble     = (self.prob_win_gamble*self.win_reward + self.prob_incorrect_gamble*self.incorrect_cost + self.prob_indecision_gamble*self.indecision_cost)
@@ -438,7 +420,6 @@ class Optimal_Decision_Time_Model():
         self.true_player_minus_agent_gamble_leave_time   = self.optimal_true_gamble_leave_target_time_mean - self.optimal_expected_cutoff_agent_gamble_mean
                  
         return
-    
     
     # * Calculate experiment metrics possibly with unknown gamble stuff
     def get_true_experiment_metrics(self):        
