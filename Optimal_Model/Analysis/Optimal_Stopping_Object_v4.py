@@ -586,74 +586,85 @@ class Optimal_Decision_Time_Model():
         self.get_true_experiment_metrics()
         self.calculate_true_and_expected_gamble_reaction_metrics()
         
-    def mseloss_list(self,decision_time):
-        # Go through the model with these specific DECISION times
-        self.calculate_metrics_with_certain_decision_time(decision_time)
+    # def mseloss_list(self,decision_time):
+    #     # Go through the model with these specific DECISION times
+    #     self.calculate_metrics_with_certain_decision_time(decision_time)
         
-        # Get wins,indecisions,incorrects,and leave target times and compare to data
-        win_diff                 = abs(self.optimal_true_prob_win*100 - self.tune_data[0])
-        indecision_diff          = abs(self.optimal_true_prob_indecision*100 - self.tune_data[1])
-        incorrect_diff           = abs(self.optimal_true_prob_incorrect*100 - self.tune_data[2])
-        leave_target_time_diff   = abs(self.wtd_optimal_true_leave_target_time - self.tune_data[3])
-        perc_reactions_diff      = abs(self.optimal_true_prob_selecting_reaction*100 - self.tune_data[4])
-        perc_gambles_diff        = abs(self.optimal_true_prob_selecting_gamble*100 - self.tune_data[5])
-        reaction_leave_time_diff = abs(self.optimal_true_reaction_leave_target_time_mean - self.tune_data[6])
-        gamble_leave_time_diff   = abs(self.optimal_true_gamble_leave_target_time_mean - self.tune_data[7])
+    #     # Get wins,indecisions,incorrects,and leave target times and compare to data
+    #     win_diff                 = abs(self.optimal_true_prob_win*100 - self.tune_data[0])
+    #     indecision_diff          = abs(self.optimal_true_prob_indecision*100 - self.tune_data[1])
+    #     incorrect_diff           = abs(self.optimal_true_prob_incorrect*100 - self.tune_data[2])
+    #     leave_target_time_diff   = abs(self.wtd_optimal_true_leave_target_time - self.tune_data[3])
+    #     perc_reactions_diff      = abs(self.optimal_true_prob_selecting_reaction*100 - self.tune_data[4])
+    #     perc_gambles_diff        = abs(self.optimal_true_prob_selecting_gamble*100 - self.tune_data[5])
+    #     reaction_leave_time_diff = abs(self.optimal_true_reaction_leave_target_time_mean - self.tune_data[6])
+    #     gamble_leave_time_diff   = abs(self.optimal_true_gamble_leave_target_time_mean - self.tune_data[7])
         
-        metric_loss = np.array([win_diff,indecision_diff,incorrect_diff,leave_target_time_diff,
-                                perc_reactions_diff,perc_gambles_diff,reaction_leave_time_diff,gamble_leave_time_diff])
-        return metric_loss 
+    #     metric_loss = np.array([win_diff,indecision_diff,incorrect_diff,leave_target_time_diff,
+    #                             perc_reactions_diff,perc_gambles_diff,reaction_leave_time_diff,gamble_leave_time_diff])
+    #     return metric_loss 
     
-    def mse_loss_single(self,data,decision_time,true=True):
+    def mse_loss_single(self,metric_name,target,decision_time,true=True):
         self.calculate_metrics_with_certain_decision_time(decision_time)
-        if true==True:
-            loss = abs(self.wtd_optimal_true_leave_target_time - data)
-        else:
-            loss = abs(self.wtd_optimal_true_leave_target_time - data)
+        model_data = getattr(self,metric_name)
+        loss = abs(model_data - target)
         return loss
-        
-    def fit_model_to_data_list(self,data,true=True):
-        '''
-        data = [wins,indecisions,incorrects,decision_times,perc_reaction_decisions,perc_gamble_decisions]
-        '''
-        self.tune_data      = data
+    
+    def fit_model(self,metric_name,target):
         self.tune_timesteps = np.arange(900,1800,1)
-        decision_times      = np.array([self.tune_timesteps[0]]*self.num_blocks) # Start off with 600 for each parameter
-        num_metrics         = len(self.tune_data)
-        loss_store          = np.zeros((num_metrics,self.num_blocks,len(self.tune_timesteps))) # Each metric,each block, each timestep
-        
-        for i in range(self.num_blocks):
-            for j,t in enumerate(self.tune_timesteps):
-                decision_times[i] = t
-                metric_loss = self.mseloss_list(decision_times)
-                loss_store[:,i,j] = metric_loss[:,i]
-                
-        self.fit_decision_times = np.zeros((num_metrics,self.num_blocks))
-        for i in range(num_metrics):
-            for j in range(self.num_blocks):
-                self.fit_decision_times[i,j] = np.argmin(loss_store[i,j,:]) + np.min(self.tune_timesteps)
-        self.fit_decision_times_dict = {'Wins':self.fit_decision_times[0,:],'Indecisions':self.fit_decision_times[1,:],
-                                        'Incorrects':self.fit_decision_times[2,:],'Leave Target Time':self.fit_decision_times[3,:],
-                                        'Perc Reaction Decisions':self.fit_decision_times[4,:],'Perc Gamble Decisions':self.fit_decision_times[5,:],
-                                        'Reaction Leave Time': self.fit_decision_times[6,:],'Gamble Leave Time': self.fit_decision_times[7,:]}    
-    def fit_model_to_data_single(self,data):
-        self.tune_data = data
-        self.tune_timesteps = np.arange(900,1800,1)
-        self.tune_timesteps = np.arange(900,1800,1)
-        decision_times      = np.array([self.tune_timesteps[0]]*self.num_blocks) # Start off with 600 for each parameter
-        num_metrics         = len(self.tune_data)
+        decision_times      = np.array([self.tune_timesteps[0]]*self.num_blocks) 
         loss_store          = np.zeros((self.num_blocks,len(self.tune_timesteps))) # Each metric,each block, each timestep
-        
+
         for i in range(self.num_blocks):
             for j,t in enumerate(self.tune_timesteps):
                 decision_times[i] = t
-                metric_loss = self.mseloss_single(decision_times)
-                loss_store[i,j] = metric_loss[i]
+                loss_store[i,j] = self.mse_loss_single(metric_name,target,decision_times)[i]
+        self.fit_decision_times = np.argmin(loss_store,axis=1) + np.min(self.tune_timesteps)
+        self.calculate_metrics_with_certain_decision_time(self.fit_decision_times,final=True)  
+    # def fit_model_to_data_list(self,data,true=True):
+    #     '''
+    #     data = [wins,indecisions,incorrects,decision_times,perc_reaction_decisions,perc_gamble_decisions]
+    #     '''
+    #     self.tune_data      = data
+    #     self.tune_timesteps = np.arange(900,1800,1)
+    #     decision_times      = np.array([self.tune_timesteps[0]]*self.num_blocks) # Start off with 600 for each parameter
+    #     num_metrics         = len(self.tune_data)
+    #     loss_store          = np.zeros((num_metrics,self.num_blocks,len(self.tune_timesteps))) # Each metric,each block, each timestep
+        
+    #     for i in range(self.num_blocks):
+    #         for j,t in enumerate(self.tune_timesteps):
+    #             decision_times[i] = t
+    #             metric_loss = self.mseloss_list(decision_times)
+    #             loss_store[:,i,j] = metric_loss[:,i]
                 
-        self.fit_decision_times = np.zeros((self.num_blocks))
-        for i in range(self.num_blocks):
-            self.fit_decision_times[i] = np.argmin(loss_store[i,:]) + np.min(self.tune_timesteps)
-           
+    #     self.fit_decision_times = np.zeros((num_metrics,self.num_blocks))
+    #     for i in range(num_metrics):
+    #         for j in range(self.num_blocks):
+    #             self.fit_decision_times[i,j] = np.argmin(loss_store[i,j,:]) + np.min(self.tune_timesteps)
+    #     self.fit_decision_times_dict = {'Wins':self.fit_decision_times[0,:],'Indecisions':self.fit_decision_times[1,:],
+    #                                     'Incorrects':self.fit_decision_times[2,:],'Leave Target Time':self.fit_decision_times[3,:],
+    #                                     'Perc Reaction Decisions':self.fit_decision_times[4,:],'Perc Gamble Decisions':self.fit_decision_times[5,:],
+    #                                     'Reaction Leave Time': self.fit_decision_times[6,:],'Gamble Leave Time': self.fit_decision_times[7,:]}    
+    # # def fit_model_to_data_single(self,data):
+    #     self.tune_data = data
+    #     self.tune_timesteps = np.arange(900,1800,1)
+    #     self.tune_timesteps = np.arange(900,1800,1)
+    #     decision_times      = np.array([self.tune_timesteps[0]]*self.num_blocks) # Start off with 600 for each parameter
+    #     num_metrics         = len(self.tune_data)
+    #     loss_store          = np.zeros((self.num_blocks,len(self.tune_timesteps))) # Each metric,each block, each timestep
+        
+    #     for i in range(self.num_blocks):
+    #         for j,t in enumerate(self.tune_timesteps):
+    #             decision_times[i] = t
+    #             metric_loss = self.mseloss_single(decision_times)
+    #             loss_store[i,j] = metric_loss[i]
+                
+    #     self.fit_decision_times = np.zeros((self.num_blocks))
+    #     for i in range(self.num_blocks):
+    #         self.fit_decision_times[i] = np.argmin(loss_store[i,:]) + np.min(self.tune_timesteps)
+
+        
+   
 @njit(parallel=True)
 def find_optimal_decision_time_for_certain_metric(ob,metric_name = 'RPMT'):
     '''
