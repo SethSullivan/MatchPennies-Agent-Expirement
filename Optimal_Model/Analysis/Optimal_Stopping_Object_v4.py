@@ -195,8 +195,11 @@ class Optimal_Decision_Time_Model():
         if self.gamble_uncertainty_known:
             self.expected_gamble_uncertainty = self.true_gamble_uncertainty
         else:
-            self.expected_gamble_uncertainty = np.sqrt(self.decision_action_delay_uncertainty**2 + self.agent_sds**2)
-        
+            # if self.include_agent_sd_in_gamble == True:
+            self.expected_gamble_uncertainty = np.sqrt(self.timing_uncertainty**2 + self.agent_sds**2)
+            # else:
+                # self.expected_gamble_uncertainty = np.sqrt(self.decision_action_delay_uncertainty**2)
+
         #* Get reward and probabilities at every timestep
         self.find_probabilities_based_on_agent_behavior()
         self.find_prob_win_incorrect_indecisions()
@@ -243,13 +246,14 @@ class Optimal_Decision_Time_Model():
         self.prob_win_given_reaction        = self.prob_selecting_correct_target_reaction*self.prob_making_given_reaction
         self.prob_win_given_gamble          = self.prob_selecting_correct_target_gamble*self.prob_making_given_gamble
         
+        # Prob of incorrect
+        self.prob_incorrect_given_reaction  = (1 - self.prob_selecting_correct_target_reaction)*self.prob_making_given_reaction
+        self.prob_incorrect_given_gamble    = (1 - self.prob_selecting_correct_target_gamble)*self.prob_making_given_gamble
+        
         # Prob of indecision
         self.prob_indecision_given_reaction = 1 - self.prob_making_given_reaction
         self.prob_indecision_given_gamble   = 1 - self.prob_making_given_gamble
         
-        # Prob of incorrect
-        self.prob_incorrect_given_reaction  = (1 - self.prob_selecting_correct_target_reaction)*self.prob_making_given_reaction
-        self.prob_incorrect_given_gamble    = (1 - self.prob_selecting_correct_target_gamble)*self.prob_making_given_gamble
         
         # * Prob making on reaction and gamble depends on the prob of selecting reaction and gamble too
         self.prob_making_reaction      = self.prob_making_given_reaction*self.prob_selecting_reaction
@@ -257,20 +261,20 @@ class Optimal_Decision_Time_Model():
         self.prob_making               = self.prob_making_gamble + self.prob_making_reaction
         
         #* Multiply the actual probability of making it times the prob of getting it right for reaction and gamble
-        self.prob_win_reaction         = self.prob_selecting_correct_target_reaction*self.prob_making_given_reaction*self.prob_selecting_reaction
-        self.prob_win_gamble           = self.prob_selecting_correct_target_gamble*self.prob_making_given_gamble*self.prob_selecting_gamble
+        self.prob_win_reaction         = self.prob_win_given_reaction*self.prob_selecting_reaction
+        self.prob_win_gamble           = self.prob_win_given_gamble*self.prob_selecting_gamble
         self.prob_win                  = self.prob_win_reaction + self.prob_win_gamble
         
         #* Probability of receiving an incorrect cost
-        self.prob_incorrect_reaction   = (1 - self.prob_selecting_correct_target_reaction)*self.prob_making_given_reaction*self.prob_selecting_reaction
-        self.prob_incorrect_gamble     = (1 - self.prob_selecting_correct_target_gamble)*self.prob_making_given_gamble*self.prob_selecting_gamble
+        self.prob_incorrect_reaction   = self.prob_incorrect_given_reaction*self.prob_selecting_reaction
+        self.prob_incorrect_gamble     = self.prob_incorrect_given_gamble*self.prob_selecting_gamble
         self.prob_incorrect            = self.prob_incorrect_reaction + self.prob_incorrect_gamble
         
         #* Probability of receiving an indecision cost (No chance of success for indecision, so we just multiply by the two marginal probs calculated in last section)
-        self.prob_indecision_reaction  = 1 - self.prob_making_reaction
-        self.prob_indecision_gamble    = 1 - self.prob_making_gamble
-        self.prob_indecision           = 1 - self.prob_making
-                
+        self.prob_indecision_reaction  = self.prob_indecision_given_reaction*self.prob_selecting_reaction
+        self.prob_indecision_gamble    = self.prob_indecision_given_gamble*self.prob_selecting_gamble
+        self.prob_indecision           =  self.prob_indecision_reaction + self.prob_indecision_gamble
+        
         assert np.allclose(self.prob_win + self.prob_incorrect + self.prob_indecision, 1.0)
     
     # * Expected reward calculation 
@@ -498,8 +502,8 @@ class Optimal_Decision_Time_Model():
             self.optimal_true_prob_incorrect            = self.optimal_true_prob_incorrect_reaction + self.optimal_true_prob_incorrect_gamble
             
             #* Probability of receiving an indecision cost (No chance of success for indecision, so we just multiply by the two marginal probs calculated in last section)
-            self.optimal_true_prob_indecision_reaction  = 1 - self.optimal_true_prob_making_reaction
-            self.optimal_true_prob_indecision_gamble    = 1 - self.optimal_true_prob_making_gamble
+            self.optimal_true_prob_indecision_reaction  = (1 - self.optimal_true_prob_making_given_reaction)*self.optimal_true_prob_selecting_reaction
+            self.optimal_true_prob_indecision_gamble    = (1 - self.optimal_true_prob_making_given_gamble)*self.optimal_true_prob_selecting_gamble
             self.optimal_true_prob_indecision           = 1 - self.optimal_true_prob_making    
             
     def optimal_true_prob_making_for_reaction_and_gamble(self):
@@ -522,50 +526,46 @@ class Optimal_Decision_Time_Model():
         return output1,output2         
 
     def calculate_true_and_expected_gamble_reaction_metrics(self):
-        temp_prob_win        = self.replace_zero_with_nan(self.optimal_true_prob_win)
-        temp_prob_indecision = self.replace_zero_with_nan(self.optimal_true_prob_indecision)
-        temp_prob_incorrect  = self.replace_zero_with_nan(self.optimal_true_prob_incorrect)
         if True:
             # Percent of metric that were reaction and gamble
-            self.optimal_true_prob_wins_that_were_gamble          = (self.optimal_true_prob_win_gamble)/temp_prob_win
-            self.optimal_true_prob_indecisions_that_were_gamble   = (self.optimal_true_prob_indecision_gamble)/temp_prob_indecision
-            self.optimal_true_prob_incorrects_that_were_gamble    = (self.optimal_true_prob_incorrect_gamble)/temp_prob_incorrect
+            self.optimal_true_prob_wins_that_were_gamble           = np.divide(self.optimal_true_prob_win_gamble,self.optimal_true_prob_win,out=np.zeros_like(self.optimal_true_prob_win),where=self.optimal_true_prob_win!=0)
+            self.optimal_true_prob_indecisions_that_were_gamble    = np.divide(self.optimal_true_prob_indecision_gamble,self.optimal_true_prob_indecision,out=np.zeros_like(self.optimal_true_prob_indecision),where=self.optimal_true_prob_indecision!=0)
+            self.optimal_true_prob_incorrects_that_were_gamble     = np.divide(self.optimal_true_prob_incorrect_gamble,self.optimal_true_prob_incorrect,out=np.zeros_like(self.optimal_true_prob_incorrect),where=self.optimal_true_prob_incorrect!=0)
             
-            self.optimal_true_prob_wins_that_were_reaction        = (self.optimal_true_prob_win_reaction)/temp_prob_win
-            self.optimal_true_prob_indecisions_that_were_reaction = (self.optimal_true_prob_indecision_reaction)/temp_prob_indecision
-            self.optimal_true_prob_incorrects_that_were_reaction  = (self.optimal_true_prob_incorrect_reaction)/temp_prob_incorrect
-            
-            # Probent of reaction or gamble that were wins/incorrects/indecisions
-            self.optimal_true_prob_gambles_that_were_wins          = (self.optimal_true_prob_win_gamble)/self.optimal_expected_prob_selecting_gamble
-            self.optimal_true_prob_gambles_that_were_incorrects    = (self.optimal_true_prob_incorrect_gamble)/self.optimal_expected_prob_selecting_gamble
-            self.optimal_true_prob_gambles_that_were_indecisions   = (self.optimal_true_prob_indecision_gamble)/self.optimal_expected_prob_selecting_gamble
-            
-            self.optimal_true_prob_reactions_that_were_wins        = (self.optimal_true_prob_win_reaction)/self.optimal_expected_prob_selecting_reaction
-            self.optimal_true_prob_reactions_that_were_incorrects  = (self.optimal_true_prob_incorrect_reaction)/self.optimal_expected_prob_selecting_reaction
-            self.optimal_true_prob_reactions_that_were_indecisions = (self.optimal_true_prob_indecision_reaction)/self.optimal_expected_prob_selecting_reaction
-        
-        temp_prob_win        = self.replace_zero_with_nan(self.optimal_expected_prob_win)
-        temp_prob_indecision = self.replace_zero_with_nan(self.optimal_expected_prob_indecision)
-        temp_prob_incorrect  = self.replace_zero_with_nan(self.optimal_expected_prob_incorrect)
-        if True:
-            # Percent of metric that were reaction and gamble
-            self.optimal_expected_prob_wins_that_were_gamble          = (self.optimal_expected_prob_win_gamble)/temp_prob_win
-            self.optimal_expected_prob_indecisions_that_were_gamble   = (self.optimal_expected_prob_indecision_gamble)/temp_prob_indecision
-            self.optimal_expected_prob_incorrects_that_were_gamble    = (self.optimal_expected_prob_incorrect_gamble)/temp_prob_incorrect
-            
-            self.optimal_expected_prob_wins_that_were_reaction        = (self.optimal_expected_prob_win_reaction)/temp_prob_win
-            self.optimal_expected_prob_indecisions_that_were_reaction = (self.optimal_expected_prob_indecision_reaction)/temp_prob_indecision
-            self.optimal_expected_prob_incorrects_that_were_reaction  = (self.optimal_expected_prob_incorrect_reaction)/temp_prob_incorrect
+            self.optimal_true_prob_wins_that_were_reaction         = np.divide(self.optimal_true_prob_win_reaction,self.optimal_true_prob_win,out=np.zeros_like(self.optimal_true_prob_win),where=self.optimal_true_prob_win!=0)
+            self.optimal_true_prob_indecisions_that_were_reaction  = np.divide(self.optimal_true_prob_indecision_reaction,self.optimal_true_prob_indecision,out=np.zeros_like(self.optimal_true_prob_indecision),where=self.optimal_true_prob_indecision!=0)
+            self.optimal_true_prob_incorrects_that_were_reaction   = np.divide(self.optimal_true_prob_incorrect_reaction,self.optimal_true_prob_incorrect,out=np.zeros_like(self.optimal_true_prob_incorrect),where=self.optimal_true_prob_incorrect!=0)
             
             # Probent of reaction or gamble that were wins/incorrects/indecisions
-            self.optimal_expected_prob_gambles_that_were_wins          = (self.optimal_expected_prob_win_gamble)/self.optimal_expected_prob_selecting_gamble
-            self.optimal_expected_prob_gambles_that_were_incorrects    = (self.optimal_expected_prob_incorrect_gamble)/self.optimal_expected_prob_selecting_gamble
-            self.optimal_expected_prob_gambles_that_were_indecisions   = (self.optimal_expected_prob_indecision_gamble)/self.optimal_expected_prob_selecting_gamble
-            
-            self.optimal_expected_prob_reactions_that_were_wins        = (self.optimal_expected_prob_win_reaction)/self.optimal_expected_prob_selecting_reaction
-            self.optimal_expected_prob_reactions_that_were_incorrects  = (self.optimal_expected_prob_incorrect_reaction)/self.optimal_expected_prob_selecting_reaction
-            self.optimal_expected_prob_reactions_that_were_indecisions = (self.optimal_expected_prob_indecision_reaction)/self.optimal_expected_prob_selecting_reaction
 
+            self.optimal_true_prob_gambles_that_were_wins          = np.divide(self.optimal_true_prob_win_gamble,self.optimal_expected_prob_selecting_gamble,out=np.zeros_like(self.optimal_expected_prob_selecting_gamble),where=self.optimal_expected_prob_selecting_gamble!=0)
+            self.optimal_true_prob_gambles_that_were_incorrects    = np.divide(self.optimal_true_prob_incorrect_gamble,self.optimal_expected_prob_selecting_gamble,out=np.zeros_like(self.optimal_expected_prob_selecting_gamble),where=self.optimal_expected_prob_selecting_gamble!=0)
+            self.optimal_true_prob_gambles_that_were_indecisions   = np.divide(self.optimal_true_prob_indecision_gamble,self.optimal_expected_prob_selecting_gamble,out=np.zeros_like(self.optimal_expected_prob_selecting_gamble),where=self.optimal_expected_prob_selecting_gamble!=0)
+            
+            self.optimal_true_prob_reactions_that_were_wins        = np.divide(self.optimal_true_prob_win_reaction,self.optimal_expected_prob_selecting_reaction,out=np.zeros_like(self.optimal_expected_prob_selecting_reaction),where=self.optimal_expected_prob_selecting_reaction!=0)
+            self.optimal_true_prob_reactions_that_were_incorrects  = np.divide(self.optimal_true_prob_incorrect_reaction,self.optimal_expected_prob_selecting_reaction,out=np.zeros_like(self.optimal_expected_prob_selecting_reaction),where=self.optimal_expected_prob_selecting_reaction!=0)
+            self.optimal_true_prob_reactions_that_were_indecisions = np.divide(self.optimal_true_prob_indecision_reaction,self.optimal_expected_prob_selecting_reaction,out=np.zeros_like(self.optimal_expected_prob_selecting_reaction),where=self.optimal_expected_prob_selecting_reaction!=0)
+        
+        if True:
+            # Percent of metric that were reaction and gamble
+            self.optimal_expected_prob_wins_that_were_gamble           = np.divide(self.optimal_expected_prob_win_gamble,self.optimal_expected_prob_win,out=np.zeros_like(self.optimal_expected_prob_win),where=self.optimal_expected_prob_win!=0)
+            self.optimal_expected_prob_indecisions_that_were_gamble    = np.divide(self.optimal_expected_prob_indecision_gamble,self.optimal_expected_prob_indecision,out=np.zeros_like(self.optimal_expected_prob_indecision),where=self.optimal_expected_prob_indecision!=0)
+            self.optimal_expected_prob_incorrects_that_were_gamble     = np.divide(self.optimal_expected_prob_incorrect_gamble,self.optimal_expected_prob_incorrect,out=np.zeros_like(self.optimal_expected_prob_incorrect),where=self.optimal_expected_prob_incorrect!=0)
+            
+            self.optimal_expected_prob_wins_that_were_reaction         = np.divide(self.optimal_expected_prob_win_reaction,self.optimal_expected_prob_win,out=np.zeros_like(self.optimal_expected_prob_win),where=self.optimal_expected_prob_win!=0)
+            self.optimal_expected_prob_indecisions_that_were_reaction  = np.divide(self.optimal_expected_prob_indecision_reaction,self.optimal_expected_prob_indecision,out=np.zeros_like(self.optimal_expected_prob_indecision),where=self.optimal_expected_prob_indecision!=0)
+            self.optimal_expected_prob_incorrects_that_were_reaction   = np.divide(self.optimal_expected_prob_incorrect_reaction,self.optimal_expected_prob_incorrect,out=np.zeros_like(self.optimal_expected_prob_incorrect),where=self.optimal_expected_prob_incorrect!=0)
+            
+            # Probent of reaction or gamble that were wins/incorrects/indecisions
+
+            self.optimal_expected_prob_gambles_that_were_wins          = np.divide(self.optimal_expected_prob_win_gamble,self.optimal_expected_prob_selecting_gamble,out=np.zeros_like(self.optimal_expected_prob_selecting_gamble),where=self.optimal_expected_prob_selecting_gamble!=0)
+            self.optimal_expected_prob_gambles_that_were_incorrects    = np.divide(self.optimal_expected_prob_incorrect_gamble,self.optimal_expected_prob_selecting_gamble,out=np.zeros_like(self.optimal_expected_prob_selecting_gamble),where=self.optimal_expected_prob_selecting_gamble!=0)
+            self.optimal_expected_prob_gambles_that_were_indecisions   = np.divide(self.optimal_expected_prob_indecision_gamble,self.optimal_expected_prob_selecting_gamble,out=np.zeros_like(self.optimal_expected_prob_selecting_gamble),where=self.optimal_expected_prob_selecting_gamble!=0)
+            
+            self.optimal_expected_prob_reactions_that_were_wins        = np.divide(self.optimal_expected_prob_win_reaction,self.optimal_expected_prob_selecting_reaction,out=np.zeros_like(self.optimal_expected_prob_selecting_reaction),where=self.optimal_expected_prob_selecting_reaction!=0)
+            self.optimal_expected_prob_reactions_that_were_incorrects  = np.divide(self.optimal_expected_prob_incorrect_reaction,self.optimal_expected_prob_selecting_reaction,out=np.zeros_like(self.optimal_expected_prob_selecting_reaction),where=self.optimal_expected_prob_selecting_reaction!=0)
+            self.optimal_expected_prob_reactions_that_were_indecisions = np.divide(self.optimal_expected_prob_indecision_reaction,self.optimal_expected_prob_selecting_reaction,out=np.zeros_like(self.optimal_expected_prob_selecting_reaction),where=self.optimal_expected_prob_selecting_reaction!=0)
+        
     ###########################################################
     #############----- Fit Model Functions ---- ###############
     ###########################################################
