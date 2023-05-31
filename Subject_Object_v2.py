@@ -830,7 +830,11 @@ class Group():
                 else:
                     arr = np.array([getattr(o,a) for o in self.objects])
                     setattr(self,a,arr)
-                
+                    
+        #* Assert that there are no double subjects
+        for o in self.objects[1:]:
+            assert ~(self.objects[0].player_task_leave_time==o.player_task_leave_time).all()
+            
     def flatten_across_all_subjects(self):
         self.all_player_task_leave_times_each_condition            = self.concatenate_across_subjects('player_task_leave_time')
         self.all_player_task_gamble_leave_times_each_condition     = self.concatenate_across_subjects('player_gamble_task_leave_time')
@@ -882,7 +886,7 @@ class Group():
         return ans
     
     def predict_decision_times(self,gamble_delay,weird_delay):    
-        self.player_predicted_decision_time = np.array([(o.perc_reaction_decisions/100)*(o.agent_reaction_leave_time_mean) + (o.perc_gamble_decisions/100)*(o.player_gamble_leave_time_mean - gamble_delay) for o in self.objects]) 
+        self.player_predicted_decision_time = np.array([(o.perc_reaction_decisions/100)*(np.median(o.agent_reaction_leave_time,axis=1)) + (o.perc_gamble_decisions/100)*(np.median(o.agent_reaction_leave_time,axis=1) - gamble_delay) for o in self.objects]) 
         self.predict_stopping_time_from_reactions_gambles(weird_delay=weird_delay)
     
     def predict_stopping_time_from_reactions_gambles(self,weird_delay):
