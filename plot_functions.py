@@ -4,8 +4,6 @@ import data_visualization as dv
 from scipy import stats
 wheel = dv.ColorWheel()
 
-
-#%%
 def make_figure_panel(figsize, inset_size, dpi = 100):
     fig,axmain = plt.subplots(dpi = dpi, figsize = figsize)
     
@@ -16,7 +14,7 @@ def make_figure_panel(figsize, inset_size, dpi = 100):
     ax = axmain.inset_axes(inset_size,transform=axmain.transData)
     
     return axmain,ax
-#%% Box plot with option to make double boxplot
+
 def multi_boxplot(ax, data, xlocs, **kwargs):
     """
     box_lw       = kwargs.get("box_lw", 1.2)
@@ -27,10 +25,10 @@ def multi_boxplot(ax, data, xlocs, **kwargs):
     ax           = kwargs.get("ax", None)
     """
     box_lw       = kwargs.get("box_lw", 1.2)
-    box_width    = kwargs.get("box_width", .5)
+    box_width    = kwargs.get("box_width", .75)
     whisker_lw   = kwargs.get("whisker_lw", 2.0)
 
-    color = kwargs.get("colors",  "#0BB8FD")
+    color = kwargs.get("colors",  wheel.seth_blue)
     #box properties
     box_props,whisker_props,cap_props,median_props = {},{},{},{}
     box_props = {"facecolor": "none", "edgecolor" : color, "linewidth": box_lw, "alpha": 1}
@@ -44,7 +42,7 @@ def multi_boxplot(ax, data, xlocs, **kwargs):
     #median properties
     median_props = {"linewidth" : whisker_lw, "color": color}
 
-
+    include_means = kwargs.get('include_means')
     '''Make Box Plots'''
     ax.patch.set_alpha(0)
     
@@ -56,18 +54,16 @@ def multi_boxplot(ax, data, xlocs, **kwargs):
     
     bp = ax.boxplot(filtered_data,   positions = xlocs, patch_artist = True,  showfliers = False, 
                 boxprops = box_props  , whiskerprops = whisker_props,
-                capprops = cap_props, medianprops = median_props, widths = box_width)
+                capprops = cap_props, medianprops = median_props, widths = box_width,
+                )
     
     # for element in bp:
     #     for patch, color in zip(bp[element],colors):
     #         print(patch)
     #         patch.set_color(color)
-        
+    
     return ax,bp
-    
-    
-    
-#%%
+
 def scatter_with_correlation(ax,xdata,ydata,**kwargs):
     facecolor = kwargs.get('facecolor','none')
     edgecolor = kwargs.get('edgecolor',wheel.seth_blue)
@@ -75,6 +71,7 @@ def scatter_with_correlation(ax,xdata,ydata,**kwargs):
     alpha = kwargs.get('alpha',1.0)
     lw = kwargs.get('linewidths',1.0)
     correlation = kwargs.get('correlation',True)
+    show_spear = kwargs.get('show_spear',True)
     
     xdata = xdata.flatten()
     ydata= ydata.flatten()
@@ -83,12 +80,14 @@ def scatter_with_correlation(ax,xdata,ydata,**kwargs):
     y = lm.slope*x + lm.intercept
     spear_r = stats.spearmanr(xdata, ydata)
     ax.scatter(xdata,ydata,c=facecolor,s = markersize,alpha = alpha,linewidths=lw, edgecolors=edgecolor)
+    
     if correlation:
         ax.plot(x,y,c='grey')
-
+        if show_spear:
+            ax.text(0.5,0.5,f'r = {spear_r.statistic:0.3f}\n p = {spear_r.pvalue:0.3f}',transform=ax.transAxes)
+            
     return ax,spear_r
 
-#%%
 def unity_optimal_plot(ax,xdata,ydata,**kwargs):
     figsize = kwargs.get('figsize',(10,5))
     num_blocks = kwargs.get('num_blocks',6)
@@ -125,3 +124,63 @@ def unity_optimal_plot(ax,xdata,ydata,**kwargs):
         ax1.set_xlim(-0.3,1.2)
         ax1.set_xticks([])
         ax1.spines.bottom.set_visible(False)
+        
+def multiple_models_boxplot(ax,data,true_gamble_delay=None,true_gamble_sd=None,expected_gamble_delay=None,expected_gamble_sd=None,
+                            group_model_true=None,group_model_expected=None, 
+                            optimal_model_true = None,optimal_model_expected=None,**kwargs):
+    bw = kwargs.get('box_width',0.75)
+    box_color = kwargs.get('colors',wheel.seth_blue)
+    xlocs = kwargs.get('xlocs')
+    legend_loc = kwargs.get('legend_loc','best')
+    include_means = kwargs.get('include_means')
+    jitter = kwargs.get('jitter',True)
+    labels = kwargs.get('labels')
+    remove_parentheses_from_labels = kwargs.get('remove_parentheses_from_labels',False)
+    linestyles = kwargs.get('linestyles')
+    ax,bp = multi_boxplot(ax,data,xlocs,box_width = bw,colors=box_color,include_means=include_means)
+    if jitter:
+        dv.jitter_array(ax=ax,x_positions=xlocs,data_list=data.T, noise_scale=0.01, include_mean = False, circle_size=30)
+    
+    line_colors = kwargs.get('line_colors')
+    if line_colors is None:
+        line_colors = [wheel.rak_red,wheel.yellow,wheel.green,wheel.burnt_orange]
+    if remove_parentheses_from_labels is False:
+        labels = [f'Model Prediction of Group\n (Account for Guessing)',
+                  f'Model Prediction of Group',
+                  f'Theoretical Optimal',
+                  f'Theoretical Optimal\n(Not Accounting for Guessing)',
+        ]
+           
+    else:
+        labels = ['Model Prediction of Group','Model Prediction of Group',
+                  'Theoretical Optimal','Theoretical Optimal']
+        
+    if linestyles is None:
+        linestyles = ['-','-','-','-']
+    legend_colors = []
+    legend_labels = []
+    legend_linestyles    = []
+    
+    if group_model_true is not None:
+        ax.plot(xlocs,group_model_true,c=line_colors[0],marker='o',zorder=200,ls=linestyles[0])
+        legend_colors.append(line_colors[0])
+        legend_labels.append(labels[0])#\n(Gamble Delay/Uncertainty)')
+        legend_linestyles.append(linestyles[0])
+    if group_model_expected is not None:
+        ax.plot(xlocs,group_model_expected,c=line_colors[1],marker='o',zorder=200,ls=linestyles[1])
+        legend_colors.append(line_colors[1])
+        legend_labels.append(labels[1])
+        legend_linestyles.append(linestyles[1])
+    if optimal_model_true is not None:
+        ax.plot(xlocs,optimal_model_true,c=line_colors[2],marker='*',markersize=10,zorder=200,ls = linestyles[2])
+        legend_colors.append(line_colors[2])
+        legend_labels.append(labels[2])
+        legend_linestyles.append(linestyles[2])
+    if optimal_model_expected is not None:
+        ax.plot(xlocs,optimal_model_expected,c=line_colors[3],marker='*',markersize=10, zorder=200,ls=linestyles[3])
+        legend_colors.append(line_colors[3])
+        legend_labels.append(labels[3])
+        legend_linestyles.append(linestyles[3])
+        
+    dv.legend(ax,legend_labels,legend_colors,ls = legend_linestyles,loc=legend_loc,fontsize=9)
+    
