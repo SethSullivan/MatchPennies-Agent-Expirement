@@ -18,25 +18,30 @@ def pickle_subject_objects(subject_list,load_path):
     return subject_objects
 
 def generate_subject_objects(experiment):
+    #* Experiment specific Constants
     if True:
         experiment = experiment
 
         if experiment == 'Exp1':
-            coincidence_trials = 50
-            interval_trials = 50
-            reaction_trials = 50
-            reaction_blocks = 3
-            trial_time = 5000
-            task_blocks = 6
-            task_trials = 80
+            COINCIDENCE_TRIALS = 50
+            INTERVAL_TRIALS = 50
+            REACTION_TRIALS = 50
+            REACTION_BLOCKS = 3
+            REACTION_TRIAL_TIME = 5000
+            TASK_BLOCKS = 6
+            TASK_TRIALS = 80
         elif experiment == 'Exp2':
-            coincidence_trials = 50
-            interval_trials = 50
-            reaction_trials = 100
-            reaction_blocks = 3
-            trial_time = 8000
-            task_blocks = 4
-            task_trials = 80
+            COINCIDENCE_TRIALS = 50
+            INTERVAL_TRIALS = 50
+            REACTION_TRIALS = 100
+            REACTION_BLOCKS = 3
+            REACTION_TRIAL_TIME = 8000
+            TASK_BLOCKS = 4
+            TASK_TRIALS = 80
+        TIMING_TRIALS = 50
+        TRIAL_TIME = 2000
+        
+    #* Get pull list and num subjects
     if True:
         # Fields pull and pull list
         PATH = f'D:\\OneDrive - University of Delaware - o365\\Subject_Data\\MatchPennies_Agent_{experiment}'
@@ -47,28 +52,28 @@ def generate_subject_objects(experiment):
             figures_pull_list = pull_file.read().splitlines()
         with open(PATH+"\\Fields_Pull.txt", "r") as fields_pull:
             fields_pull = fields_pull.read().splitlines()
-        num_subjects = len(figures_pull_list)
+        NUM_SUBJECTS = len(figures_pull_list)
     #* Load control data
     if True:
         # ---------------Controls-------------------------
-        reaction_trial_start          = np.zeros((num_subjects, reaction_blocks, reaction_trials))*np.nan
-        reaction_filenames            = np.empty((num_subjects, reaction_blocks,reaction_trials),dtype = object)
-        agent_reaction_leave_time     = np.zeros((num_subjects, reaction_blocks,reaction_trials))*np.nan
-        agent_reaction_decision_array = np.empty((num_subjects, reaction_blocks,reaction_trials))*np.nan
-        reaction_trial_type_array     = np.zeros((num_subjects, reaction_blocks,reaction_trials))*np.nan
-        reaction_xypos_data           = np.zeros((num_subjects, reaction_blocks,reaction_trials, trial_time,2))*np.nan
-        reaction_dist_data            = np.zeros((num_subjects, reaction_blocks,reaction_trials, trial_time))*np.nan
-        reaction_xyvelocity_data      = np.zeros((num_subjects, reaction_blocks,reaction_trials, trial_time,2))*np.nan
-        reaction_speed_data           = np.zeros((num_subjects, reaction_blocks,reaction_trials, trial_time))*np.nan
-        # reaction_xyforce_data         = np.zeros((num_subjects, reaction_blocks,reaction_trials, trial_time,2))*np.nan
-        # reaction_force_data           = np.zeros((num_subjects, reaction_blocks,reaction_trials, trial_time))*np.nan 
+        reaction_trial_start          = np.zeros((NUM_SUBJECTS, REACTION_BLOCKS, REACTION_TRIALS))*np.nan
+        reaction_filenames            = np.empty((NUM_SUBJECTS, REACTION_BLOCKS,REACTION_TRIALS),dtype = object)
+        agent_reaction_leave_time     = np.zeros((NUM_SUBJECTS, REACTION_BLOCKS,REACTION_TRIALS))*np.nan
+        agent_reaction_decision_array = np.empty((NUM_SUBJECTS, REACTION_BLOCKS,REACTION_TRIALS))*np.nan
+        reaction_trial_type_array     = np.zeros((NUM_SUBJECTS, REACTION_BLOCKS,REACTION_TRIALS))*np.nan
+        reaction_xypos_data           = np.zeros((NUM_SUBJECTS, REACTION_BLOCKS,REACTION_TRIALS, REACTION_TRIAL_TIME,2))*np.nan
+        reaction_dist_data            = np.zeros((NUM_SUBJECTS, REACTION_BLOCKS,REACTION_TRIALS, REACTION_TRIAL_TIME))*np.nan
+        reaction_xyvelocity_data      = np.zeros((NUM_SUBJECTS, REACTION_BLOCKS,REACTION_TRIALS, REACTION_TRIAL_TIME,2))*np.nan
+        reaction_speed_data           = np.zeros((NUM_SUBJECTS, REACTION_BLOCKS,REACTION_TRIALS, REACTION_TRIAL_TIME))*np.nan
+        # reaction_xyforce_data         = np.zeros((NUM_SUBJECTS, REACTION_BLOCKS,REACTION_TRIALS, REACTION_TRIAL_TIME,2))*np.nan
+        # reaction_force_data           = np.zeros((NUM_SUBJECTS, REACTION_BLOCKS,REACTION_TRIALS, REACTION_TRIAL_TIME))*np.nan 
 
-        coincidence_trial_start                       = np.zeros((num_subjects, coincidence_trials))*np.nan
-        coincidence_reach_time                        = np.zeros((num_subjects, coincidence_trials))*np.nan
-        interval_trial_start                          = np.zeros((num_subjects, interval_trials))*np.nan
-        interval_reach_time                           = np.zeros((num_subjects, interval_trials))*np.nan
+        coincidence_trial_start                       = np.zeros((NUM_SUBJECTS, COINCIDENCE_TRIALS))*np.nan
+        coincidence_reach_time                        = np.zeros((NUM_SUBJECTS, COINCIDENCE_TRIALS))*np.nan
+        interval_trial_start                          = np.zeros((NUM_SUBJECTS, INTERVAL_TRIALS))*np.nan
+        interval_reach_time                           = np.zeros((NUM_SUBJECTS, INTERVAL_TRIALS))*np.nan
 
-        for i in range(num_subjects):
+        for i in range(NUM_SUBJECTS):
             subname = figures_pull_list[i]
             data_path = PATH+f'\\Subjects_Analyzed\\{subname}\\'
             reaction_trial_start[i,...]          = dill.load(open(data_path + f'{subname}_reaction_trial_start.pkl','rb'))          
@@ -86,25 +91,17 @@ def generate_subject_objects(experiment):
             coincidence_reach_time[i,:]          = dill.load(open(data_path + f'{subname}_coincidence_reach_time.pkl', 'rb'))
     #* Load Task Data
     if True:
-        path1 = PATH+'\\'+'Sub1_Task'
-        task_df = pd.read_csv(path1+f'\\Sub1_TaskTrial_Table.csv')
-        task_df = task_df.loc[task_df['Condition type']==3] # Only get the task condition 
-        num_trials = int(task_df.iloc[-1]['Block_Step']) # number of trials in each block
-        num_blocks = int(task_df.iloc[-1]['Block_Row'])
-        tot_trials = int(num_trials*num_blocks)
-        trial_time = int(task_df.iloc[0]['Condition time'])
-        trial_time = 2000
         # ---------------Controls-------------------------
-        task_trial_start          = np.zeros((num_subjects, task_blocks, task_trials))*np.nan
-        task_filenames            = np.empty((num_subjects, task_blocks,task_trials),dtype = object)
-        agent_task_leave_time     = np.zeros((num_subjects, task_blocks,task_trials))*np.nan
-        agent_task_decision_array = np.empty((num_subjects, task_blocks,task_trials))*np.nan
-        task_xypos_data           = np.zeros((num_subjects, task_blocks,task_trials, trial_time,2))*np.nan
-        task_dist_data            = np.zeros((num_subjects, task_blocks,task_trials, trial_time))*np.nan
-        task_xyvelocity_data      = np.zeros((num_subjects, task_blocks,task_trials, trial_time,2))*np.nan
-        task_speed_data           = np.zeros((num_subjects, task_blocks,task_trials, trial_time))*np.nan 
+        task_trial_start          = np.zeros((NUM_SUBJECTS, TASK_BLOCKS, TASK_TRIALS))*np.nan
+        task_filenames            = np.empty((NUM_SUBJECTS, TASK_BLOCKS,TASK_TRIALS),dtype = object)
+        agent_task_leave_time     = np.zeros((NUM_SUBJECTS, TASK_BLOCKS,TASK_TRIALS))*np.nan
+        agent_task_decision_array = np.empty((NUM_SUBJECTS, TASK_BLOCKS,TASK_TRIALS))*np.nan
+        task_xypos_data           = np.zeros((NUM_SUBJECTS, TASK_BLOCKS,TASK_TRIALS, TRIAL_TIME,2))*np.nan
+        task_dist_data            = np.zeros((NUM_SUBJECTS, TASK_BLOCKS,TASK_TRIALS, TRIAL_TIME))*np.nan
+        task_xyvelocity_data      = np.zeros((NUM_SUBJECTS, TASK_BLOCKS,TASK_TRIALS, TRIAL_TIME,2))*np.nan
+        task_speed_data           = np.zeros((NUM_SUBJECTS, TASK_BLOCKS,TASK_TRIALS, TRIAL_TIME))*np.nan 
         
-        for i in range(num_subjects):
+        for i in range(NUM_SUBJECTS):
             subname = figures_pull_list[i]
             data_path = PATH+f'\\Subjects_Analyzed\\{subname}\\'
             task_trial_start[i,...]          = dill.load(open(data_path + f'{subname}_task_trial_start.pkl','rb'))                      
@@ -117,30 +114,14 @@ def generate_subject_objects(experiment):
             
     #* Generate Subject Objects
     if True:
-        path1 = PATH+'\\'+'Sub1_Task'
-        task_df = pd.read_csv(path1+f'\\Sub1_TaskTrial_Table.csv')
-        task_df = task_df.loc[task_df['Condition type']==3] # Only get the task condition 
-        num_trials = int(task_df.iloc[-1]['Block_Step']) # number of trials in each block
-        if experiment == 'Exp2':
-            num_blocks = int(task_df.iloc[-1]['Block_Row'])
-            num_reaction_trials = 100
-        else:
-            num_blocks = int(task_df.iloc[-1]['Block_Row']/2)
-            num_reaction_trials = 50
-        tot_trials = int(num_trials*num_blocks)
-        trial_time = int(task_df.iloc[0]['Condition time']) + 500
-        task_df_columns = len(fields_pull)
-        trial_table = np.empty((num_subjects, tot_trials, 4), int)
-
         data_path = 'Subjects_Analyzed\\'
         subject_objects = []
-        for i in range(num_subjects):
+        for i in range(NUM_SUBJECTS):
             subname = figures_pull_list[i]
             print(subname)
             subject_object = Subject_Object_v2.Subject(
-                subject = subname,experiment = experiment, num_task_trials_initial = num_trials, num_task_blocks = num_blocks, num_reaction_blocks = 3, num_reaction_trials = num_reaction_trials,num_timing_trials = 50,
-                reaction_trial_start = reaction_trial_start[i],
-                reaction_xypos_data = reaction_xypos_data[i],reaction_dist_data = reaction_dist_data[i],
+                subject = subname,experiment = experiment, num_task_trials_initial = TASK_TRIALS, num_task_blocks = TASK_BLOCKS, num_reaction_blocks = REACTION_BLOCKS, num_reaction_trials = REACTION_TRIALS,num_timing_trials = TIMING_TRIALS,
+                reaction_trial_start = reaction_trial_start[i], reaction_xypos_data = reaction_xypos_data[i],reaction_dist_data = reaction_dist_data[i],
                 reaction_xyvelocity_data = reaction_xyvelocity_data[i],reaction_speed_data = reaction_speed_data[i],reaction_trial_type_array = reaction_trial_type_array[i], agent_reaction_decision_array = agent_reaction_decision_array[i],
                 agent_reaction_leave_time = agent_reaction_leave_time[i], 
                 
@@ -149,5 +130,5 @@ def generate_subject_objects(experiment):
                 agent_task_leave_time = agent_task_leave_time[i], agent_task_decision_array = agent_task_decision_array[i],
                                         )
             subject_objects.append(subject_object)
-            
+    assert TRIAL_TIME == 2000    
     return subject_objects
