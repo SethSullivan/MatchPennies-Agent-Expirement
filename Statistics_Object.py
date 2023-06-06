@@ -85,13 +85,6 @@ class Statistics():
 
     def pairwise_bootstrap(self,data,condition_nums=None,alternative='two-sided',
                            **kwargs):
-        #* Need these to be able to be generated incase I don't want to run an anova 
-        # This is a use case for the mini reaction time experiment
-        if not hasattr(self,'M'):
-            self.M = kwargs.get('M')
-        if not hasattr(self,'test'):
-            self.test= kwargs.get('test')    
-        
         def _check_parity(combo):
             a = int(combo[0])
             b = int(combo[1])
@@ -99,6 +92,14 @@ class Statistics():
                 return True
             else:
                 return False
+            
+        #* Need these to be able to be generated incase I don't want to run an anova 
+        # This is a use case for the mini reaction time experiment
+        if not hasattr(self,'M'):
+            self.M = kwargs.get('M')
+        if not hasattr(self,'test'):
+            self.test= kwargs.get('test')    
+        
         #* If not collapsing, then go through every combination
         if condition_nums is None: 
             if self.experiment == 'Exp1':
@@ -112,7 +113,6 @@ class Statistics():
         else:
             combos = ["".join(map(str, comb)) for comb in combinations(condition_nums, 2)] # Creates list of unique combos, order doesn't matter
 
-            
         c=-1
         pvals = np.empty((len(combos)))
         cles1 = np.empty((len(combos)))
@@ -270,10 +270,9 @@ class Statistics():
                 
                 #* Get condition xlocs and plot stat annotation 
                 if True:
-                    
                     condition_locs = self.create_combos(condition_nums)
                     # Swap condition locations so the long pval is on top (between 0 and 2)
-                    if self.experiment == 'Exp1' and collapse_factor=='f1':
+                    if self.experiment == 'Exp1' and (collapse_factor=='f1' or collapse_factor == None):
                             condition_locs[-1],condition_locs[-2] = condition_locs[-2],condition_locs[-1]         
             
                     top_whisk = np.array([item.get_ydata()[0] for item in B['caps']]) # Get the top whiskers of all the plots
