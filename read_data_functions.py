@@ -53,6 +53,7 @@ def generate_subject_objects(experiment):
         with open(PATH+"\\Fields_Pull.txt", "r") as fields_pull:
             fields_pull = fields_pull.read().splitlines()
         NUM_SUBJECTS = len(figures_pull_list)
+    
     #* Load control data
     if True:
         # ---------------Controls-------------------------
@@ -89,6 +90,7 @@ def generate_subject_objects(experiment):
             interval_reach_time[i,:]             = dill.load(open(data_path + f'{subname}_interval_reach_time.pkl', 'rb'))
             coincidence_trial_start[i,:]         = dill.load(open(data_path + f'{subname}_coincidence_trial_start.pkl', 'rb'))
             coincidence_reach_time[i,:]          = dill.load(open(data_path + f'{subname}_coincidence_reach_time.pkl', 'rb'))
+    
     #* Load Task Data
     if True:
         # ---------------Controls-------------------------
