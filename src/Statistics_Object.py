@@ -2,7 +2,7 @@ import numpy as np
 import analysis_utilities as au
 import pingouin as pg
 from itertools import combinations
-import plot_functions as pf
+import src.plot_functions as pf
 import data_visualization as dv
 import matplotlib.pyplot as plt
 import copy

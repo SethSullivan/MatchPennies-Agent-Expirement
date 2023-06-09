@@ -6,7 +6,7 @@ import pandas as pd
 import sys
 import itertools
 sys.path.insert(0,r'D:\OneDrive - University of Delaware - o365\Desktop\MatchPennies-Agent-Expirement')
-import Subject_Object_v2
+import src.Subject_Object_v2 as Subject_Object_v2
 importlib.reload(Subject_Object_v2)
 
 def pickle_subject_objects(subject_list,load_path):
