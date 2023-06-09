@@ -125,7 +125,8 @@ def unity_optimal_plot(ax,xdata,ydata,**kwargs):
         ax1.set_xticks([])
         ax1.spines.bottom.set_visible(False)
         
-def multiple_models_boxplot(ax,data,true_gamble_delay=None,true_gamble_sd=None,expected_gamble_delay=None,expected_gamble_sd=None,
+def multiple_models_boxplot(ax,data,show_boxplot=True,true_gamble_delay=None,true_gamble_sd=None,
+                            expected_gamble_delay=None,expected_gamble_sd=None,
                             group_model_true=None,group_model_expected=None, 
                             optimal_model_true = None,optimal_model_expected=None,**kwargs):
     bw = kwargs.get('box_width',0.75)
@@ -137,13 +138,14 @@ def multiple_models_boxplot(ax,data,true_gamble_delay=None,true_gamble_sd=None,e
     labels = kwargs.get('labels')
     remove_parentheses_from_labels = kwargs.get('remove_parentheses_from_labels',False)
     linestyles = kwargs.get('linestyles')
-    ax,bp = multi_boxplot(ax,data,xlocs,box_width = bw,colors=box_color,include_means=include_means)
-    if jitter:
-        dv.jitter_array(ax=ax,x_positions=xlocs,data_list=data.T, noise_scale=0.01, include_mean = False, circle_size=30)
+    if show_boxplot:
+        ax,bp = multi_boxplot(ax,data,xlocs,box_width = bw,colors=box_color,include_means=include_means)
+        if jitter:
+            dv.jitter_array(ax=ax,x_positions=xlocs,data_list=data.T, noise_scale=0.01, include_mean = False, circle_size=30)
     
     line_colors = kwargs.get('line_colors')
     if line_colors is None:
-        line_colors = [wheel.rak_red,wheel.yellow,wheel.green,wheel.burnt_orange]
+        line_colors = [wheel.rak_red,wheel.yellow,wheel.pink,wheel.light_orange]
     if remove_parentheses_from_labels is False:
         labels = [f'Model Prediction of Group\n (Account for Guessing)',
                   f'Model Prediction of Group',
