@@ -2,6 +2,7 @@ Group_Figures/
 Individual_Figures/
 Modeling Figures/
 Model Objects/
+results/
 __pycache__/
 *.png
 *.pkl
