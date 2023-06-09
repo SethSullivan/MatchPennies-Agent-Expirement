@@ -266,7 +266,7 @@ class Statistics():
                         raise KeyError('select_conditions must be All, even, or odd')
                 
                 _,B = pf.multi_boxplot(ax,metric,xlocs=xlocs_bp,box_width = bw,colors = box_colors,)
-                dv.jitter_array(ax=ax,x_positions=xlocs_bp,data_list=metric.T, noise_scale=0.15, include_mean = True, circle_size=70)
+                dv.jitter_array(ax=ax,x_positions=xlocs_bp,data_list=metric.T, noise_scale=0.15, include_mean = True, circle_size=50)
                 
                 #* Get condition xlocs and plot stat annotation 
                 if True:
