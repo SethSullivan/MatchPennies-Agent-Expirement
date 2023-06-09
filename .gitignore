@@ -4,6 +4,7 @@ Modeling Figures/
 Model Objects/
 results/
 __pycache__/
+src.egg-info/
 *.png
 *.pkl
 .vscode/
