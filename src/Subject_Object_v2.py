@@ -475,7 +475,7 @@ class Subject():
     def find_correct_initial_decisions(self):
         # * Find initial reach diretion using x positino
         self.time_for_init_reach_direction = self.player_task_leave_time_nan + 30 # Look 30 milliseconds later
-        indices = np.arange(0,self.task_xypos_data[...,0].shape[-1],1,dtype=np.float) # Use arange to create an array of INDICES, will mask this later to get the exact point we want
+        indices = np.arange(0,self.task_xypos_data[...,0].shape[-1],1,dtype=float) # Use arange to create an array of INDICES, will mask this later to get the exact point we want
         tile_shape = list(self.task_xypos_data[...,0].shape[:-1]) # get the shape of the desired array but not the last or second to last (bc last is 0 or 1 for x and y)
         tile_shape.append(1) # Append 1 to the list of the tile_shape
         self.indices_tiled = np.tile(indices,tuple(tile_shape))  # Turn tile shape back to tuple so it works with np tile, then tile the indices we got in same shape of data
