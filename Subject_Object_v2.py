@@ -213,14 +213,15 @@ class Subject():
         
         self.player_task_leave_time         = getattr(self,self.task_leave_time_metric_name).astype(float)
         self.player_task_leave_time_nan     = self.player_task_leave_time
-        self.player_task_leave_time_nan[self.player_task_leave_time==0] = np.nan     
+        self.player_task_leave_time_nan[self.player_task_leave_time==self.big_num] = np.nan     
         self.player_task_movement_time      = getattr(self,self.task_movement_time_metric_name).astype(float)
         self.player_task_movement_time_nan  = self.player_task_movement_time
-        self.player_task_movement_time_nan[self.player_task_movement_time==0] = np.nan          
+        self.player_task_movement_time_nan[self.player_task_movement_time==self.big_num] = np.nan          
         self.reaction_time                  = getattr(self,self.reaction_time_metric_name).astype(float)
         self.reaction_time_cutoff_mask      = (self.reaction_time>600)|(self.reaction_time<170)
         self.reaction_time                  = self.mask_array(self.reaction_time,~self.reaction_time_cutoff_mask)
         self.reaction_movement_time         = getattr(self,self.reaction_movement_time_metric_name).astype(float)
+        self.reaction_movement_time[self.reaction_movement_time>450] = np.nan
         self.player_minus_agent_task_leave_time = self.player_task_leave_time - self.agent_task_leave_time
         self.player_minus_agent_task_leave_time_nan = self.player_task_leave_time_nan - self.agent_task_leave_time
         
@@ -272,86 +273,82 @@ class Subject():
         # self.binned_metrics()
         
         # Estimate true reaction time during task 
-    def get_target_reach_times(self):
-        # Argmax finds the first id where the condition is true
-        ans1 = np.argmax(np.sqrt((self.reaction_xypos_data[...,0]-self.target1x)**2 + (self.reaction_xypos_data[...,1]-self.target1y)**2) < self.target1_radius,axis=2) # Find when people enter the right target
-        ans2 = np.argmax(np.sqrt((self.reaction_xypos_data[...,0]-self.target2x)**2 + (self.reaction_xypos_data[...,1]-self.target2y)**2) < self.target2_radius,axis=2)
-        # DOING THIS WAY instaed of doing np.maximum, bc sometimes people end up reahcing BOTH targets, so np.argmax returns a non-zero value (NOT RELEVANT FOR REACTION)
-        # Therefore, i can't take the maximum in that case, so I need to make 0 equal 100000 so I can then take the minimum
-        ans1[ans1 == 0] = 100000
-        ans2[ans2 == 0] = 100000
-        return ans1,ans2
+  
     
     def find_leave_times(self):
-        #*------------------------------------- REACTION --------------------------
-        self.enter_right_target_id,\
-        self.enter_left_target_id = self.get_target_reach_times()
-        # Same for all metrics
-        self.player_reaction_reach_time  = np.minimum(self.enter_right_target_id,self.enter_left_target_id).astype(float)
-        #* Determine the decision array based on target selection or indecision
-        self.player_reaction_decision_array = np.zeros((self.num_reaction_blocks,self.num_reaction_trials))*np.nan
-        self.player_reaction_decision_array[self.enter_right_target_id<self.enter_left_target_id] = 1 # Player selected right target
-        self.player_reaction_decision_array[self.enter_left_target_id<self.enter_right_target_id] = -1
-        self.player_reaction_decision_array[self.player_reaction_reach_time>1500] = 0
-        self.player_reaction_decision_array[self.player_reaction_reach_time==0] = 0
-        
+        self.big_num = 100000
+        def _get_target_reach_times(xydata):
+            # Argmax finds the first id where the condition is true
+            ans1 = np.argmax(np.sqrt((xydata[...,0]-self.target1x)**2 + 
+                                     (xydata[...,1]-self.target1y)**2) < self.target1_radius,axis=2) # Find when people enter the right target
+            ans2 = np.argmax(np.sqrt((xydata[...,0]-self.target2x)**2 + 
+                                     (xydata[...,1]-self.target2y)**2) < self.target2_radius,axis=2)
+            # DOING THIS WAY instaed of doing np.maximum, bc sometimes people end up reahcing BOTH targets, so np.argmax returns a non-zero value (NOT RELEVANT FOR REACTION)
+            # Therefore, i can't take the maximum in that case, so I need to make 0 equal 100000 so I can then take the minimum
+            ans1[ans1 == 0] = self.big_num
+            ans2[ans2 == 0] = self.big_num
+            return ans1,ans2
+        #*----------------------- REACTION --------------------------
         #* Get leave time (pos, velocity lin, velocity thresh)
         self.player_pos_reaction_leave_time                 = np.argmax(self.reaction_dist_data > self.start_radius,axis=2)
         self.player_velocity_reaction_leave_time_thresh     = np.argmax(self.reaction_speed_data > 0.05,axis=2)
         self.player_velocity_reaction_leave_time_linear     = self.get_linear_movement_onset_time(self.reaction_speed_data)
+        
         #* In exp1, the reaction stimulus is at the trial start time, so don't subtract off anything
         if self.experiment == 'Exp1':
+            #* Get reach time ids
+            self.reaction_enter_right_target_id,\
+            self.reaction_enter_left_target_id = _get_target_reach_times(self.reaction_xypos_data)
+            self.reaction_enter_right_target_id = self.reaction_enter_right_target_id[2]
+            self.reaction_enter_left_target_id = self.reaction_enter_left_target_id[2]
+            self.player_reaction_reach_time                     = np.minimum(self.reaction_enter_right_target_id,
+                                                                             self.reaction_enter_left_target_id).astype(float)
             self.player_pos_reaction_time                       = self.player_pos_reaction_leave_time[2] #! Last row is the actual reaction, first two are timing for exp1
-            self.player_pos_reaction_movement_time              = self.player_reaction_reach_time[2] - self.player_pos_reaction_leave_time[2]
+            self.player_pos_reaction_movement_time              = self.player_reaction_reach_time - self.player_pos_reaction_leave_time[2]
             self.player_velocity_reaction_time_thresh           = self.player_velocity_reaction_leave_time_thresh[2] 
-            self.player_velocity_reaction_movement_time_thresh  = self.player_reaction_reach_time[2] - self.player_velocity_reaction_leave_time_thresh[2]
+            self.player_velocity_reaction_movement_time_thresh  = self.player_reaction_reach_time - self.player_velocity_reaction_leave_time_thresh[2]
 
             self.player_velocity_reaction_time_linear           = self.player_velocity_reaction_leave_time_linear[2]  
-            self.player_velocity_reaction_movement_time_linear  = self.player_reaction_reach_time[2] - self.player_velocity_reaction_leave_time_linear[2] 
-        
+            self.player_velocity_reaction_movement_time_linear  = self.player_reaction_reach_time - self.player_velocity_reaction_leave_time_linear[2] 
+            
+
+
         #* In exp2, the reaction stimulus is the agent
         elif self.experiment == 'Exp2':
+            #* Get reach time ids
+            self.reaction_enter_right_target_id,\
+            self.reaction_enter_left_target_id = _get_target_reach_times(self.reaction_xypos_data)
+            self.player_reaction_reach_time                     = np.minimum(self.reaction_enter_right_target_id,
+                                                                             self.reaction_enter_left_target_id).astype(float)
             self.player_pos_reaction_time                       = self.player_pos_reaction_leave_time - self.agent_reaction_leave_time
             self.player_pos_reaction_movement_time              = self.player_reaction_reach_time - self.player_pos_reaction_leave_time
             self.player_velocity_reaction_time_thresh           = self.player_velocity_reaction_leave_time_thresh - self.agent_reaction_leave_time
             self.player_velocity_reaction_movement_time_thresh  = self.player_reaction_reach_time - self.player_velocity_reaction_leave_time_thresh
             self.player_velocity_reaction_time_linear           = self.player_velocity_reaction_leave_time_linear - self.agent_reaction_leave_time
             self.player_velocity_reaction_movement_time_linear  = self.player_reaction_reach_time - self.player_velocity_reaction_leave_time_linear 
-            
-        #* Using velocity with 0.05 threshold
-        #* Using velocity with linear estimation
         
-        # self.player_force_leave_time_thresh             = np.argmax(self.reaction_force_data > 0.05,axis=2)
-        # self.player_force_reaction_time_thresh          = self.player_force_leave_time_thresh - self.agent_reaction_leave_time
-        # self.player_force_reaction_movement_time_thresh          = self.player_velocity_reaction_reach_time_thresh - self.player_reaction_reach_time
-        # # Using force with linear estimation 
-        # self.player_force_reaction_leave_time_linear            = self.get_linear_reaction_time(self.reaction_force_data)
-        # self.player_force_reaction_time_linear                  = self.player_force_reaction_leave_time_linear - self.agent_reaction_leave_time
-        # self.player_force_reaction_movement_time_linear         = self.player_reaction_reach_time - self.player_velocity_reaction_leave_time_linear
+        self.player_reaction_decision_array = np.zeros((self.reaction_enter_right_target_id.shape))*np.nan
+        #* Determine the decision array based on target selection or indecision
+        self.player_reaction_decision_array[self.reaction_enter_right_target_id<self.reaction_enter_left_target_id] = 1 # Player selected right target
+        self.player_reaction_decision_array[self.reaction_enter_left_target_id<self.reaction_enter_right_target_id] = -1
+        self.player_reaction_decision_array[self.player_reaction_reach_time>1500] = 0
+        self.player_reaction_decision_array[self.player_reaction_reach_time==0] = 0
         
         #* -------------------------------------------TASK ------------------------------------------------------------
         # Same for all metrics
-        self.player_task_decision_array = np.zeros((self.num_task_blocks,self.num_task_trials))*np.nan
-
-        self.q = np.argmax(np.sqrt((self.task_xypos_data[...,0]-self.target1x)**2 + (self.task_xypos_data[...,1]-self.target1y)**2) < self.target1_radius,axis=2) # Find when people enter the right target
-        self.r = np.argmax(np.sqrt((self.task_xypos_data[...,0]-self.target2x)**2 + (self.task_xypos_data[...,1]-self.target2y)**2) < self.target2_radius,axis=2)
-        # DOING THIS WAY instaed of doing np.maximum, bc sometimes people end up reahcing BOTH targets, so np.argmax returns a non-zero value
-        # Therefore, i can't take the maximum in that case, so I need to make 0 equal 100000 so I can then take the minimum
-        big_num = 100000
-        self.q_zero_mask = self.q == 0
-        self.q[self.q_zero_mask] = big_num
-        self.r_zero_mask = self.r == 0
-        self.r[self.r_zero_mask] = big_num
-        self.player_task_reach_time  = np.minimum(self.q,self.r).astype(float)
-        
+        #* Get reach time ids
+        self.task_enter_right_target_id,\
+        self.task_enter_left_target_id = _get_target_reach_times(self.task_xypos_data)
+        self.player_task_reach_time  = np.minimum(self.task_enter_right_target_id,self.task_enter_left_target_id).astype(float)
         #* Determine the decision array based on target selection or indecision
-        self.player_task_decision_array[self.q<self.r] = 1 # Player selected right target
-        self.player_task_decision_array[self.r<self.q] = -1
+        self.player_task_decision_array = np.zeros((self.num_task_blocks,self.num_task_trials))*np.nan
+        self.player_task_decision_array[self.task_enter_right_target_id<self.task_enter_left_target_id] = 1 # Player selected right target
+        self.player_task_decision_array[self.task_enter_left_target_id<self.task_enter_right_target_id] = -1
         self.player_task_decision_array[self.player_task_reach_time>1500] = 0
-        self.player_task_decision_array[self.player_task_reach_time==big_num] = 0
+        self.player_task_decision_array[self.player_task_reach_time==self.big_num] = 0
         
         #* Make this nan AFTER getting decision array, so it counts those as indecisions
-        self.player_task_reach_time[self.player_task_reach_time==big_num] = np.nan # If task reach time is 0, then they never reached a target, so can't calculate movement time from that trial, so make it nan
+        self.player_task_reach_time[self.player_task_reach_time==self.big_num] = np.nan # If task reach time is 0, then they never reached a target, so can't calculate movement time from that trial, so make it nan
         
         #* Using position
         self.player_pos_task_leave_time                 = np.argmax(self.task_dist_data > self.start_radius,axis=2)
@@ -365,14 +362,6 @@ class Subject():
         self.player_velocity_task_leave_time_linear        = self.get_linear_movement_onset_time(self.task_speed_data)
         self.player_velocity_task_time_linear              = self.player_velocity_task_leave_time_linear - self.agent_task_leave_time
         self.player_velocity_task_movement_time_linear     = self.player_task_reach_time - self.player_velocity_task_leave_time_linear 
-        
-        # self.player_force_leave_time_thresh             = np.argmax(self.task_force_data > 0.05,axis=2)
-        # self.player_force_task_time_thresh          = self.player_force_leave_time_thresh - self.agent_task_leave_time
-        # self.player_force_task_movement_time_thresh          = self.player_velocity_task_reach_time_thresh - self.player_task_reach_time
-        # # Using force with linear estimation 
-        # self.player_force_task_leave_time_linear            = self.get_linear_task_time(self.task_force_data)
-        # self.player_force_task_time_linear                  = self.player_force_task_leave_time_linear - self.agent_task_leave_time
-        # self.player_force_task_movement_time_linear         = self.player_task_reach_time - self.player_velocity_task_leave_time_linear
     
     def parse_reaction_task_trials_exp2(self):
         
@@ -485,7 +474,7 @@ class Subject():
         
     def find_correct_initial_decisions(self):
         # * Find initial reach diretion using x positino
-        self.time_for_init_reach_direction = self.player_task_leave_time_nan + 30 # Look 10 milliseconds later
+        self.time_for_init_reach_direction = self.player_task_leave_time_nan + 30 # Look 30 milliseconds later
         indices = np.arange(0,self.task_xypos_data[...,0].shape[-1],1,dtype=np.float) # Use arange to create an array of INDICES, will mask this later to get the exact point we want
         tile_shape = list(self.task_xypos_data[...,0].shape[:-1]) # get the shape of the desired array but not the last or second to last (bc last is 0 or 1 for x and y)
         tile_shape.append(1) # Append 1 to the list of the tile_shape
@@ -509,9 +498,9 @@ class Subject():
         self.init_reach_direction[self.right_mask] = 1
         self.init_reach_direction[~self.right_mask] = -1
         # Get task decision array without indecisions, just to check
-        self.player_task_decision_array_check = np.zeros((self.num_task_blocks,self.num_task_trials))*np.nan
-        self.player_task_decision_array_check[self.q<self.r] = 1 # Player selected right target
-        self.player_task_decision_array_check[self.r<self.q] = -1
+        self.player_task_decision_array_check = np.zeros((self.player_task_decision_array.shape))*np.nan
+        self.player_task_decision_array_check[self.task_enter_right_target_id<self.task_enter_left_target_id] = 1 # Player selected right target
+        self.player_task_decision_array_check[self.task_enter_left_target_id<self.task_enter_right_target_id] = -1
         # Compare that with the target they selected to check
         self.check_init_reach_direction = self.init_reach_direction == self.player_task_decision_array_check
         
