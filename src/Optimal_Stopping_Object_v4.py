@@ -330,15 +330,14 @@ class Optimal_Decision_Time_Model():
         temp = 1 - self.cdf(np.array([0]),diff.flatten(),tiled_combined_uncertainty.flatten())
         output = temp.reshape(self.timesteps.shape) 
         
-        
+        #* Keep this around if I need to make sure the numba version is correct
         # output_old = np.zeros((self.num_blocks,len(self.timesteps[0,:])))
         # for i in range(self.num_blocks):   
         #     diff = self.timesteps[i,:] - self.agent_means[i]
         #     diff = diff.astype(np.float64)
         #     cutoff = np.full_like(diff,self.weird_reaction_gamble_cutoff)
         #     sd = np.full_like(diff,combined_uncertainty[i])
-        #     output_old[i,:] = 1 - stats.norm.cdf(cutoff,diff,sd) 
-            
+        #     output_old[i,:] = 1 - stats.norm.cdf(cutoff,diff,sd)    
         # assert np.isclose(output_old,output).all()
         
         return output
@@ -364,7 +363,8 @@ class Optimal_Decision_Time_Model():
         #! Cutoff agent distribution isn't normal, so might not be able to simply add these, problem for later
         mu = self.cutoff_agent_reaction_mean + self.reaction_plus_movement_time
         sd = np.sqrt(self.cutoff_agent_reaction_sd**2 + self.reaction_plus_movement_uncertainty**2)
-        prob_make_reaction = self.cdf(self.tiled_1500,mu,sd)        
+        temp = self.cdf(np.array([1500]),mu.flatten(),sd.flatten())
+        prob_make_reaction = temp.reshape(self.timesteps.shape)    
         return prob_make_reaction
     
     def prob_making_for_gamble(self):
@@ -375,7 +375,8 @@ class Optimal_Decision_Time_Model():
             self.gamble_reach_time_sd     = np.sqrt(self.expected_gamble_uncertainty**2 + self.movement_uncertainty**2 + self.timing_uncertainty**2)        
         mu = self.gamble_reach_time_mean
         sd = np.tile(self.gamble_reach_time_sd,(self.timesteps.shape[-1],1)).T
-        output = self.cdf(self.tiled_1500,mu,sd)
+        temp = self.cdf(np.array([1500]),mu.flatten(),sd.flatten())
+        output = temp.reshape(self.timesteps.shape)
         # assert np.isclose(output,output1).all(), ('Vector CDF NOT WORKING')
         return output
     
@@ -462,11 +463,28 @@ class Optimal_Decision_Time_Model():
         return
     
     # * Calculate experiment metrics possibly with unknown gamble stuff
-    def get_true_experiment_metrics(self):        
+    def get_true_experiment_metrics(self):   
+        def _optimal_true_prob_making_for_reaction_and_gamble():
+            '''
+            Takes into account (un)known gamble delay
+            '''
+            
+            # Reaction calc
+            self.optimal_true_reaction_reach_time = self.optimal_expected_cutoff_agent_reaction_mean + self.reaction_plus_movement_time
+            self.reaction_reach_time_uncertainty = np.sqrt(self.optimal_expected_cutoff_agent_reaction_sd**2 + self.reaction_plus_movement_uncertainty**2)
+            output1 = self.cdf(np.array([1500]),self.optimal_true_reaction_reach_time,self.reaction_reach_time_uncertainty)
+            
+            # Gamble Calc
+            self.optimal_true_gamble_reach_time_mean = self.optimal_decision_time + self.true_gamble_delay + self.movement_time
+            # ! True Gamble uncertainty is from data, which includes the agent's uncertainty, so we don't add that here 
+            self.optimal_true_gamble_reach_time_uncertainty = np.sqrt(self.true_gamble_uncertainty**2 + self.movement_uncertainty**2) 
+            output2 = self.cdf(np.array([1500]),self.optimal_true_gamble_reach_time_mean,self.optimal_true_gamble_reach_time_uncertainty)
+            return output1,output2
+         
         if True:
             # ! Here we calculate the probability of making a reaction GIVEN we know that you selected reaction (conditional)
             # Prob of making it to the target
-            self.optimal_true_prob_making_given_reaction,self.optimal_true_prob_making_given_gamble = self.optimal_true_prob_making_for_reaction_and_gamble()
+            self.optimal_true_prob_making_given_reaction,self.optimal_true_prob_making_given_gamble = _optimal_true_prob_making_for_reaction_and_gamble()
             
             # Prob of win
             self.optimal_true_prob_win_given_reaction = self.prob_selecting_correct_target_reaction*self.optimal_true_prob_making_given_reaction
@@ -515,26 +533,7 @@ class Optimal_Decision_Time_Model():
             #* Probability of receiving an indecision cost (No chance of success for indecision, so we just multiply by the two marginal probs calculated in last section)
             self.optimal_true_prob_indecision_reaction  = (1 - self.optimal_true_prob_making_given_reaction)*self.optimal_true_prob_selecting_reaction
             self.optimal_true_prob_indecision_gamble    = (1 - self.optimal_true_prob_making_given_gamble)*self.optimal_true_prob_selecting_gamble
-            self.optimal_true_prob_indecision           = 1 - self.optimal_true_prob_making    
-            
-    def optimal_true_prob_making_for_reaction_and_gamble(self):
-        '''
-        Takes into account (un)known gamble delay
-        '''
-        # Reaction calc
-        self.optimal_true_reaction_reach_time = self.optimal_expected_cutoff_agent_reaction_mean + self.reaction_plus_movement_time
-        self.reaction_reach_time_uncertainty = np.sqrt(self.optimal_expected_cutoff_agent_reaction_sd**2 + self.reaction_plus_movement_uncertainty**2)
-        x = np.full_like(self.optimal_true_reaction_reach_time,1500.0)
-        output1 = self.cdf(x,self.optimal_true_reaction_reach_time,self.reaction_reach_time_uncertainty)
-        
-        # Gamble Calc
-        self.optimal_true_gamble_reach_time_mean = self.optimal_decision_time + self.true_gamble_delay + self.movement_time
-        # ? Gamble uncertainty without the (un)known uncertainty includes agent as well
-        # But also, the (un)known uncertainty from the data INCLUDES the agent bc people are experiencing the agent
-        # How do we parse between people's switch uncertainty and the uncertainty in gamble times due to the agent?
-        self.optimal_true_gamble_reach_time_uncertainty = np.sqrt(self.true_gamble_uncertainty**2 + self.movement_uncertainty**2) 
-        output2 = self.cdf(x,self.optimal_true_gamble_reach_time_mean,self.optimal_true_gamble_reach_time_uncertainty)
-        return output1,output2         
+            self.optimal_true_prob_indecision           = 1 - self.optimal_true_prob_making             
 
     def calculate_true_and_expected_gamble_reaction_metrics(self):
         if True:
