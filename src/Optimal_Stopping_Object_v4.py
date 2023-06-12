@@ -2,10 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import stats
 import scipy.special as sc
-import numba_scipy # Needs to be imported so that numba recognizes scipy
 import numba as nb
+import numba_scipy # Needs to be imported so that numba recognizes scipy (specificall scipy special erf)
 import data_visualization as dv
-from numba import njit
 import copy
 from numba_stats import norm
 wheel = dv.ColorWheel()
@@ -23,7 +22,7 @@ Added in the flexibility to change reward around instead of agent mean and sd
 #####################################################
 ###### Helper Functions to get the Moments ##########
 #####################################################
-@njit(parallel=True)
+@nb.njit(parallel=True)
 def get_moments(timesteps,agent_means,time_means,agent_sds,time_sds):
     EX_R,EX2_R,EX3_R = np.zeros((len(agent_means),len(time_means))),np.zeros((len(agent_means),len(time_means))),np.zeros((len(agent_means),len(time_means)))
     EX_G,EX2_G,EX3_G = np.zeros((len(agent_means),len(time_means))),np.zeros((len(agent_means),len(time_means))),np.zeros((len(agent_means),len(time_means)))
@@ -70,9 +69,16 @@ def get_variance(EX,EX2):
     ans[ans<0] = np.nan
     return ans
 
-@nb.vectorize([nb.float64(nb.float64,nb.float64,nb.float64)])
-def vector_cdf(x,mu,sd):
-    ans = norm.cdf(x,mu,sd)
+# @nb.njit(parallel=True)
+def numba_cdf(x,mu_arr,sig_arr):
+    if x.ndim==2: # If x dim is 1, then we have the x as the (6,1800)
+        ans = np.zeros(x.shape)
+        for i in range(len(mu_arr)):
+            ans[i,:] = norm.cdf(x[i,:],mu_arr[i],sig_arr[i])
+    else: # Else, we have the mu_arr as the (6,1800) but we pass it in flattened
+        ans = np.zeros(mu_arr.shape)
+        for i in range(len(mu_arr)):
+            ans[i] = norm.cdf(x,mu_arr[i],sig_arr[i])
     return ans
 
 class Optimal_Decision_Time_Model():
@@ -80,17 +86,22 @@ class Optimal_Decision_Time_Model():
         # Numba or not 
         self.numba = kwargs.get('numba',False)
         if self.numba:
-            self.cdf = vector_cdf
+            self.cdf = numba_cdf
         else:
             self.cdf = stats.norm.cdf
+        # assert np.isclose(numba_cdf(np.arange(0,10,1),5,2),stats.norm.cdf(np.arange(0,10,1),5,2)).all()
         # Task Conditions
         self.experiment = kwargs.get('experiment')
         self.num_blocks  = kwargs.get('num_blocks')
         self.agent_means = kwargs.get('agent_means',np.array([1000,1000,1100,1100,1200,1200])) # If exp2, need to be np.array([1100]*4)
         self.agent_sds   = kwargs.get('agent_sds',np.array([50,150,50,150,50,150])) # If exp2, need to be np.array([50]*4)
         self.nsteps      = 1
-        self.timesteps   = kwargs.get('timesteps',np.tile(np.arange(0,1800,self.nsteps),(self.num_blocks,1)))
+        self.timesteps   = kwargs.get('timesteps',np.tile(np.arange(0.0,1800.0,self.nsteps),(self.num_blocks,1)))
+        
         self.tiled_1500  = np.full_like(self.timesteps,1500)
+        self.tiled_agent_means = np.tile(self.agent_means,(self.timesteps.shape[-1],1)).T
+        self.tiled_agent_sds = np.tile(self.agent_sds,(self.timesteps.shape[-1],1)).T
+        
         self.neg_inf_cut_off_value = -100000
         # * Model Variation Parameters:
         if True:
@@ -295,12 +306,10 @@ class Optimal_Decision_Time_Model():
     ######################################################################################################
     def prob_agent_go(self):
         '''
-        For exp2 with changing reward, just need agent_means and agent_sds to be length of 4 of the same numbers
+        Calculates the probability that the agent has gone by each timestep
         '''
         output = np.zeros((self.num_blocks,len(self.timesteps[0,:])))
-        output_check = np.zeros((self.num_blocks,len(self.timesteps[0,:])))
-        for i in range(self.num_blocks):
-            output[i,:] = self.cdf(self.timesteps[i,:],self.agent_means[i],self.agent_sds[i])
+        output = self.cdf(self.timesteps,self.agent_means,self.agent_sds)
         return output
     
     def prob_of_selecting_reaction(self): 
@@ -315,15 +324,23 @@ class Optimal_Decision_Time_Model():
 
         output = np.zeros((self.num_blocks,len(self.timesteps[0,:])))
         combined_uncertainty = np.sqrt(self.timing_uncertainty**2 + self.agent_sds**2) # Prob of SELECTING only includes timing uncertainty and agent uncertainty
-        
+        tiled_combined_uncertainty = np.tile(combined_uncertainty,(self.timesteps.shape[-1],1)).T
         # I've determined that the decision time just needs to be after, doesn't necessarily need to be after some decision action delay
-        for i in range(self.num_blocks):   
-            diff = self.timesteps[i,:] - self.agent_means[i]
-            diff = diff.astype(np.float64)
-            cutoff = np.full_like(diff,self.weird_reaction_gamble_cutoff)
-            sd = np.full_like(diff,combined_uncertainty[i])
-            output[i,:] = 1 - self.cdf(cutoff,diff,sd) 
-                
+        diff = self.timesteps - self.tiled_agent_means
+        temp = 1 - self.cdf(np.array([0]),diff.flatten(),tiled_combined_uncertainty.flatten())
+        output = temp.reshape(self.timesteps.shape) 
+        
+        
+        # output_old = np.zeros((self.num_blocks,len(self.timesteps[0,:])))
+        # for i in range(self.num_blocks):   
+        #     diff = self.timesteps[i,:] - self.agent_means[i]
+        #     diff = diff.astype(np.float64)
+        #     cutoff = np.full_like(diff,self.weird_reaction_gamble_cutoff)
+        #     sd = np.full_like(diff,combined_uncertainty[i])
+        #     output_old[i,:] = 1 - stats.norm.cdf(cutoff,diff,sd) 
+            
+        # assert np.isclose(output_old,output).all()
+        
         return output
     
     def prob_making_for_reaction(self):
@@ -598,7 +615,7 @@ class Optimal_Decision_Time_Model():
         self.fit_decision_times = np.argmin(loss_store,axis=1) + np.min(self.tune_timesteps)
         self.calculate_metrics_with_certain_decision_time(self.fit_decision_times,final=True)  
    
-@njit(parallel=True)
+@nb.njit(parallel=True)
 def find_optimal_decision_time_for_certain_metric(ob,metric_name = 'RPMT'):
     '''
     Trying to search across the entire space of reaction and movement times and find the optimal decision time for that person 
