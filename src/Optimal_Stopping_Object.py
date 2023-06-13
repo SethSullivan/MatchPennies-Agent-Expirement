@@ -72,6 +72,7 @@ def get_variance(EX,EX2):
 # @nb.njit(parallel=True)
 def numba_cdf(x,mu_arr,sig_arr):
     if x.ndim==2: # If x dim is 1, then we have the x as the (6,1800)
+        assert x.shape[0] == mu_arr.shape[0]
         ans = np.zeros(x.shape)
         for i in range(len(mu_arr)):
             ans[i,:] = norm.cdf(x[i,:],mu_arr[i],sig_arr[i])
@@ -83,13 +84,9 @@ def numba_cdf(x,mu_arr,sig_arr):
 
 class Optimal_Decision_Time_Model():
     def __init__(self, **kwargs):
-        # Numba or not 
-        self.numba = kwargs.get('numba',False)
-        if self.numba:
-            self.cdf = numba_cdf
-        else:
-            self.cdf = stats.norm.cdf
-        # assert np.isclose(numba_cdf(np.arange(0,10,1),5,2),stats.norm.cdf(np.arange(0,10,1),5,2)).all()
+        '''
+        Model Inputs
+        '''
         # Task Conditions
         self.experiment = kwargs.get('experiment')
         self.num_blocks  = kwargs.get('num_blocks')
@@ -103,6 +100,9 @@ class Optimal_Decision_Time_Model():
         self.tiled_agent_sds = np.tile(self.agent_sds,(self.timesteps.shape[-1],1)).T
         
         self.neg_inf_cut_off_value = -100000
+        check = np.tile(np.arange(900.0,1100.0,self.nsteps),(self.num_blocks,1))
+        assert np.isclose(numba_cdf(check,np.array([5]*self.num_blocks),np.array([2]*self.num_blocks)),
+                          stats.norm.cdf(check,np.array([5]),np.array([2]))).all()
         # * Model Variation Parameters:
         if True:
             self.true_gamble_delay                      = kwargs.get('true_gamble_delay')
@@ -309,7 +309,7 @@ class Optimal_Decision_Time_Model():
         Calculates the probability that the agent has gone by each timestep
         '''
         output = np.zeros((self.num_blocks,len(self.timesteps[0,:])))
-        output = self.cdf(self.timesteps,self.agent_means,self.agent_sds)
+        output = numba_cdf(self.timesteps,self.agent_means,self.agent_sds)
         return output
     
     def prob_of_selecting_reaction(self): 
@@ -327,7 +327,7 @@ class Optimal_Decision_Time_Model():
         tiled_combined_uncertainty = np.tile(combined_uncertainty,(self.timesteps.shape[-1],1)).T
         # I've determined that the decision time just needs to be after, doesn't necessarily need to be after some decision action delay
         diff = self.timesteps - self.tiled_agent_means
-        temp = 1 - self.cdf(np.array([0]),diff.flatten(),tiled_combined_uncertainty.flatten())
+        temp = 1 - numba_cdf(np.array([0]),diff.flatten(),tiled_combined_uncertainty.flatten())
         output = temp.reshape(self.timesteps.shape) 
         
         #* Keep this around if I need to make sure the numba version is correct
@@ -363,7 +363,7 @@ class Optimal_Decision_Time_Model():
         #! Cutoff agent distribution isn't normal, so might not be able to simply add these, problem for later
         mu = self.cutoff_agent_reaction_mean + self.reaction_plus_movement_time
         sd = np.sqrt(self.cutoff_agent_reaction_sd**2 + self.reaction_plus_movement_uncertainty**2)
-        temp = self.cdf(np.array([1500]),mu.flatten(),sd.flatten())
+        temp = numba_cdf(np.array([1500]),mu.flatten(),sd.flatten())
         prob_make_reaction = temp.reshape(self.timesteps.shape)    
         return prob_make_reaction
     
@@ -375,7 +375,7 @@ class Optimal_Decision_Time_Model():
             self.gamble_reach_time_sd     = np.sqrt(self.expected_gamble_uncertainty**2 + self.movement_uncertainty**2 + self.timing_uncertainty**2)        
         mu = self.gamble_reach_time_mean
         sd = np.tile(self.gamble_reach_time_sd,(self.timesteps.shape[-1],1)).T
-        temp = self.cdf(np.array([1500]),mu.flatten(),sd.flatten())
+        temp = numba_cdf(np.array([1500]),mu.flatten(),sd.flatten())
         output = temp.reshape(self.timesteps.shape)
         # assert np.isclose(output,output1).all(), ('Vector CDF NOT WORKING')
         return output
@@ -472,13 +472,13 @@ class Optimal_Decision_Time_Model():
             # Reaction calc
             self.optimal_true_reaction_reach_time = self.optimal_expected_cutoff_agent_reaction_mean + self.reaction_plus_movement_time
             self.reaction_reach_time_uncertainty = np.sqrt(self.optimal_expected_cutoff_agent_reaction_sd**2 + self.reaction_plus_movement_uncertainty**2)
-            output1 = self.cdf(np.array([1500]),self.optimal_true_reaction_reach_time,self.reaction_reach_time_uncertainty)
+            output1 = numba_cdf(np.array([1500]),self.optimal_true_reaction_reach_time,self.reaction_reach_time_uncertainty)
             
             # Gamble Calc
             self.optimal_true_gamble_reach_time_mean = self.optimal_decision_time + self.true_gamble_delay + self.movement_time
             # ! True Gamble uncertainty is from data, which includes the agent's uncertainty, so we don't add that here 
             self.optimal_true_gamble_reach_time_uncertainty = np.sqrt(self.true_gamble_uncertainty**2 + self.movement_uncertainty**2) 
-            output2 = self.cdf(np.array([1500]),self.optimal_true_gamble_reach_time_mean,self.optimal_true_gamble_reach_time_uncertainty)
+            output2 = numba_cdf(np.array([1500]),self.optimal_true_gamble_reach_time_mean,self.optimal_true_gamble_reach_time_uncertainty)
             return output1,output2
          
         if True:
@@ -630,3 +630,268 @@ def find_optimal_decision_time_for_certain_metric(ob,metric_name = 'RPMT'):
             ob.movement_time = mts[j]
             ob.run_model()
             ans[i,j,:] = ob.optimal_decision_time 
+            
+def add_dicts(d1,d2,d3=None):
+    '''
+    Takes the keys from d1 and uses that in the new dictionary.
+    Then adds the values from d1 and d2
+    '''
+    if d3 is None:
+        return {x1[0]:x1[1]+x2[1] for x1,x2 in zip(d1.items(),d2.items())}
+    else:
+        return {x1[0]:x1[1]+x2[1]+x3[1] for x1,x2,x3 in zip(d1.items(),d2.items(),d3.items())}
+    
+class ModelInputs():
+    def __init__(self, **kwargs):
+        '''
+        Model Inputs
+        '''
+        # Task Conditions
+        self.experiment = kwargs.get('experiment')
+        self.num_blocks  = kwargs.get('num_blocks')
+        self.agent_means = kwargs.get('agent_means') # If exp2, need to be np.array([1100]*4)
+        self.agent_sds   = kwargs.get('agent_sds') # If exp2, need to be np.array([50]*4)
+        self.nsteps      = 1
+        self.timesteps   = kwargs.get('timesteps',np.tile(np.arange(0.0,1800.0,self.nsteps),(self.num_blocks,1)))
+        self.timesteps_dict = {'true':self.timesteps,'exp':self.timesteps}
+        self.tiled_1500  = np.full_like(self.timesteps,1500)
+        self.tiled_agent_means = np.tile(self.agent_means,(self.timesteps.shape[-1],1)).T
+        self.tiled_agent_sds = np.tile(self.agent_sds,(self.timesteps.shape[-1],1)).T
+        
+        self.neg_inf_cut_off_value = -100000
+        check = np.tile(np.arange(900.0,1100.0,self.nsteps),(self.num_blocks,1))
+        assert np.isclose(numba_cdf(check,np.array([5]*self.num_blocks),np.array([2]*self.num_blocks)),
+                          stats.norm.cdf(check,np.array([5]),np.array([2]))).all()
+            
+            
+        #* Player Parameters and Rewards
+        if True:
+            #  HOW MUCH PEOPLE WEIGH WINS VERSUS CORRECTNESS IS THE BETA TERM
+            self.prob_win_when_both_reach  = kwargs.get('perc_wins_when_both_reach')/100
+            self.BETA_ON                   = kwargs.get('BETA_ON')
+            self.BETA = self.find_beta_term()
+            
+            self.gamble_delay_known                     = kwargs.get('gamble_delay_known',True)
+            self.gamble_uncertainty_known               = kwargs.get('gamble_uncertainty_known')
+            
+            # Uncertainty
+            self.reaction_uncertainty               = kwargs.get('reaction_uncertainty')
+            self.movement_uncertainty               = kwargs.get('movement_uncertainty')
+            self.timing_uncertainty                 = kwargs.get('timing_uncertainty')
+            self.gamble_decision_uncertainty        = kwargs.get('gamble_decision_uncertainty',{'true':np.array([50]*6),'exp':np.array([10]*6)})
+            
+            self.reaction_plus_movement_uncertainty = np.sqrt(self.reaction_uncertainty['true']**2 + self.movement_uncertainty['true']**2)
+            self.gamble_plus_movement_uncertainty   = add_dicts(self.gamble_delay,self.movement_uncertainty)
+            # Ability
+            self.reaction_time                    = kwargs.get('reaction_time')
+            self.gamble_delay                     = kwargs.get('gamble_delay',{'true':np.array([150]*6),'exp':np.array([50]*6)})
+            self.movement_time                    = kwargs.get('movement_time')
+            self.reaction_plus_movement_time      = add_dicts(self.reaction_time,self.movement_time)
+            self.gamble_reach_time_mean           = add_dicts(self.timesteps_dict,self.movement_time,self.gamble_delay
+            
+            # Reward and cost values
+            self.reward_matrix = kwargs.get('reward_matrix',np.array([[1,0,0],[1,-1,0],[1,0,-1],[1,-1,-1]]))
+            self.condition_one = np.tile(self.reward_matrix[0],(1800,1))
+            self.condition_two = np.tile(self.reward_matrix[1],(1800,1))
+            self.condition_three = np.tile(self.reward_matrix[2],(1800,1))
+            self.condition_four = np.tile(self.reward_matrix[3],(1800,1))
+            if self.experiment == 'Exp2':
+                self.win_reward       = np.vstack((self.condition_one[:,0],self.condition_two[:,0],
+                                                   self.condition_three[:,0],self.condition_four[:,0]))
+                self.incorrect_cost   = np.vstack((self.condition_one[:,1],self.condition_two[:,1],
+                                                   self.condition_three[:,1],self.condition_four[:,1]))
+                self.indecision_cost  = np.vstack((self.condition_one[:,2],self.condition_two[:,2],
+                                                   self.condition_three[:,2],self.condition_four[:,2]))
+            else:
+                self.win_reward      = kwargs.get('win_reward',1)
+                self.incorrect_cost  = kwargs.get('incorrect_cost',0)
+                self.indecision_cost = kwargs.get('indecision_cost',0)
+            # Prob of selecting the correct target
+            self.prob_selecting_correct_target_reaction = kwargs.get('prob_selecting_correct_target_reaction',1.0)
+            self.prob_selecting_correct_target_gamble   = kwargs.get('prob_selecting_correct_target_gamble',0.5)
+
+class AgentBehavior():     
+    def __init__(self, model_inputs:ModelInputs):
+        self.inputs = model_inputs   
+        self.cutoff_agent_reaction_mean,self.cutoff_reaction_var,self.cutoff_reaction_skew = None,None,None
+        self.cutoff_agent_reaction_sd = None
+        self.cutoff_agent_gamble_mean,self.cutoff_var,self.cutoff_gamble_skew = None,None,None
+        self.cutoff_agent_gamble_sd = None
+        
+        #* Get agent behavior
+        self.cutoff_agent_behavior()
+    @property
+    def prob_agent_has_gone(self):
+        return numba_cdf(self.inputs.timesteps,self.inputs.agent_means,self.inputs.agent_sds)
+    
+    @property
+    def _agent_moments(self):
+        # Get first three central moments (EX2 is normalized for mean, EX3 is normalized for mean and sd) of the new distribution based on timing uncertainty
+        inf_timesteps = np.arange(0,5000,1,dtype=np.float64)
+        time_means = self.inputs.timesteps[0,:]
+        return get_moments(inf_timesteps, self.inputs.agent_means, time_means,
+                           self.inputs.agent_sds, self.inputs.timing_uncertainty)
+
+    def cutoff_agent_behavior(self):
+        # Get the First Three moments for the left and right distributions (if X<Y and if X>Y respectively)
+        EX_R,EX2_R,EX3_R,EX_G,EX2_G,EX3_G = self._agent_moments(ModelInputs)
+        
+        # Calculate the mean, variance, and skew with method of moments
+        self.cutoff_agent_reaction_mean,self.cutoff_reaction_var,self.cutoff_reaction_skew = self.EX_R, get_variance(self.EX_R,self.EX2_R), get_skew(self.EX_R,self.EX2_R,self.EX3_R)
+        self.cutoff_agent_reaction_sd = np.sqrt(self.cutoff_reaction_var)
+        # same thing for gamble (X>Y)
+        self.cutoff_agent_gamble_mean,self.cutoff_var,self.cutoff_gamble_skew = self.EX_G, get_variance(self.EX_G,self.EX2_G), get_skew(self.EX_G,self.EX2_G,self.EX3_G)
+        self.cutoff_agent_gamble_sd = np.sqrt(self.cutoff_var)
+    
+class PlayerReactionGamble():
+    '''
+    This class contains
+    1. Prob Agent Has Gone
+    2. Prob Selecting Reaction
+    3. Prob Making Given Reaction/Gamble
+    '''
+    def __init__(self,model_inputs) -> None:
+        self.inputs = model_inputs
+        
+    @property
+    def prob_selecting_reaction(self):
+        combined_uncertainty = np.sqrt(self.inputs.timing_uncertainty**2 + self.inputs.agent_sds**2) # Prob of SELECTING only includes timing uncertainty and agent uncertainty
+        tiled_combined_uncertainty = np.tile(combined_uncertainty,(self.inputs.timesteps.shape[-1],1)).T
+        diff = self.inputs.timesteps - self.inputs.tiled_agent_means
+        ans = 1 - numba_cdf(np.array([0]),diff.flatten(),tiled_combined_uncertainty.flatten()).reshape(self.inputs.timesteps.shape)
+        return ans
+    
+    @property
+    def prob_selecting_gamble(self):
+        return 1 - self.prob_selecting_reaction(self.inputs)
+    
+    @property 
+    def prob_making_given_reaction(self,agent_behavior: AgentBehavior):
+        # Calculate the prob of making it on a reaction 
+        #! Cutoff agent distribution isn't normal, so might not be able to simply add these, problem for later
+        mu = agent_behavior.cutoff_agent_reaction_mean + self.inputs.reaction_plus_movement_time
+        sd = np.sqrt(agent_behavior.cutoff_agent_reaction_sd**2 + self.inputs.reaction_plus_movement_uncertainty**2)
+        temp = numba_cdf(np.array([1500]),mu.flatten(),sd.flatten())
+        return temp.reshape(self.timesteps.shape)
+    
+    @property
+    def prob_making_given_gamble(self,agent_behavior: AgentBehavior):
+        mu = self.inputs.gamble_delay['exp'] + self.inputs.movement_time
+        
+        sd = np.tile(self.inputs.expected_gamble_reach_time_uncertainty,(self.inputs.timesteps.shape[-1],1)).T
+        temp = numba_cdf(np.array([1500]), mu.flatten(),sd.flatten())
+        return temp.reshape(self.inputs.timesteps.shape)
+    
+class WinIncorrectIndecision():
+    def __init__(self,model_inputs: ModelInputs,player_behavior: PlayerReactionGamble):
+        self.inputs = model_inputs 
+        #* These don't consider the probability that you select reaction
+        # Prob of win
+        self.prob_win_given_reaction        = self.inputs.prob_selecting_correct_target_reaction*player_behavior.prob_making_given_reaction
+        self.prob_win_given_gamble          = self.inputs.prob_selecting_correct_target_gamble*player_behavior.prob_making_given_gamble
+        
+        # Prob of incorrect
+        self.prob_incorrect_given_reaction  = (1 - self.inputs.prob_selecting_correct_target_reaction)*player_behavior.prob_making_given_reaction
+        self.prob_incorrect_given_gamble    = (1 - self.inputs.prob_selecting_correct_target_gamble)*player_behavior.prob_making_given_gamble
+        
+        # Prob of indecision
+        self.prob_indecision_given_reaction = 1 - player_behavior.prob_making_given_reaction
+        self.prob_indecision_given_gamble   = 1 - player_behavior.prob_making_given_gamble
+        
+        # * Prob making on reaction and gamble depends on the prob of selecting reaction and gamble too
+        self.prob_making_reaction      = player_behavior.prob_making_given_reaction*player_behavior.prob_selecting_reaction
+        self.prob_making_gamble        = player_behavior.prob_making_given_gamble*player_behavior.prob_selecting_gamble
+        self.prob_making               = player_behavior.prob_making_gamble + player_behavior.prob_making_reaction
+        
+        #* Multiply the actual probability of making it times the prob of getting it right for reaction and gamble
+        self.prob_win_reaction         = self.prob_win_given_reaction*player_behavior.prob_selecting_reaction
+        self.prob_win_gamble           = self.prob_win_given_gamble*player_behavior.prob_selecting_gamble
+        self.prob_win                  = self.prob_win_reaction + player_behavior.prob_win_gamble
+        
+        #* Probability of receiving an incorrect cost
+        self.prob_incorrect_reaction   = self.prob_incorrect_given_reaction*player_behavior.prob_selecting_reaction
+        self.prob_incorrect_gamble     = self.prob_incorrect_given_gamble*player_behavior.prob_selecting_gamble
+        self.prob_incorrect            = self.prob_incorrect_reaction + player_behavior.prob_incorrect_gamble
+        
+        #* Probability of receiving an indecision cost (No chance of success for indecision, so we just multiply by the two marginal probs calculated in last section)
+        self.prob_indecision_reaction  = self.prob_indecision_given_reaction*player_behavior.prob_selecting_reaction
+        self.prob_indecision_gamble    = self.prob_indecision_given_gamble*player_behavior.prob_selecting_gamble
+        self.prob_indecision           =  self.prob_indecision_reaction + player_behavior.prob_indecision_gamble
+        
+        assert np.allclose(self.prob_win + self.prob_incorrect + self.prob_indecision, 1.0)
+
+class ExpectedReward():
+    def __init__(self,model_inputs,score_metrics: WinIncorrectIndecision):
+        self.inputs = model_inputs
+        
+        self.exp_reward_reaction    = score_metrics.prob_win_reaction*self.inputs.win_reward + \
+                                        score_metrics.prob_incorrect_reaction*self.inputs.incorrect_cost + \
+                                            score_metrics.prob_indecision_reaction*self.inputs.indecision_cost
+        
+        self.exp_reward_gamble     = score_metrics.prob_win_gamble*self.inputs.win_reward + \
+                                        score_metrics.prob_incorrect_gamble*self.inputs.incorrect_cost + \
+                                            score_metrics.prob_indecision_gamble*self.inputs.indecision_cost
+                                            
+        self.exp_reward            = score_metrics.prob_win*self.inputs.win_reward +\
+                                        score_metrics.prob_incorrect*self.inputs.incorrect_cost + \
+                                            score_metrics.prob_indecision*self.inputs.indecision_cost 
+class OptimalExpectedReward():
+    def __init__(self, model_inputs: ModelInputs, er: ExpectedReward):
+        self.inputs = model_inputs
+        # Find timepoint that gets the maximum expected reward
+        self.optimal_index         = np.nanargmax(er.exp_reward,axis=1)
+        self.optimal_decision_time = np.nanargmax(er.exp_reward, axis = 1)*self.inputs.nsteps
+        self.max_exp_reward        = np.nanmax(er.exp_reward,axis=1)
+        
+        self.metrics_name_dict = {'exp_reward': 'Expected Reward','exp_reward_gamble': 'Expected Reward Gamble','exp_reward_reaction':'Expected Reward Reaction',
+                                  'prob_making_reaction': 'Prob Making Reaction','prob_making_gamble':'Prob Making Gamble','prob_agent_has_gone':'Prob Agent Has Gone',
+                                  'prob_selecting_reaction':'Prob of Selecting Reaction','prob_selecting_gamble':'Prob of Selecting Gamble',
+                                  'prob_win_reaction':'Prob Win Reaction','prob_win_gamble':'Prob Win Gamble',
+                                  'prob_incorrect_reaction':'Prob Incorrect Reaction','prob_incorrect_gamble':'Prob Incorrect Gamble',
+                                  'prob_indecision_reaction':'Prob Indecision Reaction','prob_indecision_gamble': 'Prob Indecision Gamble',
+                                  'prob_win':'Prob Win','prob_incorrect':'Prob Incorrect','prob_indecision':'Prob Indecision',
+                                  'prob_making_reaction_based_on_agent':'Prob Making Based on Agent'}
+        
+def optimal_expected(metric,opt: OptimalExpectedReward):
+    ans = np.zeros(metric.shape[0])*np.nan
+    for i in range(metric.shape[0]):
+        ans = metric[i,opt.optimal_index[i]]
+    return ans
+
+
+class PlayerLeaveTargetTime():
+    
+        
+    
+
+        
+    
+class WinIncorrectIndecisionEachTimestep():
+    pass
+
+class ExpectedRewardEachTimestep():
+    pass    
+
+class LeaveTargetTime():
+    pass
+
+class True    
+    
+class ProbSelectReaction:
+    
+    
+class AgentCutoffBehavior():
+    @property
+    def moments(inf_timesteps,agent_means,time_means,agent_sds,timing_uncertainty):
+        return get_moments(inf_timesteps,agent_means,time_means,agent_sds,timing_uncertainty)
+    @property
+    def cutoff_agent_reaction_mean
+    
+class ModelConstructor():
+    model_inputs = ModelInputs()
+    prob_reaction_gamble = ProbReactionGamble()
+    
+    
+def main():
+    
+    
