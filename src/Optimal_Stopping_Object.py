@@ -58,9 +58,6 @@ def get_moments(timesteps,agent_means,time_means,agent_sds,time_sds):
     return EX_R,EX2_R,EX3_R,EX_G,EX2_G,EX3_G
 
 def get_skew(EX,EX2,EX3):
-    EX[EX==np.inf] == 100000
-    EX2[EX2==np.inf] == 100000
-    EX3[EX3==np.inf] == 100000
     ans = (EX3 - 3*EX*(EX2 - EX**2) - EX**3)/((EX2 - EX**2)**(3/2))
     return ans
 
@@ -207,7 +204,9 @@ class AgentBehavior():
 
     def cutoff_agent_behavior(self):
         # Get the First Three moments for the left and right distributions (if X<Y and if X>Y respectively)
-        EX_R,EX2_R,EX3_R,EX_G,EX2_G,EX3_G = self.agent_moments
+        moments = self.agent_moments
+        no_inf_moments = [np.nan_to_num(x,nan=np.nan,posinf=np.nan,neginf=np.nan) for x in moments]
+        EX_R,EX2_R,EX3_R,EX_G,EX2_G,EX3_G = no_inf_moments
         
         # Calculate the mean, variance, and skew with method of moments
         self.cutoff_agent_reaction_mean,self.cutoff_reaction_var,self.cutoff_reaction_skew = EX_R, get_variance(EX_R,EX2_R), get_skew(EX_R,EX2_R,EX3_R)
@@ -390,14 +389,14 @@ class OptimalMetricsCalculator():
  
 class ModelConstructor():
     def __init__(self,**kwargs):
-        model_inputs    = ModelInputs(**kwargs)
-        agent_behavior  = AgentBehavior(model_inputs)
-        player_behavior = PlayerBehavior(model_inputs,agent_behavior)
+        self.model_inputs    = ModelInputs(**kwargs)
+        self.agent_behavior  = AgentBehavior(self.model_inputs)
+        self.player_behavior = PlayerBehavior(self.model_inputs,self.agent_behavior)
         
-        score_metrics   = ScoreMetrics(model_inputs,player_behavior)
-        expected_reward = ExpectedReward(model_inputs,score_metrics)
-        optimal_output  = OptimalExpectedReward(model_inputs,expected_reward)
-        calculator      = OptimalMetricsCalculator(optimal_output)
+        self.score_metrics   = ScoreMetrics(self.model_inputs,self.player_behavior)
+        self.expected_reward = ExpectedReward(self.model_inputs,self.score_metrics)
+        self.optimal_output  = OptimalExpectedReward(self.model_inputs,self.expected_reward)
+        self.calculator      = OptimalMetricsCalculator(self.optimal_output)
 
 def main():        
     m = ModelConstructor(experiment='Exp1', num_blocks = 6, BETA_ON = False, numba = True,
