@@ -70,8 +70,6 @@ def get_variance(EX,EX2):
     ans[ans<0] = np.nan
     return ans
 
-# @nb.njit(parallel=True)
-# TODO FIGURE OUT HOW TO USE THE WRAPPER HERE, then move on and decide how to implement expected vs true
 def numba_cdf(x,mu_arr,sig_arr):
     if x.ndim==2: # If x dim is 1, then we have the x as the (6,1800)
         assert x.shape[0] == mu_arr.shape[0]
