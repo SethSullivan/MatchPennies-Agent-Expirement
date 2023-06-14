@@ -27,15 +27,16 @@ Added in the flexibility to change reward around instead of agent mean and sd
 def get_moments(timesteps,agent_means,time_means,agent_sds,time_sds):
     EX_R,EX2_R,EX3_R = np.zeros((len(agent_means),len(time_means))),np.zeros((len(agent_means),len(time_means))),np.zeros((len(agent_means),len(time_means)))
     EX_G,EX2_G,EX3_G = np.zeros((len(agent_means),len(time_means))),np.zeros((len(agent_means),len(time_means))),np.zeros((len(agent_means),len(time_means)))
+    step_size = timesteps[1] - timesteps[0]
     for i in nb.prange(len(agent_means)):
         mu_x = agent_means[i]
         sig_x = agent_sds[i]
-        for j in range(len(time_means)):
-            sig_y = time_sds[i]
+        sig_y = time_sds[i]
+        for j in range(len(time_means)): # Need to loop through every possible decision time mean
             mu_y = time_means[j]
             
-            xpdf = (1/(sig_x*np.sqrt(2*np.pi)))*np.e**((-0.5)*((timesteps-mu_x)/sig_x)**2)
-            prob_x_less_y = (sc.erfc((mu_x-mu_y)/(np.sqrt(2)*np.sqrt(sig_x**2 + sig_y**2))))/2
+            xpdf = (1/(sig_x*np.sqrt(2*np.pi)))*np.e**((-0.5)*((timesteps - mu_x)/sig_x)**2)
+            prob_x_less_y = (sc.erfc((mu_x - mu_y)/(np.sqrt(2)*np.sqrt(sig_x**2 + sig_y**2))))/2
             prob_x_greater_y = 1 - prob_x_less_y # Or do the same as above and swap mu_x and mu_y
             if prob_x_less_y == 0:
                 pass
@@ -102,6 +103,12 @@ def tile(arr,num):
     return np.tile(arr,(num,1)).T
 
 class ModelInputs():
+    __slots__ = 'agent_means','agent_sds','condition_four','condition_one','condition_three','condition_two',\
+                    'experiment','gamble_decision_sd','gamble_delay','gamble_delay_known','gamble_reach_sd','gamble_reach_time',\
+                        'gamble_sd_known','incorrect_cost','indecision_cost','movement_sd','movement_time','neg_inf_cut_off_value',\
+                            'nsteps','num_blocks','prob_selecting_correct_target_gamble','prob_selecting_correct_target_reaction',\
+                                'prob_win_when_both_reach','reaction_plus_movement_time','reaction_reach_sd','reaction_sd','reaction_time',\
+                                    'reward_matrix','tiled_1500','tiled_agent_means','tiled_agent_sds','timesteps','timesteps_dict','timing_sd','win_reward'
     def __init__(self, **kwargs):
         '''
         Model Inputs
@@ -113,7 +120,7 @@ class ModelInputs():
             self.agent_means = kwargs.get('agent_means') # If exp2, need to be np.array([1100]*4)
             self.agent_sds   = kwargs.get('agent_sds') # If exp2, need to be np.array([50]*4)
             self.nsteps      = 1
-            self.timesteps   = kwargs.get('timesteps',np.tile(np.arange(0.0,1800.0,self.nsteps),(self.num_blocks,1)))
+            self.timesteps   = kwargs.get('timesteps',np.tile(np.arange(500.0,1800.0,self.nsteps),(self.num_blocks,1)))
             self.timesteps_dict = {'true':self.timesteps,'exp':self.timesteps}
             self.tiled_1500  = np.full_like(self.timesteps,1500.0)
             self.tiled_agent_means = np.tile(self.agent_means,(self.timesteps.shape[-1],1)).T
@@ -193,7 +200,7 @@ class AgentBehavior():
     @cached_property
     def agent_moments(self):
         # Get first three central moments (EX2 is normalized for mean, EX3 is normalized for mean and sd) of the new distribution based on timing uncertainty
-        inf_timesteps = np.arange(0,5000,1,dtype=np.float64)
+        inf_timesteps = np.arange(0,2000,1,dtype=np.float64)
         time_means = self.inputs.timesteps[0,:]
         return get_moments(inf_timesteps, self.inputs.agent_means, time_means,
                            self.inputs.agent_sds, self.inputs.timing_sd['exp'])
@@ -217,7 +224,7 @@ class PlayerBehavior():
     2. Prob Selecting Reaction/Gamble
     3. Prob Making Given Reaction/Gamble
     '''
-    def __init__(self,model_inputs: ModelInputs,agent_behavior: AgentBehavior,expected=True) -> None:
+    def __init__(self,model_inputs: ModelInputs,agent_behavior: AgentBehavior,expected=True):
         self.inputs = model_inputs
         self.agent_behavior = agent_behavior
         
