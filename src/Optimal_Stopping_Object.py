@@ -42,7 +42,7 @@ def get_moments(timesteps,agent_means,time_means,agent_sds,time_sds):
             else:
                 y_integrated = np.empty(len(timesteps),dtype=np.float64)
                 y_inverse_integrated = np.empty(len(timesteps),dtype=np.float64)
-                for k in range(len(timesteps)):
+                for k in range(len(timesteps)): # Looping here bc numba_scipy version of sc.erfc can only take float, not an array
                     t = timesteps[k]
                     y_integrated[k] = (sc.erfc((t - mu_y)/(np.sqrt(2)*sig_y)))/2 # Going from x to infinity is the complementary error function (bc we want all the y's that are greater than x)
                     y_inverse_integrated[k] = (sc.erfc((mu_y - t)/(np.sqrt(2)*sig_y)))/2 # Swap limits of integration (mu_y - t) now
