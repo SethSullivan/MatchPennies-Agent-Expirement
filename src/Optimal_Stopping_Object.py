@@ -131,14 +131,14 @@ class ModelInputs():
             # self.BETA_ON                   = kwargs.get('BETA_ON')
             # self.BETA = self.find_beta_term()
             
-            self.gamble_delay_known               = kwargs.get('gamble_delay_known',True)
-            self.gamble_sd_known         = kwargs.get('gamble_sd_known')
+            self.gamble_delay_known   = kwargs.get('gamble_delay_known',True)
+            self.gamble_sd_known      = kwargs.get('gamble_sd_known')
             
             # Uncertainty
-            self.reaction_sd               = kwargs.get('reaction_sd')
-            self.movement_sd               = kwargs.get('movement_sd')
-            self.timing_sd                 = kwargs.get('timing_sd')
-            self.gamble_decision_sd        = kwargs.get('gamble_decision_sd',{'true':np.array([50]*6),'exp':np.array([10]*6)})
+            self.reaction_sd          = kwargs.get('reaction_sd')
+            self.movement_sd          = kwargs.get('movement_sd')
+            self.timing_sd            = kwargs.get('timing_sd')
+            self.gamble_decision_sd   = kwargs.get('gamble_decision_sd',{'true':np.array([50]*6),'exp':np.array([10]*6)})
             
             self.reaction_reach_sd = combine_sd_dicts(self.reaction_sd,self.movement_sd)
             self.gamble_reach_sd   = combine_sd_dicts(self.gamble_decision_sd,self.movement_sd)
@@ -146,15 +146,15 @@ class ModelInputs():
             self.reaction_time               = kwargs.get('reaction_time')
             self.gamble_delay                = kwargs.get('gamble_delay',{'true':np.array([150]*6),'exp':np.array([50]*6)})
             self.movement_time               = kwargs.get('movement_time')
-            self.reaction_plus_movement_time         = add_dicts(self.reaction_time,self.movement_time)
+            self.reaction_plus_movement_time = add_dicts(self.reaction_time,self.movement_time)
             self.gamble_reach_time           = add_dicts(self.timesteps_dict,self.movement_time,self.gamble_delay)
             
             # Reward and cost values
-            self.reward_matrix = kwargs.get('reward_matrix',np.array([[1,0,0],[1,-1,0],[1,0,-1],[1,-1,-1]]))
-            self.condition_one = np.tile(self.reward_matrix[0],(1800,1))
-            self.condition_two = np.tile(self.reward_matrix[1],(1800,1))
+            self.reward_matrix   = kwargs.get('reward_matrix',np.array([[1,0,0],[1,-1,0],[1,0,-1],[1,-1,-1]]))
+            self.condition_one   = np.tile(self.reward_matrix[0],(1800,1))
+            self.condition_two   = np.tile(self.reward_matrix[1],(1800,1))
             self.condition_three = np.tile(self.reward_matrix[2],(1800,1))
-            self.condition_four = np.tile(self.reward_matrix[3],(1800,1))
+            self.condition_four  = np.tile(self.reward_matrix[3],(1800,1))
             if self.experiment == 'Exp2':
                 self.win_reward       = np.vstack((self.condition_one[:,0],self.condition_two[:,0],
                                                    self.condition_three[:,0],self.condition_four[:,0]))
@@ -334,7 +334,7 @@ class ExpectedReward():
                                             score_metrics.prob_indecision*self.inputs.indecision_cost 
 
 class OptimalExpectedReward():
-    def __init__(self, model_inputs: ModelInputs, er: ExpectedReward):
+    def __init__(self, model_inputs: ModelInputs, er: ExpectedReward)->None:
         self.inputs = model_inputs
         # Find timepoint that gets the maximum expected reward
         self.optimal_index         = np.nanargmax(er.exp_reward,axis=1)
@@ -382,19 +382,18 @@ class OptimalMetricsCalculator():
         return np.divide(arr1,arr2,out=np.zeros_like(arr2),where=arr2!=0)*100
  
 class ModelConstructor():
-    def __init__(self):
-        model_inputs    = ModelInputs()
+    def __init__(self,**kwargs):
+        model_inputs    = ModelInputs(**kwargs)
         agent_behavior  = AgentBehavior(model_inputs)
         player_behavior = PlayerBehavior(model_inputs,agent_behavior)
         
         score_metrics   = ScoreMetrics(model_inputs,player_behavior)
         expected_reward = ExpectedReward(model_inputs,score_metrics)
         optimal_output  = OptimalExpectedReward(model_inputs,expected_reward)
+        calculator      = OptimalMetricsCalculator(optimal_output)
 
-    
 def main():        
-   
-    model_inputs = ModelInputs(experiment='Exp1', num_blocks = 6, BETA_ON = False, numba = True,
+    m = ModelConstructor(experiment='Exp1', num_blocks = 6, BETA_ON = False, numba = True,
                                agent_means = np.array([1000,1000,1100,1100,1200,1200]).astype(float),agent_sds = np.array([100]*6).astype(float), 
                                reaction_time = {'true':275,'exp':275}, movement_time = {'true':150,'exp':150},
                                reaction_sd = {'true':25,'exp':25}, movement_sd = {'true':25,'exp':25},
@@ -403,15 +402,24 @@ def main():
                                gamble_delay_known = True, gamble_sd_known = True,
                                gamble_sd= {'true':150,'exp':10}, gamble_delay = {'true':125,'exp':50},
                                 )
+    # model_inputs = ModelInputs(experiment='Exp1', num_blocks = 6, BETA_ON = False, numba = True,
+    #                            agent_means = np.array([1000,1000,1100,1100,1200,1200]).astype(float),agent_sds = np.array([100]*6).astype(float), 
+    #                            reaction_time = {'true':275,'exp':275}, movement_time = {'true':150,'exp':150},
+    #                            reaction_sd = {'true':25,'exp':25}, movement_sd = {'true':25,'exp':25},
+    #                            timing_sd = {'true':np.array([150]*6),'exp':np.array([150]*6)},
+    #                            perc_wins_when_both_reach = np.array([0.8]*6),
+    #                            gamble_delay_known = True, gamble_sd_known = True,
+    #                            gamble_sd= {'true':150,'exp':10}, gamble_delay = {'true':125,'exp':50},
+    #                             )
     
-    agent_behavior  = AgentBehavior(model_inputs)
-    player_behavior = PlayerBehavior(model_inputs,agent_behavior)
-    score_metrics   = ScoreMetrics(model_inputs,player_behavior)
-    expected_reward = ExpectedReward(model_inputs,score_metrics)
-    optimal_output  = OptimalExpectedReward(model_inputs,expected_reward)
-    calculator      = OptimalMetricsCalculator(optimal_output)
-    print(calculator.find_optimal(score_metrics.prob_indecision))
-    return optimal_output
+    # agent_behavior  = AgentBehavior(model_inputs)
+    # player_behavior = PlayerBehavior(model_inputs,agent_behavior)
+    # score_metrics   = ScoreMetrics(model_inputs,player_behavior)
+    # expected_reward = ExpectedReward(model_inputs,score_metrics)
+    # optimal_output  = OptimalExpectedReward(model_inputs,expected_reward)
+    # calculator      = OptimalMetricsCalculator(optimal_output)
+    # print(calculator.find_optimal(score_metrics.prob_indecision))
+    return 
 
 if __name__ == '__main__':
     main()
