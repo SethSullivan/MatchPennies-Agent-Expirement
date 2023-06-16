@@ -31,19 +31,20 @@ def nb_sum(x):
     for i in range(len(x)):
         n_sum += x[i]
     return n_sum
-# _ = nb_sum(np.array([2,2]))
+_ = nb_sum(np.array([2,2]))
 
 # @nb.njit(parallel=True,fastmath=True)
-def get_moments(timesteps,agent_means,time_means,agent_sds,time_sds):    
-    shape = (len(agent_means),len(time_means))
-    EX_R,EX2_R,EX3_R = np.ones((shape)),np.ones((shape)),np.ones((shape))
-    EX_G,EX2_G,EX3_G = np.ones((shape)),np.ones((shape)),np.ones((shape))
+def get_moments(timesteps,time_means,time_sds,
+                prob_agent_less_player,agent_pdf):    
+    shape = (len(time_sds),len(time_means))
+    EX_R,EX2_R,EX3_R = np.zeros((shape)),np.zeros((shape)),np.zeros((shape))
+    EX_G,EX2_G,EX3_G = np.zeros((shape)),np.zeros((shape)),np.zeros((shape))
     dx = timesteps[1] - timesteps[0]
-    mu_y = time_means
-    for i in nb.prange(len(agent_means)):
-        mu_x = agent_means[i]
-        sig_x = agent_sds[i]
+    
+    for i in nb.prange(len(time_sds)):
         sig_y = time_sds[i]
+        xpdf = agent_pdf[i,:]
+
         for j in range(len(time_means)): # Need to loop through every possible decision time mean
             #* Commented out is the old way of doing this bc sc.erfc is recognized by numba, but now I know how to use norm.cdf with numba (which is the same as the error function)
             # xpdf = (1/(sig_x*np.sqrt(2*np.pi)))*np.e**((-0.5)*((timesteps - mu_x)/sig_x)**2) # Pdf of agent, used when getting expected value EX_R, etc.
@@ -55,28 +56,29 @@ def get_moments(timesteps,agent_means,time_means,agent_sds,time_sds):
             #     y_integrated[k] = (sc.erfc((t - mu_y[i])/(np.sqrt(2)*sig_y)))/2 # Going from x to infinity is the complementary error function (bc we want all the y's that are greater than x)
             #     y_inverse_integrated[k] = (sc.erfc((mu_y[i] - t)/(np.sqrt(2)*sig_y)))/2 # Swap limits of integration (mu_y[i] - t) now
             
-            xpdf = norm.pdf(timesteps,mu_x,sig_x)
-            prob_x_less_y = norm.cdf(np.array([0.0]),mu_x-mu_y[i],np.sqrt(sig_x**2 + sig_y**2))[0]
-            prob_x_greater_y = 1 - prob_x_less_y # Or do the same as above and swap mu_x and mu_y[i]
-            y_integrated = 1 - norm.cdf(timesteps,mu_y[i],sig_y)
+            mu_y = time_means[j] # Put the timing mean in an easy to use variable            
+            prob_x_less_y = prob_agent_less_player[i,j] # get prob agent is less than player for that specific agent mean (i) and timing mean (j) 
+            prob_x_greater_y = 1 - prob_x_less_y 
+            y_integrated = 1 - norm.cdf(timesteps,mu_y,sig_y)  # For ALL timesteps, what's the probabilit for every timing mean (from 0 to 2000) that the timing mean is greater than that current timestep
             y_inverse_integrated = 1 - y_integrated
+
             if prob_x_less_y != 0:
                 EX_R[i,j]  = nb_sum(timesteps*xpdf*y_integrated)*dx/prob_x_less_y
                 EX2_R[i,j] = nb_sum((timesteps-EX_R[i,j])**2*xpdf*y_integrated)*dx/prob_x_less_y # SECOND CENTRAL MOMENT = VARIANCE
-                EX3_R[i,j] = 0 #np.sum((timesteps-EX_R[i,j])**3*xpdf*y_integrated)*dx/prob_x_less_y # THIRD CENTRAL MOMENT = SKEW
+                # EX3_R[i,j] = 0 #np.sum((timesteps-EX_R[i,j])**3*xpdf*y_integrated)*dx/prob_x_less_y # THIRD CENTRAL MOMENT = SKEW
             else:
                 EX_R[i,j]  = 0
                 EX2_R[i,j] = 0 # SECOND CENTRAL MOMENT = VARIANCE
-                EX3_R[i,j] = 0 # THIRD CENTRAL MOMENT = SKEW
+                # EX3_R[i,j] = 0 # THIRD CENTRAL MOMENT = SKEW
                 
             if prob_x_greater_y != 0:
                 EX_G[i,j]  = nb_sum(timesteps*xpdf*y_inverse_integrated)*dx/prob_x_greater_y
                 EX2_G[i,j] = nb_sum((timesteps-EX_G[i,j])**2*xpdf*y_inverse_integrated)*dx/prob_x_greater_y # SECOND CENTRAL MOMENT = VARIANCE
-                EX3_G[i,j] = 0#np.sum((timesteps-EX_G[i,j])**3*xpdf*y_inverse_integrated)*dx/prob_x_greater_y # THIRD CENTRAL MOMENT = SKEW
+                # EX3_G[i,j] = 0#np.sum((timesteps-EX_G[i,j])**3*xpdf*y_inverse_integrated)*dx/prob_x_greater_y # THIRD CENTRAL MOMENT = SKEW
             else:
                 EX_G[i,j]  = 0
                 EX2_G[i,j] = 0 # SECOND CENTRAL MOMENT = VARIANCE
-                EX3_G[i,j] = 0 # THIRD CENTRAL MOMENT = SKEW
+                # EX3_G[i,j] = 0 # THIRD CENTRAL MOMENT = SKEW
 
             
     return EX_R,EX2_R,EX3_R,EX_G,EX2_G,EX3_G
@@ -211,10 +213,19 @@ class AgentBehavior():
     @cached_property
     def agent_moments(self):
         # Get first three central moments (EX2 is normalized for mean, EX3 is normalized for mean and sd) of the new distribution based on timing uncertainty
-        inf_timesteps = np.arange(0,2000,1,dtype=np.float64)
+        inf_timesteps = np.arange(0.0,2000.0,self.inputs.nsteps)
+        inf_timesteps_tiled = np.tile(inf_timesteps,(self.inputs.num_blocks,1))
+        inf_agent_means_tiled = np.tile(self.inputs.agent_means,(inf_timesteps.shape[0],1)).T
+        inf_agent_sds_tiled = np.tile(self.inputs.agent_sds,(inf_timesteps.shape[0],1)).T
+        tiled_timing_sd = np.tile(self.inputs.timing_sd['exp'],(self.inputs.timesteps.shape[-1],1)).T
         time_means = self.inputs.timesteps[0,:]
-        return get_moments(inf_timesteps, self.inputs.agent_means, time_means,
-                           self.inputs.agent_sds, self.inputs.timing_sd['exp'])
+        agent_pdf = stats.norm.pdf(inf_timesteps_tiled,inf_agent_means_tiled,inf_agent_sds_tiled)
+        prob_agent_less_player = stats.norm.cdf(0,self.inputs.tiled_agent_means-self.inputs.timesteps,np.sqrt(self.inputs.tiled_agent_sds**2 + (tiled_timing_sd)**2))
+        prob_player_less_agent = 1 - prob_agent_less_player # Or do the same as above and swap mu_x and mu_y[j]
+        
+        
+        return get_moments(inf_timesteps, time_means, self.inputs.timing_sd['exp'],
+                           prob_agent_less_player, agent_pdf)
 
     def cutoff_agent_behavior(self):
         # Get the First Three moments for the left and right distributions (if X<Y and if X>Y respectively)
