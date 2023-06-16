@@ -9,6 +9,7 @@ import copy
 from numba_stats import norm
 from functools import cached_property
 from scipy import optimize
+import time
 wheel = dv.ColorWheel()
 '''
 04/04/23
@@ -24,45 +25,60 @@ Added in the flexibility to change reward around instead of agent mean and sd
 #####################################################
 ###### Helper Functions to get the Moments ##########
 #####################################################
-@nb.njit(parallel=True)
-def get_moments(timesteps,agent_means,time_means,agent_sds,time_sds):
-    def _check_zero_divide(x,y):
-        return x/y if y else 0
+@nb.njit(fastmath = True)
+def nb_sum(x):
+    n_sum = 0
+    for i in range(len(x)):
+        n_sum += x[i]
+    return n_sum
+# _ = nb_sum(np.array([2,2]))
+
+# @nb.njit(parallel=True,fastmath=True)
+def get_moments(timesteps,agent_means,time_means,agent_sds,time_sds):    
     shape = (len(agent_means),len(time_means))
     EX_R,EX2_R,EX3_R = np.ones((shape)),np.ones((shape)),np.ones((shape))
     EX_G,EX2_G,EX3_G = np.ones((shape)),np.ones((shape)),np.ones((shape))
     dx = timesteps[1] - timesteps[0]
+    mu_y = time_means
     for i in nb.prange(len(agent_means)):
         mu_x = agent_means[i]
         sig_x = agent_sds[i]
         sig_y = time_sds[i]
         for j in range(len(time_means)): # Need to loop through every possible decision time mean
-            mu_y = time_means[j]
-            
-            
-            # xpdf = (1/(sig_x*np.sqrt(2*np.pi)))*np.e**((-0.5)*((timesteps - mu_x)/sig_x)**2) # Pdf of agent, used when getting expected value EX_R, etc.
-            # prob_x_less_y = (sc.erfc((mu_x - mu_y)/(np.sqrt(2)*np.sqrt(sig_x**2 + sig_y**2))))/2 # Probability of a reaction decision, aka player decides after agent
-            xpdf = norm.pdf(timesteps,mu_x,sig_x)
-            prob_x_less_y = norm.cdf(np.array([0.0]),mu_x-mu_y,np.sqrt(sig_x**2 + sig_y**2))
-            prob_x_greater_y = 1 - prob_x_less_y # Or do the same as above and swap mu_x and mu_y
-
             #* Commented out is the old way of doing this bc sc.erfc is recognized by numba, but now I know how to use norm.cdf with numba (which is the same as the error function)
+            # xpdf = (1/(sig_x*np.sqrt(2*np.pi)))*np.e**((-0.5)*((timesteps - mu_x)/sig_x)**2) # Pdf of agent, used when getting expected value EX_R, etc.
+            # prob_x_less_y = (sc.erfc((mu_x - mu_y[i])/(np.sqrt(2)*np.sqrt(sig_x**2 + sig_y**2))))/2 # Probability of a reaction decision, aka player decides after agent
             # y_integrated = np.empty(len(timesteps),dtype=np.float64)
             # y_inverse_integrated = np.empty(len(timesteps),dtype=np.float64)
             # for k in range(len(timesteps)): # Looping here bc numba_scipy version of sc.erfc can only take float, not an array
             #     t = timesteps[k]
-            #     y_integrated[k] = (sc.erfc((t - mu_y)/(np.sqrt(2)*sig_y)))/2 # Going from x to infinity is the complementary error function (bc we want all the y's that are greater than x)
-            #     y_inverse_integrated[k] = (sc.erfc((mu_y - t)/(np.sqrt(2)*sig_y)))/2 # Swap limits of integration (mu_y - t) now
-            y_integrated = 1 - norm.cdf(timesteps,mu_y,sig_y)
-            y_inverse_integrated = 1 - y_integrated
-            EX_R[i,j]  = _check_zero_divide(np.sum(timesteps*xpdf*y_integrated)*dx,prob_x_less_y[0])
-            EX2_R[i,j] = _check_zero_divide(np.sum((timesteps-EX_R[i,j])**2*xpdf*y_integrated)*dx,prob_x_less_y[0]) # SECOND CENTRAL MOMENT = VARIANCE
-            EX3_R[i,j] = _check_zero_divide(np.sum((timesteps-EX_R[i,j])**3*xpdf*y_integrated)*dx,prob_x_less_y[0]) # THIRD CENTRAL MOMENT = SKEW
+            #     y_integrated[k] = (sc.erfc((t - mu_y[i])/(np.sqrt(2)*sig_y)))/2 # Going from x to infinity is the complementary error function (bc we want all the y's that are greater than x)
+            #     y_inverse_integrated[k] = (sc.erfc((mu_y[i] - t)/(np.sqrt(2)*sig_y)))/2 # Swap limits of integration (mu_y[i] - t) now
             
-            EX_G[i,j]  = _check_zero_divide(np.sum(timesteps*xpdf*y_inverse_integrated)*dx,prob_x_greater_y[0])
-            EX2_G[i,j] = _check_zero_divide(np.sum((timesteps-EX_G[i,j])**2*xpdf*y_inverse_integrated)*dx,prob_x_greater_y[0])
-            EX3_G[i,j] = _check_zero_divide(np.sum((timesteps-EX_G[i,j])**3*xpdf*y_inverse_integrated)*dx,prob_x_greater_y[0])
-        
+            xpdf = norm.pdf(timesteps,mu_x,sig_x)
+            prob_x_less_y = norm.cdf(np.array([0.0]),mu_x-mu_y[i],np.sqrt(sig_x**2 + sig_y**2))[0]
+            prob_x_greater_y = 1 - prob_x_less_y # Or do the same as above and swap mu_x and mu_y[i]
+            y_integrated = 1 - norm.cdf(timesteps,mu_y[i],sig_y)
+            y_inverse_integrated = 1 - y_integrated
+            if prob_x_less_y != 0:
+                EX_R[i,j]  = nb_sum(timesteps*xpdf*y_integrated)*dx/prob_x_less_y
+                EX2_R[i,j] = nb_sum((timesteps-EX_R[i,j])**2*xpdf*y_integrated)*dx/prob_x_less_y # SECOND CENTRAL MOMENT = VARIANCE
+                EX3_R[i,j] = 0 #np.sum((timesteps-EX_R[i,j])**3*xpdf*y_integrated)*dx/prob_x_less_y # THIRD CENTRAL MOMENT = SKEW
+            else:
+                EX_R[i,j]  = 0
+                EX2_R[i,j] = 0 # SECOND CENTRAL MOMENT = VARIANCE
+                EX3_R[i,j] = 0 # THIRD CENTRAL MOMENT = SKEW
+                
+            if prob_x_greater_y != 0:
+                EX_G[i,j]  = nb_sum(timesteps*xpdf*y_inverse_integrated)*dx/prob_x_greater_y
+                EX2_G[i,j] = nb_sum((timesteps-EX_G[i,j])**2*xpdf*y_inverse_integrated)*dx/prob_x_greater_y # SECOND CENTRAL MOMENT = VARIANCE
+                EX3_G[i,j] = 0#np.sum((timesteps-EX_G[i,j])**3*xpdf*y_inverse_integrated)*dx/prob_x_greater_y # THIRD CENTRAL MOMENT = SKEW
+            else:
+                EX_G[i,j]  = 0
+                EX2_G[i,j] = 0 # SECOND CENTRAL MOMENT = VARIANCE
+                EX3_G[i,j] = 0 # THIRD CENTRAL MOMENT = SKEW
+
+            
     return EX_R,EX2_R,EX3_R,EX_G,EX2_G,EX3_G
 
 def numba_cdf(x,mu_arr,sig_arr):
@@ -189,12 +205,13 @@ class AgentBehavior():
         
     @cached_property
     def prob_agent_has_gone(self):
-        return numba_cdf(self.inputs.timesteps,self.inputs.agent_means,self.inputs.agent_sds)
-    
+        # temp = numba_cdf(self.inputs.timesteps,self.inputs.agent_means,self.inputs.agent_sds)
+        temp = stats.norm.cdf(self.inputs.timesteps,self.inputs.agent_means,self.inputs.agent_sds)
+        return temp
     @cached_property
     def agent_moments(self):
         # Get first three central moments (EX2 is normalized for mean, EX3 is normalized for mean and sd) of the new distribution based on timing uncertainty
-        inf_timesteps = np.arange(0,2000,0.1,dtype=np.float64)
+        inf_timesteps = np.arange(0,2000,1,dtype=np.float64)
         time_means = self.inputs.timesteps[0,:]
         return get_moments(inf_timesteps, self.inputs.agent_means, time_means,
                            self.inputs.agent_sds, self.inputs.timing_sd['exp'])
@@ -259,7 +276,8 @@ class PlayerBehavior():
         combined_sd = np.sqrt(self.inputs.timing_sd[self.key]**2 + self.inputs.agent_sds**2) # Prob of SELECTING only includes timing uncertainty and agent uncertainty
         tiled_combined_sd = np.tile(combined_sd,(self.inputs.timesteps.shape[-1],1)).T
         diff = self.inputs.timesteps - self.inputs.tiled_agent_means
-        ans = 1 - numba_cdf(np.array([0.0]),diff.flatten(),tiled_combined_sd.flatten()).reshape(self.inputs.timesteps.shape)
+        # ans = 1 - numba_cdf(np.array([0.0]),diff.flatten(),tiled_combined_sd.flatten()).reshape(self.inputs.timesteps.shape)
+        ans = 1 - stats.norm.cdf(0,diff,tiled_combined_sd)
         return ans
     
     @cached_property
@@ -272,15 +290,16 @@ class PlayerBehavior():
         #! Cutoff agent distribution isn't normal, so might not be able to simply add these, problem for later
         mu = self.reaction_reach_time
         sd = np.sqrt(self.agent_behavior.cutoff_agent_reaction_sd**2 + self.inputs.reaction_reach_sd[self.key]**2)
-        temp = numba_cdf(np.array([1500]),mu.flatten(),sd.flatten())
-        return temp.reshape(self.inputs.timesteps.shape)
+        # temp = numba_cdf(np.array([1500]),mu.flatten(),sd.flatten()).reshape(self.inputs.timesteps.shape)
+        return stats.norm.cdf(1500,mu,sd)
     
     @cached_property
     def prob_making_given_gamble(self):
         mu = self.gamble_reach_time
         sd = np.tile(self.inputs.gamble_reach_sd[self.key],(self.inputs.timesteps.shape[-1],1)).T
-        temp = numba_cdf(np.array([1500]), mu.flatten(),sd.flatten())
-        return temp.reshape(self.inputs.timesteps.shape)
+        # temp = numba_cdf(np.array([1500]), mu.flatten(),sd.flatten()).reshape(self.inputs.timesteps.shape)
+        return stats.norm.cdf(1500,mu,sd)
+        
     
 class ScoreMetrics():
     def __init__(self,model_inputs: ModelInputs,player_behavior: PlayerBehavior):
@@ -436,23 +455,7 @@ def main():
                                gamble_delay_known = True, gamble_sd_known = True,
                                gamble_sd= {'true':150,'exp':10}, gamble_delay = {'true':125,'exp':50},
                                 )
-    # model_inputs = ModelInputs(experiment='Exp1', num_blocks = 6, BETA_ON = False, numba = True,
-    #                            agent_means = np.array([1000,1000,1100,1100,1200,1200]).astype(float),agent_sds = np.array([100]*6).astype(float), 
-    #                            reaction_time = {'true':275,'exp':275}, movement_time = {'true':150,'exp':150},
-    #                            reaction_sd = {'true':25,'exp':25}, movement_sd = {'true':25,'exp':25},
-    #                            timing_sd = {'true':np.array([150]*6),'exp':np.array([150]*6)},
-    #                            perc_wins_when_both_reach = np.array([0.8]*6),
-    #                            gamble_delay_known = True, gamble_sd_known = True,
-    #                            gamble_sd= {'true':150,'exp':10}, gamble_delay = {'true':125,'exp':50},
-    #                             )
     
-    # agent_behavior  = AgentBehavior(model_inputs)
-    # player_behavior = PlayerBehavior(model_inputs,agent_behavior)
-    # score_metrics   = ScoreMetrics(model_inputs,player_behavior)
-    # expected_reward = ExpectedReward(model_inputs,score_metrics)
-    # optimal_output  = OptimalExpectedReward(model_inputs,expected_reward)
-    # calculator      = OptimalMetricsCalculator(optimal_output)
-    # print(calculator.find_optimal(score_metrics.prob_indecision))
     return 
 
 if __name__ == '__main__':
