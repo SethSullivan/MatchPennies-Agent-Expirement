@@ -56,23 +56,14 @@ def get_moments(timesteps,agent_means,time_means,agent_sds,time_sds):
             y_integrated = 1 - norm.cdf(timesteps,mu_y,sig_y)
             y_inverse_integrated = 1 - y_integrated
             EX_R[i,j]  = _check_zero_divide(np.sum(timesteps*xpdf*y_integrated)*dx,prob_x_less_y[0])
-            EX2_R[i,j] = _check_zero_divide(np.sum(timesteps**2*xpdf*y_integrated)*dx,prob_x_less_y[0])
-            EX3_R[i,j] = _check_zero_divide(np.sum(timesteps**3*xpdf*y_integrated)*dx,prob_x_less_y[0])
+            EX2_R[i,j] = _check_zero_divide(np.sum((timesteps-EX_R[i,j])**2*xpdf*y_integrated)*dx,prob_x_less_y[0]) # SECOND CENTRAL MOMENT = VARIANCE
+            EX3_R[i,j] = _check_zero_divide(np.sum((timesteps-EX_R[i,j])**3*xpdf*y_integrated)*dx,prob_x_less_y[0]) # THIRD CENTRAL MOMENT = SKEW
             
             EX_G[i,j]  = _check_zero_divide(np.sum(timesteps*xpdf*y_inverse_integrated)*dx,prob_x_greater_y[0])
-            EX2_G[i,j] = _check_zero_divide(np.sum(timesteps**2*xpdf*y_inverse_integrated)*dx,prob_x_greater_y[0])
-            EX3_G[i,j] = _check_zero_divide(np.sum(timesteps**3*xpdf*y_inverse_integrated)*dx,prob_x_greater_y[0])
+            EX2_G[i,j] = _check_zero_divide(np.sum((timesteps-EX_G[i,j])**2*xpdf*y_inverse_integrated)*dx,prob_x_greater_y[0])
+            EX3_G[i,j] = _check_zero_divide(np.sum((timesteps-EX_G[i,j])**3*xpdf*y_inverse_integrated)*dx,prob_x_greater_y[0])
         
     return EX_R,EX2_R,EX3_R,EX_G,EX2_G,EX3_G
-
-def get_skew(EX,EX2,EX3):
-    ans = (EX3 - 3*EX*(EX2 - EX**2) - EX**3)/((EX2 - EX**2)**(3/2))
-    return ans
-
-def get_variance(EX,EX2):
-    ans = EX2 - EX**2
-    ans[ans<0] = np.nan
-    return ans
 
 def numba_cdf(x,mu_arr,sig_arr):
     if x.ndim==2: # If x dim is 1, then we have the x as the (6,1800)
@@ -213,13 +204,16 @@ class AgentBehavior():
         moments = self.agent_moments
         # no_inf_moments = [np.nan_to_num(x,nan=np.nan,posinf=np.nan,neginf=np.nan) for x in moments]
         EX_R,EX2_R,EX3_R,EX_G,EX2_G,EX3_G = moments
-        
-        # Calculate the mean, variance, and skew with method of moments
-        self.cutoff_agent_reaction_mean,self.cutoff_reaction_var,self.cutoff_reaction_skew = EX_R, get_variance(EX_R,EX2_R), get_skew(EX_R,EX2_R,EX3_R)
+        self.cutoff_agent_reaction_mean,self.cutoff_reaction_var,self.cutoff_reaction_skew = EX_R,EX2_R,EX3_R
         self.cutoff_agent_reaction_sd = np.sqrt(self.cutoff_reaction_var)
-        # same thing for gamble (X>Y)
-        self.cutoff_agent_gamble_mean,self.cutoff_gamble_var,self.cutoff_gamble_skew = EX_G, get_variance(EX_G,EX2_G), get_skew(EX_G,EX2_G,EX3_G)
+        self.cutoff_agent_gamble_mean,self.cutoff_gamble_var,self.cutoff_gamble_skew = EX_G,EX2_G,EX3_G
         self.cutoff_agent_gamble_sd = np.sqrt(self.cutoff_gamble_var)
+        # Calculate the mean, variance, and skew with method of moments
+        # self.cutoff_agent_reaction_mean,self.cutoff_reaction_var,self.cutoff_reaction_skew = EX_R, get_variance(EX_R,EX2_R), get_skew(EX_R,EX2_R,EX3_R)
+        # self.cutoff_agent_reaction_sd = np.sqrt(self.cutoff_reaction_var)
+        # # same thing for gamble (X>Y)
+        # self.cutoff_agent_gamble_mean,self.cutoff_gamble_var,self.cutoff_gamble_skew = EX_G, get_variance(EX_G,EX2_G), get_skew(EX_G,EX2_G,EX3_G)
+        # self.cutoff_agent_gamble_sd = np.sqrt(self.cutoff_gamble_var)
     
 class PlayerBehavior():
     '''
