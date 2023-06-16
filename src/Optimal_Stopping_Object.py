@@ -8,6 +8,7 @@ import data_visualization as dv
 import copy
 from numba_stats import norm
 from functools import cached_property
+from scipy import optimize
 wheel = dv.ColorWheel()
 '''
 04/04/23
@@ -25,9 +26,12 @@ Added in the flexibility to change reward around instead of agent mean and sd
 #####################################################
 @nb.njit(parallel=True)
 def get_moments(timesteps,agent_means,time_means,agent_sds,time_sds):
-    EX_R,EX2_R,EX3_R = np.zeros((len(agent_means),len(time_means))),np.zeros((len(agent_means),len(time_means))),np.zeros((len(agent_means),len(time_means)))
-    EX_G,EX2_G,EX3_G = np.zeros((len(agent_means),len(time_means))),np.zeros((len(agent_means),len(time_means))),np.zeros((len(agent_means),len(time_means)))
-    step_size = timesteps[1] - timesteps[0]
+    def _check_zero_divide(x,y):
+        return x/y if y else 0
+    shape = (len(agent_means),len(time_means))
+    EX_R,EX2_R,EX3_R = np.ones((shape)),np.ones((shape)),np.ones((shape))
+    EX_G,EX2_G,EX3_G = np.ones((shape)),np.ones((shape)),np.ones((shape))
+    dx = timesteps[1] - timesteps[0]
     for i in nb.prange(len(agent_means)):
         mu_x = agent_means[i]
         sig_x = agent_sds[i]
@@ -35,25 +39,29 @@ def get_moments(timesteps,agent_means,time_means,agent_sds,time_sds):
         for j in range(len(time_means)): # Need to loop through every possible decision time mean
             mu_y = time_means[j]
             
-            xpdf = (1/(sig_x*np.sqrt(2*np.pi)))*np.e**((-0.5)*((timesteps - mu_x)/sig_x)**2)
-            prob_x_less_y = (sc.erfc((mu_x - mu_y)/(np.sqrt(2)*np.sqrt(sig_x**2 + sig_y**2))))/2
+            
+            # xpdf = (1/(sig_x*np.sqrt(2*np.pi)))*np.e**((-0.5)*((timesteps - mu_x)/sig_x)**2) # Pdf of agent, used when getting expected value EX_R, etc.
+            # prob_x_less_y = (sc.erfc((mu_x - mu_y)/(np.sqrt(2)*np.sqrt(sig_x**2 + sig_y**2))))/2 # Probability of a reaction decision, aka player decides after agent
+            xpdf = norm.pdf(timesteps,mu_x,sig_x)
+            prob_x_less_y = norm.cdf(np.array([0.0]),mu_x-mu_y,np.sqrt(sig_x**2 + sig_y**2))
             prob_x_greater_y = 1 - prob_x_less_y # Or do the same as above and swap mu_x and mu_y
-            if prob_x_less_y == 0:
-                pass
-            else:
-                y_integrated = np.empty(len(timesteps),dtype=np.float64)
-                y_inverse_integrated = np.empty(len(timesteps),dtype=np.float64)
-                for k in range(len(timesteps)): # Looping here bc numba_scipy version of sc.erfc can only take float, not an array
-                    t = timesteps[k]
-                    y_integrated[k] = (sc.erfc((t - mu_y)/(np.sqrt(2)*sig_y)))/2 # Going from x to infinity is the complementary error function (bc we want all the y's that are greater than x)
-                    y_inverse_integrated[k] = (sc.erfc((mu_y - t)/(np.sqrt(2)*sig_y)))/2 # Swap limits of integration (mu_y - t) now
-                EX_R[i,j] = np.sum(timesteps*xpdf*y_integrated)/prob_x_less_y
-                EX2_R[i,j] = np.sum(timesteps**2*xpdf*y_integrated)/prob_x_less_y
-                EX3_R[i,j] = np.sum(timesteps**3*xpdf*y_integrated)/prob_x_less_y
-                
-                EX_G[i,j] = np.sum(timesteps*xpdf*y_inverse_integrated)/prob_x_greater_y
-                EX2_G[i,j] = np.sum(timesteps**2*xpdf*y_inverse_integrated)/prob_x_greater_y
-                EX3_G[i,j] = np.sum(timesteps**3*xpdf*y_inverse_integrated)/prob_x_greater_y
+
+            #* Commented out is the old way of doing this bc sc.erfc is recognized by numba, but now I know how to use norm.cdf with numba (which is the same as the error function)
+            # y_integrated = np.empty(len(timesteps),dtype=np.float64)
+            # y_inverse_integrated = np.empty(len(timesteps),dtype=np.float64)
+            # for k in range(len(timesteps)): # Looping here bc numba_scipy version of sc.erfc can only take float, not an array
+            #     t = timesteps[k]
+            #     y_integrated[k] = (sc.erfc((t - mu_y)/(np.sqrt(2)*sig_y)))/2 # Going from x to infinity is the complementary error function (bc we want all the y's that are greater than x)
+            #     y_inverse_integrated[k] = (sc.erfc((mu_y - t)/(np.sqrt(2)*sig_y)))/2 # Swap limits of integration (mu_y - t) now
+            y_integrated = 1 - norm.cdf(timesteps,mu_y,sig_y)
+            y_inverse_integrated = 1 - y_integrated
+            EX_R[i,j]  = _check_zero_divide(np.sum(timesteps*xpdf*y_integrated)*dx,prob_x_less_y[0])
+            EX2_R[i,j] = _check_zero_divide(np.sum(timesteps**2*xpdf*y_integrated)*dx,prob_x_less_y[0])
+            EX3_R[i,j] = _check_zero_divide(np.sum(timesteps**3*xpdf*y_integrated)*dx,prob_x_less_y[0])
+            
+            EX_G[i,j]  = _check_zero_divide(np.sum(timesteps*xpdf*y_inverse_integrated)*dx,prob_x_greater_y[0])
+            EX2_G[i,j] = _check_zero_divide(np.sum(timesteps**2*xpdf*y_inverse_integrated)*dx,prob_x_greater_y[0])
+            EX3_G[i,j] = _check_zero_divide(np.sum(timesteps**3*xpdf*y_inverse_integrated)*dx,prob_x_greater_y[0])
         
     return EX_R,EX2_R,EX3_R,EX_G,EX2_G,EX3_G
 
@@ -62,8 +70,6 @@ def get_skew(EX,EX2,EX3):
     return ans
 
 def get_variance(EX,EX2):
-    EX[EX==np.inf] == 100000
-    EX2[EX2==np.inf] == 100000
     ans = EX2 - EX**2
     ans[ans<0] = np.nan
     return ans
@@ -117,7 +123,7 @@ class ModelInputs():
             self.agent_means = kwargs.get('agent_means') # If exp2, need to be np.array([1100]*4)
             self.agent_sds   = kwargs.get('agent_sds') # If exp2, need to be np.array([50]*4)
             self.nsteps      = 1
-            self.timesteps   = kwargs.get('timesteps',np.tile(np.arange(500.0,1800.0,self.nsteps),(self.num_blocks,1)))
+            self.timesteps   = kwargs.get('timesteps',np.tile(np.arange(0.0,1800.0,self.nsteps),(self.num_blocks,1)))
             self.timesteps_dict = {'true':self.timesteps,'exp':self.timesteps}
             self.tiled_1500  = np.full_like(self.timesteps,1500.0)
             self.tiled_agent_means = np.tile(self.agent_means,(self.timesteps.shape[-1],1)).T
@@ -197,7 +203,7 @@ class AgentBehavior():
     @cached_property
     def agent_moments(self):
         # Get first three central moments (EX2 is normalized for mean, EX3 is normalized for mean and sd) of the new distribution based on timing uncertainty
-        inf_timesteps = np.arange(0,2000,1,dtype=np.float64)
+        inf_timesteps = np.arange(0,2000,0.1,dtype=np.float64)
         time_means = self.inputs.timesteps[0,:]
         return get_moments(inf_timesteps, self.inputs.agent_means, time_means,
                            self.inputs.agent_sds, self.inputs.timing_sd['exp'])
@@ -205,8 +211,8 @@ class AgentBehavior():
     def cutoff_agent_behavior(self):
         # Get the First Three moments for the left and right distributions (if X<Y and if X>Y respectively)
         moments = self.agent_moments
-        no_inf_moments = [np.nan_to_num(x,nan=np.nan,posinf=np.nan,neginf=np.nan) for x in moments]
-        EX_R,EX2_R,EX3_R,EX_G,EX2_G,EX3_G = no_inf_moments
+        # no_inf_moments = [np.nan_to_num(x,nan=np.nan,posinf=np.nan,neginf=np.nan) for x in moments]
+        EX_R,EX2_R,EX3_R,EX_G,EX2_G,EX3_G = moments
         
         # Calculate the mean, variance, and skew with method of moments
         self.cutoff_agent_reaction_mean,self.cutoff_reaction_var,self.cutoff_reaction_skew = EX_R, get_variance(EX_R,EX2_R), get_skew(EX_R,EX2_R,EX3_R)
@@ -231,7 +237,7 @@ class PlayerBehavior():
             self.key = 'exp'
         else:
             self.key = 'true'
-        
+        assert np.allclose(self.prob_selecting_reaction + self.prob_selecting_gamble,1.0)
         #* Leave times
         self.reaction_leave_time      = self.agent_behavior.cutoff_agent_reaction_mean + self.inputs.reaction_time[self.key]
         self.gamble_leave_time        = self.inputs.timesteps + self.inputs.gamble_delay[self.key]
@@ -343,8 +349,8 @@ class OptimalExpectedReward():
     def __init__(self, model_inputs: ModelInputs, er: ExpectedReward)->None:
         self.inputs = model_inputs
         # Find timepoint that gets the maximum expected reward
-        self.optimal_index         = np.nanargmax(er.exp_reward,axis=1)
-        self.optimal_decision_time = np.nanargmax(er.exp_reward, axis = 1)*self.inputs.nsteps
+        self.optimal_index         = np.nanargmax(er.exp_reward,axis=1).astype(int)
+        self.optimal_decision_time = np.nanargmax(er.exp_reward, axis = 1)*self.inputs.nsteps + np.min(self.inputs.timesteps)
         self.max_exp_reward        = np.nanmax(er.exp_reward,axis=1)
         
         self.metrics_name_dict = {'exp_reward': 'Expected Reward','exp_reward_gamble': 'Expected Reward Gamble','exp_reward_reaction':'Expected Reward Reaction',
@@ -364,7 +370,18 @@ class OptimalMetricsCalculator():
         - So we can get perc_reaction_wins which is (prob_win_reaction/prob_win)*100
     '''
     def __init__(self,optimal_output):
-        self.optimal_index = optimal_output.optimal_decision_time
+        self.optimal_index = optimal_output.optimal_index
+
+    def set_optimal_index(self,index,i=None):
+        '''
+        This function is used when fitting to the participant data, instead of using the theoretical optimal decision time
+        '''
+        if i is None:
+            assert isinstance(index,np.ndarray)
+            self.optimal_index = index.astype(int)
+        else:
+            assert isinstance(index,int)
+            self.optimal_index[i] = index
         
     def find_optimal(self,metric):
         ans = np.zeros(metric.shape[0])*np.nan
@@ -389,17 +406,34 @@ class OptimalMetricsCalculator():
  
 class ModelConstructor():
     def __init__(self,**kwargs):
-        self.model_inputs    = ModelInputs(**kwargs)
-        self.agent_behavior  = AgentBehavior(self.model_inputs)
-        self.player_behavior = PlayerBehavior(self.model_inputs,self.agent_behavior)
+        self.inputs    = ModelInputs(**kwargs)
+        self.agent_behavior  = AgentBehavior(self.inputs)
+        self.player_behavior = PlayerBehavior(self.inputs,self.agent_behavior)
         
-        self.score_metrics   = ScoreMetrics(self.model_inputs,self.player_behavior)
-        self.expected_reward = ExpectedReward(self.model_inputs,self.score_metrics)
-        self.optimal_output  = OptimalExpectedReward(self.model_inputs,self.expected_reward)
+        self.score_metrics   = ScoreMetrics(self.inputs,self.player_behavior)
+        self.expected_reward = ExpectedReward(self.inputs,self.score_metrics)
+        self.optimal_output  = OptimalExpectedReward(self.inputs,self.expected_reward)
         self.calculator      = OptimalMetricsCalculator(self.optimal_output)
+        
+    def fit_model(self,metric_name,target,init_decision_index: tuple):
+        bnds = tuple([(np.min(self.inputs.timesteps),np.max(self.inputs.timesteps))]*self.inputs.num_blocks)
+        metric = getattr(self.player_behavior,metric_name) # Get the metric
+        self.calculator.find_optimal(metric)
+        ans = np.zeros((self.inputs.num_blocks))
+        
+        x = init_decision_index
+        out = optimize.minimize(self.loss,x,args = (metric,target),method='Nelder-Mead',bounds=bnds)
+        ans = out.x + np.min(self.inputs.timesteps)
+        self.calculator.set_optimal_index(ans) 
+    
+    def loss(self,decision_time,metric,target):
+        decision_time = decision_time.astype(int)
+        self.calculator.set_optimal_index(decision_time) # Set the new optimal index
+        model_metric = self.calculator.find_optimal(metric) # Find the metric at that new optimal index
+        return np.mean((model_metric - target)**2)
 
 def main():        
-    m = ModelConstructor(experiment='Exp1', num_blocks = 6, BETA_ON = False, numba = True,
+    m = ModelConstructor(experiment='Exp1', num_blocks = 6, BETA_ON = False,
                                agent_means = np.array([1000,1000,1100,1100,1200,1200]).astype(float),agent_sds = np.array([100]*6).astype(float), 
                                reaction_time = {'true':275,'exp':275}, movement_time = {'true':150,'exp':150},
                                reaction_sd = {'true':25,'exp':25}, movement_sd = {'true':25,'exp':25},
