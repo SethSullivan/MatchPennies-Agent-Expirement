@@ -33,7 +33,7 @@ def nb_sum(x):
     return n_sum
 _ = nb_sum(np.array([2,2]))
 
-# @nb.njit(parallel=True,fastmath=True)
+@nb.njit(parallel=True,fastmath=True)
 def get_moments(timesteps,time_means,time_sds,
                 prob_agent_less_player,agent_pdf):    
     shape = (len(time_sds),len(time_means))
@@ -116,11 +116,12 @@ def tile(arr,num):
 
 class ModelInputs():
     __slots__ = 'agent_means','agent_sds','condition_four','condition_one','condition_three','condition_two',\
-                    'experiment','gamble_decision_sd','gamble_delay','gamble_delay_known','gamble_reach_sd','gamble_reach_time',\
-                        'gamble_sd_known','incorrect_cost','indecision_cost','movement_sd','movement_time','neg_inf_cut_off_value',\
-                            'nsteps','num_blocks','prob_selecting_correct_target_gamble','prob_selecting_correct_target_reaction',\
-                                'prob_win_when_both_reach','reaction_plus_movement_time','reaction_reach_sd','reaction_sd','reaction_time',\
-                                    'reward_matrix','tiled_1500','tiled_agent_means','tiled_agent_sds','timesteps','timesteps_dict','timing_sd','win_reward'
+                'experiment','gamble_decision_sd','gamble_delay','gamble_delay_known','gamble_reach_sd','gamble_reach_time',\
+                'gamble_sd_known','incorrect_cost','indecision_cost','movement_sd','movement_time','neg_inf_cut_off_value',\
+                'nsteps','num_blocks','num_timesteps','prob_selecting_correct_target_gamble','prob_selecting_correct_target_reaction',\
+                'prob_win_when_both_reach','reaction_plus_movement_time','reaction_reach_sd','reaction_sd','reaction_time',\
+                'reward_matrix','tiled_1500','tiled_agent_means','tiled_agent_sds','timesteps','timesteps_dict','timing_sd','win_reward',\
+                'expected','key'
     def __init__(self, **kwargs):
         '''
         Model Inputs
@@ -132,7 +133,8 @@ class ModelInputs():
             self.agent_means = kwargs.get('agent_means') # If exp2, need to be np.array([1100]*4)
             self.agent_sds   = kwargs.get('agent_sds') # If exp2, need to be np.array([50]*4)
             self.nsteps      = 1
-            self.timesteps   = kwargs.get('timesteps',np.tile(np.arange(0.0,1800.0,self.nsteps),(self.num_blocks,1)))
+            self.num_timesteps = kwargs.get('num_timesteps')
+            self.timesteps   = kwargs.get('timesteps',np.tile(np.arange(0.0,float(self.num_timesteps),self.nsteps),(self.num_blocks,1)))
             self.timesteps_dict = {'true':self.timesteps,'exp':self.timesteps}
             self.tiled_1500  = np.full_like(self.timesteps,1500.0)
             self.tiled_agent_means = np.tile(self.agent_means,(self.timesteps.shape[-1],1)).T
@@ -145,6 +147,11 @@ class ModelInputs():
             
         #* Player Parameters and Rewards
         if True:
+            self.expected = kwargs.get('expected')
+            if self.expected:
+                self.key = 'exp'
+            else:
+                self.key = 'true'
             #  HOW MUCH PEOPLE WEIGH WINS VERSUS CORRECTNESS IS THE BETA TERM
             self.prob_win_when_both_reach  = kwargs.get('perc_wins_when_both_reach')/100
             # self.BETA_ON                   = kwargs.get('BETA_ON')
@@ -192,15 +199,15 @@ class ModelInputs():
 class AgentBehavior():
     def __init__(self, model_inputs:ModelInputs):
         self.inputs = model_inputs   
-        self.cutoff_reaction_var        = None
-        self.cutoff_reaction_skew       = None
-        self.cutoff_agent_reaction_mean = None
-        self.cutoff_agent_reaction_sd   = None
+        self.reaction_leave_time_var  = None
+        self.cutoff_reaction_skew     = None
+        self.reaction_leave_time      = None
+        self.reaction_leave_time_sd   = None
         
-        self.cutoff_gamble_var          = None
-        self.cutoff_gamble_skew         = None
-        self.cutoff_agent_gamble_mean   = None
-        self.cutoff_agent_gamble_sd     = None
+        self.gamble_leave_time_var    = None
+        self.cutoff_gamble_skew       = None
+        self.gamble_leave_time        = None
+        self.gamble_leave_time_sd     = None
         
         #* Get agent behavior
         self.cutoff_agent_behavior()
@@ -217,14 +224,14 @@ class AgentBehavior():
         inf_timesteps_tiled = np.tile(inf_timesteps,(self.inputs.num_blocks,1))
         inf_agent_means_tiled = np.tile(self.inputs.agent_means,(inf_timesteps.shape[0],1)).T
         inf_agent_sds_tiled = np.tile(self.inputs.agent_sds,(inf_timesteps.shape[0],1)).T
-        tiled_timing_sd = np.tile(self.inputs.timing_sd['exp'],(self.inputs.timesteps.shape[-1],1)).T
+        tiled_timing_sd = np.tile(self.inputs.timing_sd[self.inputs.key],(self.inputs.timesteps.shape[-1],1)).T
         time_means = self.inputs.timesteps[0,:]
         agent_pdf = stats.norm.pdf(inf_timesteps_tiled,inf_agent_means_tiled,inf_agent_sds_tiled)
         prob_agent_less_player = stats.norm.cdf(0,self.inputs.tiled_agent_means-self.inputs.timesteps,np.sqrt(self.inputs.tiled_agent_sds**2 + (tiled_timing_sd)**2))
         prob_player_less_agent = 1 - prob_agent_less_player # Or do the same as above and swap mu_x and mu_y[j]
         
         
-        return get_moments(inf_timesteps, time_means, self.inputs.timing_sd['exp'],
+        return get_moments(inf_timesteps, time_means, self.inputs.timing_sd[self.inputs.key],
                            prob_agent_less_player, agent_pdf)
 
     def cutoff_agent_behavior(self):
@@ -232,16 +239,16 @@ class AgentBehavior():
         moments = self.agent_moments
         # no_inf_moments = [np.nan_to_num(x,nan=np.nan,posinf=np.nan,neginf=np.nan) for x in moments]
         EX_R,EX2_R,EX3_R,EX_G,EX2_G,EX3_G = moments
-        self.cutoff_agent_reaction_mean,self.cutoff_reaction_var,self.cutoff_reaction_skew = EX_R,EX2_R,EX3_R
-        self.cutoff_agent_reaction_sd = np.sqrt(self.cutoff_reaction_var)
-        self.cutoff_agent_gamble_mean,self.cutoff_gamble_var,self.cutoff_gamble_skew = EX_G,EX2_G,EX3_G
-        self.cutoff_agent_gamble_sd = np.sqrt(self.cutoff_gamble_var)
+        self.reaction_leave_time,self.reaction_leave_time_var,self.cutoff_reaction_skew = EX_R,EX2_R,EX3_R
+        self.reaction_leave_time_sd = np.sqrt(self.reaction_leave_time_var)
+        self.gamble_leave_time,self.gamble_leave_time_var,self.cutoff_gamble_skew = EX_G,EX2_G,EX3_G
+        self.gamble_leave_time_sd = np.sqrt(self.gamble_leave_time_var)
         # Calculate the mean, variance, and skew with method of moments
-        # self.cutoff_agent_reaction_mean,self.cutoff_reaction_var,self.cutoff_reaction_skew = EX_R, get_variance(EX_R,EX2_R), get_skew(EX_R,EX2_R,EX3_R)
-        # self.cutoff_agent_reaction_sd = np.sqrt(self.cutoff_reaction_var)
+        # self.reaction_leave_time,self.reaction_leave_time_var,self.cutoff_reaction_skew = EX_R, get_variance(EX_R,EX2_R), get_skew(EX_R,EX2_R,EX3_R)
+        # self.reaction_leave_time_sd = np.sqrt(self.reaction_leave_time_var)
         # # same thing for gamble (X>Y)
-        # self.cutoff_agent_gamble_mean,self.cutoff_gamble_var,self.cutoff_gamble_skew = EX_G, get_variance(EX_G,EX2_G), get_skew(EX_G,EX2_G,EX3_G)
-        # self.cutoff_agent_gamble_sd = np.sqrt(self.cutoff_gamble_var)
+        # self.gamble_leave_time,self.gamble_leave_time_var,self.cutoff_gamble_skew = EX_G, get_variance(EX_G,EX2_G), get_skew(EX_G,EX2_G,EX3_G)
+        # self.gamble_leave_time_sd = np.sqrt(self.gamble_leave_time_var)
     
 class PlayerBehavior():
     '''
@@ -251,36 +258,36 @@ class PlayerBehavior():
     2. Prob Selecting Reaction/Gamble
     3. Prob Making Given Reaction/Gamble
     '''
-    def __init__(self,model_inputs: ModelInputs,agent_behavior: AgentBehavior,expected=True):
+    def __init__(self, model_inputs: ModelInputs,agent_behavior: AgentBehavior):
         self.inputs = model_inputs
         self.agent_behavior = agent_behavior
         
-        if expected:
+        if self.inputs.expected:
             self.key = 'exp'
         else:
             self.key = 'true'
+            
         assert np.allclose(self.prob_selecting_reaction + self.prob_selecting_gamble,1.0)
         #* Leave times
-        self.reaction_leave_time      = self.agent_behavior.cutoff_agent_reaction_mean + self.inputs.reaction_time[self.key]
+        self.reaction_leave_time      = self.agent_behavior.reaction_leave_time + self.inputs.reaction_time[self.key]
         self.gamble_leave_time        = self.inputs.timesteps + self.inputs.gamble_delay[self.key]
         self.wtd_leave_target_time    = self.prob_selecting_reaction*self.reaction_leave_time + self.prob_selecting_gamble*self.gamble_leave_time
         #* Reach Times
-        self.reaction_reach_time      = self.agent_behavior.cutoff_agent_reaction_mean + self.inputs.reaction_plus_movement_time[self.key]
+        self.reaction_reach_time      = self.agent_behavior.reaction_leave_time + self.inputs.reaction_plus_movement_time[self.key]
         self.gamble_reach_time        = self.inputs.timesteps + self.inputs.gamble_delay[self.key] + self.inputs.movement_time[self.key]
         self.wtd_reach_target_time    = self.prob_selecting_reaction*self.reaction_reach_time + self.prob_selecting_gamble*self.gamble_reach_time
         
         #* Leave Time SD
-        self.reaction_leave_time_sd   = np.sqrt(self.agent_behavior.cutoff_agent_reaction_sd**2 + self.inputs.reaction_sd[self.key]**2)
-        self.gamble_leave_time_sd     = self.inputs.gamble_decision_sd[self.key]
-        self.wtd_leave_target_time_sd = self.prob_selecting_reaction*self.reaction_leave_time_sd + self.prob_selecting_gamble*tile(self.gamble_leave_time_sd,self.inputs.timesteps.shape[-1])
+        self.reaction_leave_time_sd   = np.sqrt(self.agent_behavior.reaction_leave_time_sd**2 + self.inputs.reaction_sd[self.key]**2)
+        self.gamble_leave_time_sd     = np.sqrt(self.agent_behavior.gamble_leave_time_sd**2 + self.inputs.gamble_decision_sd[self.key]**2 + tile(self.inputs.timing_sd[self.key]**2,self.inputs.num_timesteps))
+        self.wtd_leave_target_time_sd = self.prob_selecting_reaction*self.reaction_leave_time_sd + self.prob_selecting_gamble*self.gamble_leave_time_sd
         #* Reach Time SD
         self.reaction_reach_time_sd   = np.sqrt(self.reaction_leave_time_sd**2 + self.inputs.movement_sd[self.key]**2)
         self.gamble_reach_time_sd     = np.sqrt(self.gamble_leave_time_sd**2 + self.inputs.movement_sd[self.key]**2)
-        self.wtd_reach_target_time_sd = self.prob_selecting_reaction*self.reaction_reach_time_sd + self.prob_selecting_gamble*tile(self.gamble_reach_time_sd,self.inputs.timesteps.shape[-1])
-
+        self.wtd_reach_target_time_sd = self.prob_selecting_reaction*self.reaction_reach_time_sd + self.prob_selecting_gamble*self.gamble_reach_time_sd
         #* Predict Decision Time
-        self.predicted_decision_time = self.prob_selecting_reaction*self.agent_behavior.cutoff_agent_reaction_mean + \
-                                        self.prob_selecting_gamble*self.agent_behavior.cutoff_agent_gamble_mean
+        self.predicted_decision_time = self.prob_selecting_reaction*self.agent_behavior.reaction_leave_time + \
+                                        self.prob_selecting_gamble*self.agent_behavior.gamble_leave_time
         
     @cached_property
     def prob_selecting_reaction(self):
@@ -300,7 +307,7 @@ class PlayerBehavior():
         # Calculate the prob of making it on a reaction 
         #! Cutoff agent distribution isn't normal, so might not be able to simply add these, problem for later
         mu = self.reaction_reach_time
-        sd = np.sqrt(self.agent_behavior.cutoff_agent_reaction_sd**2 + self.inputs.reaction_reach_sd[self.key]**2)
+        sd = np.sqrt(self.agent_behavior.reaction_leave_time_sd**2 + self.inputs.reaction_reach_sd[self.key]**2)
         # temp = numba_cdf(np.array([1500]),mu.flatten(),sd.flatten()).reshape(self.inputs.timesteps.shape)
         return stats.norm.cdf(1500,mu,sd)
     
@@ -354,7 +361,7 @@ class ScoreMetrics():
         assert np.allclose(self.prob_win + self.prob_incorrect + self.prob_indecision, 1.0)
 
 class ExpectedReward():
-    def __init__(self,model_inputs,score_metrics: ScoreMetrics):
+    def __init__(self, model_inputs: ModelInputs, score_metrics: ScoreMetrics):
         self.inputs = model_inputs
         
         self.exp_reward_reaction    = score_metrics.prob_win_reaction*self.inputs.win_reward + \
@@ -368,49 +375,67 @@ class ExpectedReward():
         self.exp_reward            = score_metrics.prob_win*self.inputs.win_reward +\
                                         score_metrics.prob_incorrect*self.inputs.incorrect_cost + \
                                             score_metrics.prob_indecision*self.inputs.indecision_cost 
-
-class OptimalExpectedReward():
-    def __init__(self, model_inputs: ModelInputs, er: ExpectedReward)->None:
-        self.inputs = model_inputs
-        # Find timepoint that gets the maximum expected reward
-        self.optimal_index         = np.nanargmax(er.exp_reward,axis=1).astype(int)
-        self.optimal_decision_time = np.nanargmax(er.exp_reward, axis = 1)*self.inputs.nsteps + np.min(self.inputs.timesteps)
-        self.max_exp_reward        = np.nanmax(er.exp_reward,axis=1)
-        
-        self.metrics_name_dict = {'exp_reward': 'Expected Reward','exp_reward_gamble': 'Expected Reward Gamble','exp_reward_reaction':'Expected Reward Reaction',
-                                  'prob_making_reaction': 'Prob Making Reaction','prob_making_gamble':'Prob Making Gamble','prob_agent_has_gone':'Prob Agent Has Gone',
-                                  'prob_selecting_reaction':'Prob of Selecting Reaction','prob_selecting_gamble':'Prob of Selecting Gamble',
-                                  'prob_win_reaction':'Prob Win Reaction','prob_win_gamble':'Prob Win Gamble',
-                                  'prob_incorrect_reaction':'Prob Incorrect Reaction','prob_incorrect_gamble':'Prob Incorrect Gamble',
-                                  'prob_indecision_reaction':'Prob Indecision Reaction','prob_indecision_gamble': 'Prob Indecision Gamble',
-                                  'prob_win':'Prob Win','prob_incorrect':'Prob Incorrect','prob_indecision':'Prob Indecision',
-                                  'prob_making_reaction_based_on_agent':'Prob Making Based on Agent'}
     
-class OptimalMetricsCalculator():
+    # def set_decision_index(self,index,i=None):
+    #     '''
+    #     This function is used when fitting to the participant data, instead of using the theoretical optimal decision time
+    #     '''
+    #     if i is None:
+    #         assert isinstance(index,np.ndarray)
+    #         self.optimal_decision_index = index.astype(int)
+    #     else:
+    #         assert isinstance(index,int)
+        
+    #     self.optimal_decision_index[i] = index
+    #     self.optimal_output.optimal_decision_time = index*self.inputs.nsteps + np.min(self.inputs.timesteps)
+    
+class Results():
     '''
     This class contains 
     1. Find optimal function that uses the optimal index on the metrics calculated at every time step (From ScoreMetrics)
     2. Gets gamble/reaction calculations w/ first input being the gamble or reaction and second being the value that divides it
         - So we can get perc_reaction_wins which is (prob_win_reaction/prob_win)*100
     '''
-    def __init__(self,optimal_output):
-        self.optimal_index = optimal_output.optimal_index
-
-    def set_optimal_index(self,index,i=None):
-        '''
-        This function is used when fitting to the participant data, instead of using the theoretical optimal decision time
-        '''
-        if i is None:
-            assert isinstance(index,np.ndarray)
-            self.optimal_index = index.astype(int)
-        else:
-            assert isinstance(index,int)
-            self.optimal_index[i] = index
+    def __init__(self,inputs: ModelInputs, er: ExpectedReward):
+        self.inputs = inputs
+        self.er     = er
+        self.fit_decision_index = None
         
-    def find_optimal(self,metric):
+    @property
+    def optimal_decision_index(self):
+        return np.nanargmax(self.er.exp_reward,axis=1).astype(int)
+    
+    @property
+    def optimal_decision_time(self):
+        return np.nanargmax(self.er.exp_reward, axis = 1)*self.inputs.nsteps + np.min(self.inputs.timesteps)
+    
+    @property
+    def optimal_exp_reward(self):
+        return np.nanmax(self.er.exp_reward,axis=1)
+    
+    @property
+    def fit_decision_time(self):
+        return self.fit_decision_index*self.inputs.nsteps + np.min(self.inputs.timesteps)
+    
+    @property 
+    def fit_exp_reward(self):
+        ans = np.zeros(self.inputs.num_blocks)
+        for i in range(self.inputs.num_blocks):
+            ans[i] = self.er.exp_reward[i,self.fit_decision_index[i]]
+        return ans
+    
+    def set_fit_decision_index(self,index):
+        self.fit_decision_index = index
+        
+    def get_metric(self,metric,metric_type='optimal'):
+        if metric_type=='optimal':
+            index = self.optimal_decision_index
+        else:
+            index = self.fit_decision_index
+            
         ans = np.zeros(metric.shape[0])*np.nan
         for i in range(metric.shape[0]):
-            ans[i] = metric[i,self.optimal_index[i]]
+            ans[i] = metric[i,index[i]]
         return ans
     
     def gamble_reaction_metric(self,metric1,metric2):
@@ -424,8 +449,8 @@ class OptimalMetricsCalculator():
         Out      = Perc Wins That Were Gamble (Out of all the wins, how many were gambles)
         '''
 
-        arr1 = self.find_optimal(metric1)
-        arr2 = self.find_optimal(metric2)
+        arr1 = self.get_metric(metric1)
+        arr2 = self.get_metric(metric2)
         return np.divide(arr1,arr2,out=np.zeros_like(arr2),where=arr2!=0)*100
  
 class ModelConstructor():
@@ -436,24 +461,29 @@ class ModelConstructor():
         
         self.score_metrics   = ScoreMetrics(self.inputs,self.player_behavior)
         self.expected_reward = ExpectedReward(self.inputs,self.score_metrics)
-        self.optimal_output  = OptimalExpectedReward(self.inputs,self.expected_reward)
-        self.calculator      = OptimalMetricsCalculator(self.optimal_output)
+        self.results      = Results(self.inputs,self.expected_reward)
         
-    def fit_model(self,metric_name,target,init_decision_index: tuple):
+        
+    def fit_model(self, metric, target):
+        decision_index = np.array([500]*6)
+        loss = np.zeros_like(self.inputs.timesteps)
+        loss = abs(metric - target[:,np.newaxis])
+        decision_index = np.argmin(loss,axis=1) + np.min(self.inputs.timesteps)
+        self.results.set_fit_decision_index(decision_index.astype(int))
+        
+    def fit_model_scipy(self,metric,target,init_decision_index: tuple):
         bnds = tuple([(np.min(self.inputs.timesteps),np.max(self.inputs.timesteps))]*self.inputs.num_blocks)
-        metric = getattr(self.player_behavior,metric_name) # Get the metric
-        self.calculator.find_optimal(metric)
         ans = np.zeros((self.inputs.num_blocks))
         
         x = init_decision_index
         out = optimize.minimize(self.loss,x,args = (metric,target),method='Nelder-Mead',bounds=bnds)
         ans = out.x + np.min(self.inputs.timesteps)
-        self.calculator.set_optimal_index(ans) 
+        self.results.set_optimal_index(ans) 
     
     def loss(self,decision_time,metric,target):
         decision_time = decision_time.astype(int)
-        self.calculator.set_optimal_index(decision_time) # Set the new optimal index
-        model_metric = self.calculator.find_optimal(metric) # Find the metric at that new optimal index
+        self.results.set_optimal_index(decision_time) # Set the new optimal index
+        model_metric = self.results.get_optimal(metric) # Find the metric at that new optimal index
         return np.mean((model_metric - target)**2)
 
 def main():        
@@ -476,7 +506,7 @@ if __name__ == '__main__':
 #################################################################################################
 ###############################################################################################
 @nb.njit(parallel=True)
-def find_optimal_decision_time_for_certain_metric(ob,metric_name = 'RPMT'):
+def get_optimal_decision_time_for_certain_metric(ob,metric_name = 'RPMT'):
     '''
     Trying to search across the entire space of reaction and movement times and find the optimal decision time for that person 
     '''
