@@ -40,11 +40,12 @@ _ = nb_sum(np.array([2, 2]))
 
 @nb.njit(parallel=True, fastmath=True)
 def get_moments(timesteps, time_means, time_sds, prob_agent_less_player, agent_pdf):
+    
     shape = (len(time_sds), len(time_means))
     EX_R, EX2_R, EX3_R = np.zeros((shape)), np.zeros((shape)), np.zeros((shape))
     EX_G, EX2_G, EX3_G = np.zeros((shape)), np.zeros((shape)), np.zeros((shape))
     dx = timesteps[1] - timesteps[0]
-
+    
     for i in nb.prange(len(time_sds)):
         sig_y = time_sds[i]
         xpdf = agent_pdf[i, :]
@@ -63,9 +64,7 @@ def get_moments(timesteps, time_means, time_sds, prob_agent_less_player, agent_p
             mu_y = time_means[j]  # Put the timing mean in an easy to use variable
             prob_x_less_y = prob_agent_less_player[i, j]  # get prob agent is less than player for that specific agent mean (i) and timing mean (j)
             prob_x_greater_y = 1 - prob_x_less_y
-            y_integrated = 1 - norm.cdf(
-                timesteps, mu_y, sig_y
-            )  # For ALL timesteps, what's the probabilit for every timing mean (from 0 to 2000) that the timing mean is greater than that current timestep
+            y_integrated = 1 - norm.cdf(timesteps, mu_y, sig_y)  # For ALL timesteps, what's the probabilit for every timing mean (from 0 to 2000) that the timing mean is greater than that current timestep
             y_inverse_integrated = 1 - y_integrated
 
             if prob_x_less_y != 0:
@@ -79,9 +78,7 @@ def get_moments(timesteps, time_means, time_sds, prob_agent_less_player, agent_p
 
             if prob_x_greater_y != 0:
                 EX_G[i, j] = nb_sum(timesteps * xpdf * y_inverse_integrated) * dx / prob_x_greater_y
-                EX2_G[i, j] = (
-                    nb_sum((timesteps - EX_G[i, j]) ** 2 * xpdf * y_inverse_integrated) * dx / prob_x_greater_y
-                )  # SECOND CENTRAL MOMENT = VARIANCE
+                EX2_G[i, j] = nb_sum((timesteps - EX_G[i, j]) ** 2 * xpdf * y_inverse_integrated) * dx / prob_x_greater_y  # SECOND CENTRAL MOMENT = VARIANCE
                 # EX3_G[i,j] = 0#np.sum((timesteps-EX_G[i,j])**3*xpdf*y_inverse_integrated)*dx/prob_x_greater_y # THIRD CENTRAL MOMENT = SKEW
             else:
                 EX_G[i, j] = 0
@@ -89,7 +86,6 @@ def get_moments(timesteps, time_means, time_sds, prob_agent_less_player, agent_p
                 # EX3_G[i,j] = 0 # THIRD CENTRAL MOMENT = SKEW
 
     return EX_R, EX2_R, EX3_R, EX_G, EX2_G, EX3_G
-
 
 def numba_cdf(x, mu_arr, sig_arr):
     if x.ndim == 2:  # If x dim is 1, then we have the x as the (6,1800)
@@ -513,10 +509,9 @@ class Results:
         Metric 2 = Prob Win
         Out      = Perc Wins That Were Gamble (Out of all the wins, how many were gambles)
         """
-
         arr1 = self.get_metric(metric1, metric_type=metric_type)
         arr2 = self.get_metric(metric2, metric_type=metric_type)
-        return np.divide(arr1, arr2, out=np.zeros_like(arr2), where=arr2 != 0) * 100
+        return np.divide(arr1, arr2, out=np.zeros_like(arr2), where=arr2 > 1e-10) * 100
 
 
 class ModelConstructor:
@@ -528,7 +523,6 @@ class ModelConstructor:
         self.inputs = ModelInputs(**kwargs)
         self.agent_behavior = AgentBehavior(self.inputs)
         self.player_behavior = PlayerBehavior(self.inputs, self.agent_behavior)
-
         self.score_metrics = ScoreMetrics(self.inputs, self.player_behavior)
         self.expected_reward = ExpectedReward(self.inputs, self.score_metrics)
         self.results = Results(self.inputs, self.expected_reward)
