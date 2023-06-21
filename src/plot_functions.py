@@ -125,10 +125,9 @@ def unity_optimal_plot(ax,xdata,ydata,**kwargs):
         ax1.set_xticks([])
         ax1.spines.bottom.set_visible(False)
         
-def multiple_models_boxplot(ax,data,show_boxplot=True,true_gamble_delay=None,true_gamble_sd=None,
-                            expected_gamble_delay=None,expected_gamble_sd=None,
-                            group_model_true=None,group_model_expected=None, 
-                            optimal_model_true = None,optimal_model_expected=None,**kwargs):
+def multiple_models_boxplot(ax,data,show_boxplot=True,
+                            true_player=None,expected_player=None, 
+                            true_optimal = None,expected_optimal=None,**kwargs):
     bw = kwargs.get('box_width',0.75)
     box_color = kwargs.get('colors',wheel.seth_blue)
     xlocs = kwargs.get('xlocs')
@@ -145,10 +144,10 @@ def multiple_models_boxplot(ax,data,show_boxplot=True,true_gamble_delay=None,tru
     
     line_colors = kwargs.get('line_colors')
     if line_colors is None:
-        line_colors = [wheel.rak_red,wheel.yellow,wheel.pink,wheel.light_orange]
+        line_colors = [wheel.rak_red,wheel.yellow,wheel.rak_blue,wheel.light_orange]
     if remove_parentheses_from_labels is False:
-        labels = [f'Model Prediction of Group\n (Account for Guessing)',
-                  f'Model Prediction of Group',
+        labels = [f'Model Prediction of Group',
+                  f'Model Prediction of Group\n(Not Account for Guessing)',
                   f'Theoretical Optimal',
                   f'Theoretical Optimal\n(Not Accounting for Guessing)',
         ]
@@ -163,23 +162,23 @@ def multiple_models_boxplot(ax,data,show_boxplot=True,true_gamble_delay=None,tru
     legend_labels = []
     legend_linestyles    = []
     
-    if group_model_true is not None:
-        ax.plot(xlocs,group_model_true,c=line_colors[0],marker='o',zorder=200,ls=linestyles[0])
+    if true_player is not None:
+        ax.plot(xlocs,true_player,c=line_colors[0],marker='o',zorder=200,ls=linestyles[0])
         legend_colors.append(line_colors[0])
         legend_labels.append(labels[0])#\n(Gamble Delay/Uncertainty)')
         legend_linestyles.append(linestyles[0])
-    if group_model_expected is not None:
-        ax.plot(xlocs,group_model_expected,c=line_colors[1],marker='o',zorder=200,ls=linestyles[1])
+    if expected_player is not None:
+        ax.plot(xlocs,expected_player,c=line_colors[1],marker='o',zorder=200,ls=linestyles[1])
         legend_colors.append(line_colors[1])
         legend_labels.append(labels[1])
         legend_linestyles.append(linestyles[1])
-    if optimal_model_true is not None:
-        ax.plot(xlocs,optimal_model_true,c=line_colors[2],marker='*',markersize=10,zorder=200,ls = linestyles[2])
+    if true_optimal is not None:
+        ax.plot(xlocs,true_optimal,c=line_colors[2],marker='*',markersize=10,zorder=200,ls = linestyles[2])
         legend_colors.append(line_colors[2])
         legend_labels.append(labels[2])
         legend_linestyles.append(linestyles[2])
-    if optimal_model_expected is not None:
-        ax.plot(xlocs,optimal_model_expected,c=line_colors[3],marker='*',markersize=10, zorder=200,ls=linestyles[3])
+    if expected_optimal is not None:
+        ax.plot(xlocs,expected_optimal,c=line_colors[3],marker='*',markersize=10, zorder=200,ls=linestyles[3])
         legend_colors.append(line_colors[3])
         legend_labels.append(labels[3])
         legend_linestyles.append(linestyles[3])
