@@ -116,8 +116,8 @@ def tile(arr,num):
 
 class ModelInputs():
     __slots__ = 'agent_means','agent_sds','condition_four','condition_one','condition_three','condition_two',\
-                'experiment','gamble_decision_sd','gamble_delay','gamble_delay_known','gamble_reach_sd','gamble_reach_time',\
-                'gamble_sd_known','incorrect_cost','indecision_cost','movement_sd','movement_time','neg_inf_cut_off_value',\
+                'experiment','gamble_decision_sd','gamble_delay','gamble_reach_sd','gamble_reach_time',\
+                'incorrect_cost','indecision_cost','movement_sd','movement_time','neg_inf_cut_off_value',\
                 'nsteps','num_blocks','num_timesteps','prob_selecting_correct_target_gamble','prob_selecting_correct_target_reaction',\
                 'prob_win_when_both_reach','reaction_plus_movement_time','reaction_reach_sd','reaction_sd','reaction_time',\
                 'reward_matrix','tiled_1500','tiled_agent_means','tiled_agent_sds','timesteps','timesteps_dict','timing_sd','win_reward',\
@@ -156,10 +156,7 @@ class ModelInputs():
             self.prob_win_when_both_reach  = kwargs.get('perc_wins_when_both_reach')/100
             # self.BETA_ON                   = kwargs.get('BETA_ON')
             # self.BETA = self.find_beta_term()
-            
-            self.gamble_delay_known   = kwargs.get('gamble_delay_known',True)
-            self.gamble_sd_known      = kwargs.get('gamble_sd_known')
-            
+                        
             # Uncertainty
             self.reaction_sd          = kwargs.get('reaction_sd')
             self.movement_sd          = kwargs.get('movement_sd')
@@ -279,8 +276,14 @@ class PlayerBehavior():
         
         #* Leave Time SD
         self.reaction_leave_time_sd   = np.sqrt(self.agent_behavior.reaction_leave_time_sd**2 + self.inputs.reaction_sd[self.key]**2)
-        self.gamble_leave_time_sd     = np.sqrt(self.agent_behavior.gamble_leave_time_sd**2 + self.inputs.gamble_decision_sd[self.key]**2 + tile(self.inputs.timing_sd[self.key]**2,self.inputs.num_timesteps))
-        self.wtd_leave_target_time_sd = self.prob_selecting_reaction*self.reaction_leave_time_sd + self.prob_selecting_gamble*self.gamble_leave_time_sd
+        # If I pass an array, I took gamble leave time sd from the data
+        if isinstance(self.inputs.gamble_decision_sd[self.key],np.ndarray):
+            self.gamble_leave_time_sd = self.inputs.gamble_decision_sd[self.key][:,np.newaxis]
+            self.wtd_leave_target_time_sd = self.prob_selecting_reaction*self.reaction_leave_time_sd + self.prob_selecting_gamble*self.gamble_leave_time_sd
+
+        else: # If I didn't, then I need to throw on timing uncertainty and agent uncertainty to the decision sd 
+            self.gamble_leave_time_sd     = np.sqrt(self.agent_behavior.gamble_leave_time_sd**2 + self.inputs.gamble_decision_sd[self.key]**2 + tile(self.inputs.timing_sd[self.key]**2,self.inputs.num_timesteps))
+            self.wtd_leave_target_time_sd = self.prob_selecting_reaction*self.reaction_leave_time_sd + self.prob_selecting_gamble*self.gamble_leave_time_sd
         #* Reach Time SD
         self.reaction_reach_time_sd   = np.sqrt(self.reaction_leave_time_sd**2 + self.inputs.movement_sd[self.key]**2)
         self.gamble_reach_time_sd     = np.sqrt(self.gamble_leave_time_sd**2 + self.inputs.movement_sd[self.key]**2)
@@ -438,7 +441,7 @@ class Results():
             ans[i] = metric[i,index[i]]
         return ans
     
-    def gamble_reaction_metric(self,metric1,metric2):
+    def reaction_gamble_metric(self,metric1,metric2,metric_type='optimal'):
         '''
         First metric is prob of that happening out of the second metric.
         np.divide handles the case where the denominator is 0 by just returning 0
@@ -449,8 +452,8 @@ class Results():
         Out      = Perc Wins That Were Gamble (Out of all the wins, how many were gambles)
         '''
 
-        arr1 = self.get_metric(metric1)
-        arr2 = self.get_metric(metric2)
+        arr1 = self.get_metric(metric1,metric_type=metric_type)
+        arr2 = self.get_metric(metric2,metric_type=metric_type)
         return np.divide(arr1,arr2,out=np.zeros_like(arr2),where=arr2!=0)*100
  
 class ModelConstructor():
@@ -493,7 +496,6 @@ def main():
                                reaction_sd = {'true':25,'exp':25}, movement_sd = {'true':25,'exp':25},
                                timing_sd = {'true':np.array([150]*6),'exp':np.array([150]*6)},
                                perc_wins_when_both_reach = np.array([0.8]*6),
-                               gamble_delay_known = True, gamble_sd_known = True,
                                gamble_sd= {'true':150,'exp':10}, gamble_delay = {'true':125,'exp':50},
                                 )
     
