@@ -40,12 +40,11 @@ _ = nb_sum(np.array([2, 2]))
 
 @nb.njit(parallel=True, fastmath=True)
 def get_moments(timesteps, time_means, time_sds, prob_agent_less_player, agent_pdf):
-    
     shape = (len(time_sds), len(time_means))
     EX_R, EX2_R, EX3_R = np.zeros((shape)), np.zeros((shape)), np.zeros((shape))
     EX_G, EX2_G, EX3_G = np.zeros((shape)), np.zeros((shape)), np.zeros((shape))
     dx = timesteps[1] - timesteps[0]
-    
+
     for i in nb.prange(len(time_sds)):
         sig_y = time_sds[i]
         xpdf = agent_pdf[i, :]
@@ -64,7 +63,9 @@ def get_moments(timesteps, time_means, time_sds, prob_agent_less_player, agent_p
             mu_y = time_means[j]  # Put the timing mean in an easy to use variable
             prob_x_less_y = prob_agent_less_player[i, j]  # get prob agent is less than player for that specific agent mean (i) and timing mean (j)
             prob_x_greater_y = 1 - prob_x_less_y
-            y_integrated = 1 - norm.cdf(timesteps, mu_y, sig_y)  # For ALL timesteps, what's the probabilit for every timing mean (from 0 to 2000) that the timing mean is greater than that current timestep
+            y_integrated = 1 - norm.cdf(
+                timesteps, mu_y, sig_y
+            )  # For ALL timesteps, what's the probabilit for every timing mean (from 0 to 2000) that the timing mean is greater than that current timestep
             y_inverse_integrated = 1 - y_integrated
 
             if prob_x_less_y != 0:
@@ -78,7 +79,9 @@ def get_moments(timesteps, time_means, time_sds, prob_agent_less_player, agent_p
 
             if prob_x_greater_y != 0:
                 EX_G[i, j] = nb_sum(timesteps * xpdf * y_inverse_integrated) * dx / prob_x_greater_y
-                EX2_G[i, j] = nb_sum((timesteps - EX_G[i, j]) ** 2 * xpdf * y_inverse_integrated) * dx / prob_x_greater_y  # SECOND CENTRAL MOMENT = VARIANCE
+                EX2_G[i, j] = (
+                    nb_sum((timesteps - EX_G[i, j]) ** 2 * xpdf * y_inverse_integrated) * dx / prob_x_greater_y
+                )  # SECOND CENTRAL MOMENT = VARIANCE
                 # EX3_G[i,j] = 0#np.sum((timesteps-EX_G[i,j])**3*xpdf*y_inverse_integrated)*dx/prob_x_greater_y # THIRD CENTRAL MOMENT = SKEW
             else:
                 EX_G[i, j] = 0
@@ -86,6 +89,7 @@ def get_moments(timesteps, time_means, time_sds, prob_agent_less_player, agent_p
                 # EX3_G[i,j] = 0 # THIRD CENTRAL MOMENT = SKEW
 
     return EX_R, EX2_R, EX3_R, EX_G, EX2_G, EX3_G
+
 
 def numba_cdf(x, mu_arr, sig_arr):
     if x.ndim == 2:  # If x dim is 1, then we have the x as the (6,1800)
@@ -168,17 +172,17 @@ class ModelInputs:
         """
         # * Task Conditions
         if True:
-            self.experiment        = kwargs.get("experiment")
-            self.num_blocks        = kwargs.get("num_blocks")
-            self.agent_means       = kwargs.get("agent_means")  # If exp2, need to be np.array([1100]*4)
-            self.agent_sds         = kwargs.get("agent_sds")  # If exp2, need to be np.array([50]*4)
-            self.nsteps            = 1
-            self.num_timesteps     = kwargs.get("num_timesteps")
-            self.timesteps         = kwargs.get("timesteps", np.tile(np.arange(0.0, float(self.num_timesteps), self.nsteps), (self.num_blocks, 1)))
-            self.timesteps_dict    = {"true": self.timesteps, "exp": self.timesteps}
-            self.tiled_1500        = np.full_like(self.timesteps, 1500.0)
+            self.experiment = kwargs.get("experiment")
+            self.num_blocks = kwargs.get("num_blocks")
+            self.agent_means = kwargs.get("agent_means")  # If exp2, need to be np.array([1100]*4)
+            self.agent_sds = kwargs.get("agent_sds")  # If exp2, need to be np.array([50]*4)
+            self.nsteps = 1
+            self.num_timesteps = kwargs.get("num_timesteps")
+            self.timesteps = kwargs.get("timesteps", np.tile(np.arange(0.0, float(self.num_timesteps), self.nsteps), (self.num_blocks, 1)))
+            self.timesteps_dict = {"true": self.timesteps, "exp": self.timesteps}
+            self.tiled_1500 = np.full_like(self.timesteps, 1500.0)
             self.tiled_agent_means = np.tile(self.agent_means, (self.timesteps.shape[-1], 1)).T
-            self.tiled_agent_sds   = np.tile(self.agent_sds, (self.timesteps.shape[-1], 1)).T
+            self.tiled_agent_sds = np.tile(self.agent_sds, (self.timesteps.shape[-1], 1)).T
 
             self.neg_inf_cut_off_value = -100000
             check = np.tile(np.arange(900.0, 1100.0, self.nsteps), (self.num_blocks, 1))
@@ -198,28 +202,28 @@ class ModelInputs:
             # self.BETA = self.find_beta_term()
 
             # Uncertainty
-            self.reaction_sd        = kwargs.get("reaction_sd")
-            self.movement_sd        = kwargs.get("movement_sd")
-            self.timing_sd          = kwargs.get("timing_sd")
+            self.reaction_sd = kwargs.get("reaction_sd")
+            self.movement_sd = kwargs.get("movement_sd")
+            self.timing_sd = kwargs.get("timing_sd")
             self.gamble_decision_sd = kwargs.get("gamble_decision_sd", {"true": np.array([50] * 6), "exp": np.array([10] * 6)})
 
-            self.reaction_reach_sd  = combine_sd_dicts(self.reaction_sd, self.movement_sd)
-            self.gamble_reach_sd    = combine_sd_dicts(self.gamble_decision_sd, self.movement_sd)
-            
+            self.reaction_reach_sd = combine_sd_dicts(self.reaction_sd, self.movement_sd)
+            self.gamble_reach_sd = combine_sd_dicts(self.gamble_decision_sd, self.movement_sd)
+
             # Ability
-            self.reaction_time               = kwargs.get("reaction_time")
-            self.gamble_delay                = kwargs.get("gamble_delay", {"true": np.array([150] * 6), "exp": np.array([50] * 6)})
-            self.movement_time               = kwargs.get("movement_time")
+            self.reaction_time = kwargs.get("reaction_time")
+            self.gamble_delay = kwargs.get("gamble_delay", {"true": np.array([150] * 6), "exp": np.array([50] * 6)})
+            self.movement_time = kwargs.get("movement_time")
             self.reaction_plus_movement_time = add_dicts(self.reaction_time, self.movement_time)
-            self.gamble_reach_time           = add_dicts(self.timesteps_dict, self.movement_time, self.gamble_delay)
+            self.gamble_reach_time = add_dicts(self.timesteps_dict, self.movement_time, self.gamble_delay)
 
             # Reward and cost values
-            self.reward_matrix   = kwargs.get("reward_matrix", np.array([[1, 0, 0], [1, -1, 0], [1, 0, -1], [1, -1, -1]]))
-            self.condition_one   = np.tile(self.reward_matrix[0], (1800, 1))
-            self.condition_two   = np.tile(self.reward_matrix[1], (1800, 1))
+            self.reward_matrix = kwargs.get("reward_matrix", np.array([[1, 0, 0], [1, -1, 0], [1, 0, -1], [1, -1, -1]]))
+            self.condition_one = np.tile(self.reward_matrix[0], (1800, 1))
+            self.condition_two = np.tile(self.reward_matrix[1], (1800, 1))
             self.condition_three = np.tile(self.reward_matrix[2], (1800, 1))
-            self.condition_four  = np.tile(self.reward_matrix[3], (1800, 1))
-            
+            self.condition_four = np.tile(self.reward_matrix[3], (1800, 1))
+
             # Get reward matrix for Exp2
             if self.experiment == "Exp2":
                 self.win_reward = np.vstack(
@@ -244,14 +248,14 @@ class AgentBehavior:
     def __init__(self, model_inputs: ModelInputs):
         self.inputs = model_inputs
         self.reaction_leave_time_var = None
-        self.cutoff_reaction_skew    = None
-        self.reaction_leave_time     = None
-        self.reaction_leave_time_sd  = None
+        self.cutoff_reaction_skew = None
+        self.reaction_leave_time = None
+        self.reaction_leave_time_sd = None
 
-        self.gamble_leave_time_var   = None
-        self.cutoff_gamble_skew      = None
-        self.gamble_leave_time       = None
-        self.gamble_leave_time_sd    = None
+        self.gamble_leave_time_var = None
+        self.cutoff_gamble_skew = None
+        self.gamble_leave_time = None
+        self.gamble_leave_time_sd = None
 
         # * Get agent behavior
         self.cutoff_agent_behavior()
@@ -264,19 +268,19 @@ class AgentBehavior:
 
     @cached_property
     def agent_moments(self):
-        '''
-        Get first three central moments (EX2 is normalized for mean, 
+        """
+        Get first three central moments (EX2 is normalized for mean,
         EX3 is normalized for mean and sd) of the new distribution based on timing uncertainty
-        '''
-        inf_timesteps          = np.arange(0.0, 2000.0, self.inputs.nsteps) # Going to 2000 is a good approximation, doesn't get better by going higher
-        inf_timesteps_tiled    = np.tile(inf_timesteps, (self.inputs.num_blocks, 1)) # Tile to number of blocks
-        inf_agent_means_tiled  = np.tile(self.inputs.agent_means, (inf_timesteps.shape[0], 1)).T # Tiled agents with 2000 timesteps
-        inf_agent_sds_tiled    = np.tile(self.inputs.agent_sds, (inf_timesteps.shape[0], 1)).T # Tiled agetn sds with 2000 timesteps
-        tiled_timing_sd        = np.tile(self.inputs.timing_sd[self.inputs.key], (self.inputs.timesteps.shape[-1], 1)).T # Tile timing sd
-        time_means             = self.inputs.timesteps[0, :] # Get the timing means that player can select as their stopping time
-        agent_pdf              = stats.norm.pdf(inf_timesteps_tiled, inf_agent_means_tiled, inf_agent_sds_tiled) # Find agent pdf tiled 2000
-        prob_agent_less_player = stats.norm.cdf(0, self.inputs.tiled_agent_means - self.inputs.timesteps, 
-                                                np.sqrt(self.inputs.tiled_agent_sds**2 + (tiled_timing_sd) ** 2)
+        """
+        inf_timesteps = np.arange(0.0, 2000.0, self.inputs.nsteps)  # Going to 2000 is a good approximation, doesn't get better by going higher
+        inf_timesteps_tiled = np.tile(inf_timesteps, (self.inputs.num_blocks, 1))  # Tile to number of blocks
+        inf_agent_means_tiled = np.tile(self.inputs.agent_means, (inf_timesteps.shape[0], 1)).T  # Tiled agents with 2000 timesteps
+        inf_agent_sds_tiled = np.tile(self.inputs.agent_sds, (inf_timesteps.shape[0], 1)).T  # Tiled agetn sds with 2000 timesteps
+        tiled_timing_sd = np.tile(self.inputs.timing_sd[self.inputs.key], (self.inputs.timesteps.shape[-1], 1)).T  # Tile timing sd
+        time_means = self.inputs.timesteps[0, :]  # Get the timing means that player can select as their stopping time
+        agent_pdf = stats.norm.pdf(inf_timesteps_tiled, inf_agent_means_tiled, inf_agent_sds_tiled)  # Find agent pdf tiled 2000
+        prob_agent_less_player = stats.norm.cdf(
+            0, self.inputs.tiled_agent_means - self.inputs.timesteps, np.sqrt(self.inputs.tiled_agent_sds**2 + (tiled_timing_sd) ** 2)
         )
         prob_player_less_agent = 1 - prob_agent_less_player  # Or do the same as above and swap mu_x and mu_y[j]
         # Call get moments equation
@@ -287,12 +291,13 @@ class AgentBehavior:
         moments = self.agent_moments
         # no_inf_moments = [np.nan_to_num(x,nan=np.nan,posinf=np.nan,neginf=np.nan) for x in moments]
         EX_R, EX2_R, EX3_R, EX_G, EX2_G, EX3_G = moments
-        
+
         self.reaction_leave_time, self.reaction_leave_time_var, self.cutoff_reaction_skew = EX_R, EX2_R, EX3_R
         self.reaction_leave_time_sd = np.sqrt(self.reaction_leave_time_var)
-        
+
         self.gamble_leave_time, self.gamble_leave_time_var, self.cutoff_gamble_skew = EX_G, EX2_G, EX3_G
         self.gamble_leave_time_sd = np.sqrt(self.gamble_leave_time_var)
+
 
 class PlayerBehavior:
     """
@@ -323,7 +328,7 @@ class PlayerBehavior:
         self.wtd_reach_target_time = self.prob_selecting_reaction * self.reaction_reach_time + self.prob_selecting_gamble * self.gamble_reach_time
         # * Leave Time SD
         self.reaction_leave_time_sd = np.sqrt(self.agent_behavior.reaction_leave_time_sd**2 + self.inputs.reaction_sd[self.key] ** 2)
-        #* If I pass an array, I took gamble leave time sd from the data
+        # * If I pass an array, I took gamble leave time sd from the data
         if isinstance(self.inputs.gamble_decision_sd[self.key], np.ndarray):
             self.gamble_leave_time_sd = self.inputs.gamble_decision_sd[self.key][:, np.newaxis]
             self.wtd_leave_target_time_sd = (
@@ -449,6 +454,7 @@ class ExpectedReward:
             + score_metrics.prob_indecision * self.inputs.indecision_cost
         )
 
+
 class Results:
     """
     This class contains
@@ -515,10 +521,11 @@ class Results:
 
 
 class ModelConstructor:
-    '''
+    """
     Construct the model by sequentially creating each object, and passing it to the next object
-    
-    '''
+
+    """
+
     def __init__(self, **kwargs):
         self.inputs = ModelInputs(**kwargs)
         self.agent_behavior = AgentBehavior(self.inputs)
@@ -549,6 +556,49 @@ class ModelConstructor:
         model_metric = self.results.get_optimal(metric)  # Find the metric at that new optimal index
         return np.mean((model_metric - target) ** 2)
 
+
+class Group_Models(ModelConstructor):
+    def __init__(self, objects: dict, num_blocks: int, num_timesteps: float):
+        self.objects = objects
+        self.object_list = list(objects.values())
+        self.num_subjects = len(self.object_list)
+        self.num_blocks = num_blocks
+        self.num_timesteps = num_timesteps
+
+        # Get the sub-obj names (agent_behavior, player_behavior, etc. )
+        sub_obj_names = [obj_name for obj_name in dir(self.object_list[0]) if not obj_name.startswith("__")]
+
+        # Loop through the inner object names, and create an attribute for this group class
+        # that returns a list of it's objects of those specific sub objects
+        # Also, loop through eahc sub-objects attributes to get a list of those atttribute
+        self.inner_object_attribute_names_dict = {}
+        for sub_obj_name in sub_obj_names:
+            # Set the sub-object names for the group to be the same, but this group returns a list of all the sub-objects
+            setattr(
+                self, sub_obj_name, [getattr(o, sub_obj_name) for o in self.object_list]
+            ) 
+            # For every sub object name, get a dict of all the attributes it contains 
+            self.inner_object_attribute_names_dict.update(
+                {sub_obj_name: [attribute for attribute in dir(getattr(self.object_list[0], sub_obj_name)) if not attribute.startswith("__")]}
+            )  
+
+        # Get array of the optimal decision index and fit_decision_index for all the objects
+        self.optimal_decision_index = np.array([o.results.optimal_decision_index for o in self.object_list])
+        self.fit_decision_index = np.array([o.results.fit_decision_index for o in self.object_list])
+
+    def get(self, object_name, metric_name, metric_type="optimal"):
+        if metric_type == "optimal":
+            indices = self.optimal_decision_index
+        elif metric_type == "fit":
+            indices = self.fit_decision_index
+
+        inner_objs = getattr(self, object_name)
+        ans = np.zeros((self.num_subjects, self.num_blocks))
+        for i, inner_obj in enumerate(inner_objs):
+            metric = getattr(inner_obj, metric_name)
+            for j in range(self.num_blocks):
+                ans[i, j] = metric[j, indices[i, j]]
+        return ans
 
 def main():
     m = ModelConstructor(
