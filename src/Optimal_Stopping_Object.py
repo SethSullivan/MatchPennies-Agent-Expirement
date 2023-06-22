@@ -557,13 +557,13 @@ class ModelConstructor:
         return np.mean((model_metric - target) ** 2)
 
 
-class Group_Models(ModelConstructor):
+class Group_Models():
     def __init__(self, objects: dict, num_blocks: int, num_timesteps: float):
         self.objects = objects
-        self.object_list = list(objects.values())
-        self.num_subjects = len(self.object_list)
         self.num_blocks = num_blocks
         self.num_timesteps = num_timesteps
+        self.object_list = list(objects.values())
+        self.num_subjects = len(self.object_list)
 
         # Get the sub-obj names (agent_behavior, player_behavior, etc. )
         sub_obj_names = [obj_name for obj_name in dir(self.object_list[0]) if not obj_name.startswith("__")]
@@ -574,9 +574,7 @@ class Group_Models(ModelConstructor):
         self.inner_object_attribute_names_dict = {}
         for sub_obj_name in sub_obj_names:
             # Set the sub-object names for the group to be the same, but this group returns a list of all the sub-objects
-            setattr(
-                self, sub_obj_name, [getattr(o, sub_obj_name) for o in self.object_list]
-            ) 
+            setattr(self, sub_obj_name, [getattr(o, sub_obj_name) for o in self.object_list]) 
             # For every sub object name, get a dict of all the attributes it contains 
             self.inner_object_attribute_names_dict.update(
                 {sub_obj_name: [attribute for attribute in dir(getattr(self.object_list[0], sub_obj_name)) if not attribute.startswith("__")]}
@@ -585,8 +583,12 @@ class Group_Models(ModelConstructor):
         # Get array of the optimal decision index and fit_decision_index for all the objects
         self.optimal_decision_index = np.array([o.results.optimal_decision_index for o in self.object_list])
         self.fit_decision_index = np.array([o.results.fit_decision_index for o in self.object_list])
-
-    def get(self, object_name, metric_name, metric_type="optimal"):
+    
+    def get_input(self,metric_name,key='true'):
+        return np.array([getattr(o,metric_name)[key] for o in self.inputs])
+            
+    def get(self, object_name, metric_name, metric_type="optimal"):      
+        # Select optimal or fit decision index
         if metric_type == "optimal":
             indices = self.optimal_decision_index
         elif metric_type == "fit":
@@ -594,8 +596,11 @@ class Group_Models(ModelConstructor):
 
         inner_objs = getattr(self, object_name)
         ans = np.zeros((self.num_subjects, self.num_blocks))
+        # Loop through all the inner objects 
         for i, inner_obj in enumerate(inner_objs):
+            # Get the metric for each subject
             metric = getattr(inner_obj, metric_name)
+            # Loop through blocks to return the metric at that optimal
             for j in range(self.num_blocks):
                 ans[i, j] = metric[j, indices[i, j]]
         return ans
