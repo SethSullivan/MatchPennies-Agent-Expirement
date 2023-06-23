@@ -611,7 +611,7 @@ class Group_Models():
     def get_input(self,metric_name,key='true'):
         return np.array([getattr(o,metric_name)[key] for o in self.inputs])
             
-    def get(self, object_name, metric_name, metric_type="optimal"):      
+    def get_metric(self, object_name, metric_name, object_name2=None, metric_name2=None, metric_type="optimal"):      
         # Select optimal or fit decision index
         if metric_type == "optimal":
             indices = self.optimal_decision_index
@@ -619,15 +619,33 @@ class Group_Models():
             indices = self.fit_decision_index
         
         ans = np.zeros((self.num_subjects, self.num_blocks))
-        # Get inner objects
-        inner_objs = getattr(self, object_name)
-        # Loop through all the inner objects 
-        for i, inner_obj in enumerate(inner_objs):
-            # Get the metric for each subject
-            metric = getattr(inner_obj, metric_name)
-            # Loop through blocks to return the metric at that optimal
-            for j in range(self.num_blocks):
-                ans[i, j] = metric[j, indices[i, j]]
+        num = np.zeros((self.num_subjects, self.num_blocks))
+        denom = np.zeros((self.num_subjects, self.num_blocks))
+        # If it's not a reaction gamble metric
+        if metric_name2 is None:
+            # Get inner objects
+            inner_objs = getattr(self, object_name)
+            # Loop through all the inner objects 
+            for i, inner_obj in enumerate(inner_objs):
+                # Get the metric for each subject
+                metric = getattr(inner_obj, metric_name)
+                # Loop through blocks to return the metric at that optimal
+                for j in range(self.num_blocks):
+                    ans[i, j] = metric[j, indices[i, j]]
+        else: 
+            # Get inner objects
+            inner_objs1 = getattr(self, object_name)
+            inner_objs2 = getattr(self, object_name2)
+
+            for i, (inner_obj1,inner_obj2) in enumerate(zip(inner_objs1,inner_objs2)):
+                # Get the metric for each subject
+                metric_num = getattr(inner_obj1, metric_name)
+                metric_denom = getattr(inner_obj2, metric_name2)
+                # Loop through blocks to return the metric at that optimal
+                for j in range(self.num_blocks):
+                    num[i, j] = metric_num[j, indices[i, j]]
+                    denom[i, j] = metric_denom[j, indices[i, j]]
+            ans = num/denom
         return ans
 
 def main():
