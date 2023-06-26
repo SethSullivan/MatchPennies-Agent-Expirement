@@ -551,35 +551,77 @@ class ModelConstructor:
     """
 
     def __init__(self, **kwargs):
-        self.inputs = ModelInputs(**kwargs)
-        self.agent_behavior = AgentBehavior(self.inputs)
+        self.kwargs          = kwargs
+        self.inputs          = ModelInputs(**kwargs)
+        self.agent_behavior  = AgentBehavior(self.inputs)
         self.player_behavior = PlayerBehavior(self.inputs, self.agent_behavior)
-        self.score_metrics = ScoreMetrics(self.inputs, self.player_behavior)
+        self.score_metrics   = ScoreMetrics(self.inputs, self.player_behavior)
         self.expected_reward = ExpectedReward(self.inputs, self.score_metrics)
-        self.results = Results(self.inputs, self.expected_reward)
-
+        self.results         = Results(self.inputs, self.expected_reward)
+        
+    
     def fit_model(self, metric, target):
+        '''
+        Fitting the model with no free parameters
+        - Just pick the decision time that minimizes the difference between model predicted movement onset
+        and the data movement onset
+        '''
         decision_index = np.array([500]*6)
         loss = np.zeros_like(self.inputs.timesteps)
         loss = abs(metric - target[:, np.newaxis])
         decision_index = np.argmin(loss, axis=1) + np.min(self.inputs.timesteps)
         self.results.set_fit_decision_index(decision_index.astype(int))
+    
+    def fit_multiple_parameters(self, free_params_init: dict, metric_keys: np.ndarray, targets: np.ndarray):
+        # bnds = tuple([(np.min(self.inputs.timesteps), np.max(self.inputs.timesteps))]*self.inputs.num_blocks)
+        # ans = np.zeros((self.inputs.num_blocks))
+        initial_guess = np.array(list(free_params_init.values()))
+        initial_shape = initial_guess.shape
+        out = optimize.minimize(self.free_param_loss, initial_guess, args=(metric_keys, targets, free_params_init.keys()), 
+                                method="Nelder-Mead", bounds=None)
+        # ans = out.x + np.min(self.inputs.timesteps)
+        ans = out.x.reshape(initial_shape)
+        return ans
+    
+    def free_param_loss(self, free_params_values, metric_keys, targets, free_params_keys):
+        # Get the new arrays from the optimized free parameter inputs
+        self.run_model_fitting_procedure(free_params_keys,free_params_values) 
+        # Get the decision time
+        decision_time = np.array(free_params_values[0:self.inputs.num_blocks]).astype(int) 
+        # Set the new fit decision index
+        self.results.set_fit_decision_index(decision_time)   
+        
+        # Get each metric from results at that specific decision time
+        model_metrics = np.zeros_like(targets)
+        for i in range(targets.shape[0]): # Skip over decision time 
+            if metric_keys[i] == 'wtd_leave_target_time':
+                model_metric = getattr(self.player_behavior,metric_keys[i])
+            else:
+                model_metric = getattr(self.score_metrics,metric_keys[i])
+            model_metrics[i,:] = self.results.get_metric(model_metric,metric_type='fit')  # Find the metric at that new fit decision index
+        return np.mean((model_metrics - targets) ** 2)
+    
+    def run_model_fitting_procedure(self, free_param_keys, free_param_values):
+        '''
+        This updates the inputs using the new free parameters
+        '''
+        #* Change the keyword arguments that are being modified
+        for k,v in zip(free_param_keys,free_param_values):
+            if k != 'decision_time':
+                self.kwargs[k]['true'] = v    
+        kwargs = self.kwargs
+        #* Pass new set of kwargs to the inputs, then run through model
+        self.inputs = ModelInputs(**kwargs) 
+        if 'timing_sd' in free_param_keys: # AgentBehavior doesn't need to be run again if the timing_sd doesn't change
+            self.agent_behavior = AgentBehavior(self.inputs)
+        self.player_behavior = PlayerBehavior(self.inputs, self.agent_behavior)
+        self.score_metrics = ScoreMetrics(self.inputs, self.player_behavior)
+        self.expected_reward = ExpectedReward(self.inputs, self.score_metrics)
+        self.results = Results(self.inputs, self.expected_reward)
 
-    def fit_model_scipy(self, metric, target, init_decision_index: tuple):
-        bnds = tuple([(np.min(self.inputs.timesteps), np.max(self.inputs.timesteps))]*self.inputs.num_blocks)
-        ans = np.zeros((self.inputs.num_blocks))
-
-        x = init_decision_index
-        out = optimize.minimize(self.loss, x, args=(metric, target), method="Nelder-Mead", bounds=bnds)
-        ans = out.x + np.min(self.inputs.timesteps)
-        self.results.set_optimal_index(ans)
-
-    def loss(self, decision_time, metric, target):
-        decision_time = decision_time.astype(int)
-        self.results.set_optimal_index(decision_time)  # Set the new optimal index
-        model_metric = self.results.get_optimal(metric)  # Find the metric at that new optimal index
-        return np.mean((model_metric - target) ** 2)
-
+# class ModelFitting:
+#     def __init__(self,model: ModelConstructor):
+#         self.model = model
 
 class Group_Models():
     def __init__(self, objects: dict, num_blocks: int, num_timesteps: float):
