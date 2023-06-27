@@ -10,6 +10,9 @@ import src.Subject_Object_v2 as Subject_Object_v2
 importlib.reload(Subject_Object_v2)
 
 def pickle_subject_objects(subject_list,load_path):
+    '''
+    Deprecated, generating subject objects is faster than storing the processed objects
+    '''
     subject_objects = []
     for i,subname in enumerate(subject_list):
         print(subname)
