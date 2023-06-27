@@ -276,7 +276,7 @@ class AgentBehavior:
         ans = stats.norm.cdf(1500,self.inputs.agent_means + 150,self.inputs.agent_sds)
         return ans[:,np.newaxis]
     
-    @cached_property
+    @property
     def agent_moments(self):
         """
         Get first three central moments (EX2 is normalized for mean,
@@ -366,7 +366,7 @@ class PlayerBehavior:
             + self.prob_selecting_gamble*self.agent_behavior.gamble_leave_time
         )
 
-    @cached_property
+    @property
     def prob_selecting_reaction(self):
         combined_sd = np.sqrt(
             self.inputs.timing_sd[self.key] ** 2 + self.inputs.agent_sds**2
@@ -377,11 +377,11 @@ class PlayerBehavior:
         ans = 1 - stats.norm.cdf(0, diff, tiled_combined_sd)
         return ans
 
-    @cached_property
+    @property
     def prob_selecting_gamble(self):
         return 1 - self.prob_selecting_reaction
 
-    @cached_property
+    @property
     def prob_making_given_reaction(self):
         # Calculate the prob of making it on a reaction
         #! Cutoff agent distribution isn't normal, so might not be able to simply add these, problem for later
@@ -390,7 +390,7 @@ class PlayerBehavior:
         # temp = numba_cdf(np.array([1500]),mu.flatten(),sd.flatten()).reshape(self.inputs.timesteps.shape)
         return stats.norm.cdf(1500, mu, sd)
 
-    @cached_property
+    @property
     def prob_making_given_gamble(self):
         mu = self.gamble_reach_time
         sd = np.tile(self.inputs.gamble_reach_sd[self.key], (self.inputs.timesteps.shape[-1], 1)).T
@@ -518,11 +518,13 @@ class Results:
     def set_fit_decision_index(self, index):
         self.fit_decision_index = index
 
-    def get_metric(self, metric, metric_type="optimal"):
+    def get_metric(self, metric, metric_type):
         if metric_type == "optimal":
             index = self.optimal_decision_index
-        else:
+        elif metric_type == 'fit':
             index = self.fit_decision_index
+        else:
+            raise(ValueError, "metric_type must be \"optimal\" or \"fit\"")
 
         ans = np.zeros(metric.shape[0])*np.nan
         for i in range(metric.shape[0]):
@@ -552,6 +554,7 @@ class ModelConstructor:
 
     def __init__(self, **kwargs):
         self.kwargs          = kwargs
+        self.data_leave_times = kwargs.get('data_leave_times')
         self.inputs          = ModelInputs(**kwargs)
         self.agent_behavior  = AgentBehavior(self.inputs)
         self.player_behavior = PlayerBehavior(self.inputs, self.agent_behavior)
@@ -572,24 +575,27 @@ class ModelConstructor:
         decision_index = np.argmin(loss, axis=1) + np.min(self.inputs.timesteps)
         self.results.set_fit_decision_index(decision_index.astype(int))
     
-    def fit_multiple_parameters(self, free_params_init: dict, metric_keys: np.ndarray, targets: np.ndarray):
+    def fit_multiple_parameters(self, free_params_init: dict, metric_keys: list, targets: np.ndarray):
         # bnds = tuple([(np.min(self.inputs.timesteps), np.max(self.inputs.timesteps))]*self.inputs.num_blocks)
         # ans = np.zeros((self.inputs.num_blocks))
         initial_guess = np.array(list(free_params_init.values()))
-        initial_shape = initial_guess.shape
+        # self.initial_shape = initial_guess.shape
         out = optimize.minimize(self.free_param_loss, initial_guess, args=(metric_keys, targets, free_params_init.keys()), 
-                                method="Nelder-Mead", bounds=None)
+                                method="Nelder-Mead", bounds=None, tol = 0.00000001)
         # ans = out.x + np.min(self.inputs.timesteps)
-        ans = out.x.reshape(initial_shape)
-        return ans
+        ans = out.x.reshape(self.initial_shape)
+        return ans,out
     
     def free_param_loss(self, free_params_values, metric_keys, targets, free_params_keys):
+        free_params_values = free_params_values.reshape(self.initial_shape) # Reshape array
+        # Create dictionary back
+        d = dict(zip(free_params_keys,free_params_values))
         # Get the new arrays from the optimized free parameter inputs
-        self.run_model_fitting_procedure(free_params_keys,free_params_values) 
+        self.run_model_fitting_procedure(d) 
         # Get the decision time
-        decision_time = np.array(free_params_values[0:self.inputs.num_blocks]).astype(int) 
-        # Set the new fit decision index
-        self.results.set_fit_decision_index(decision_time)   
+        # decision_time = np.array(free_params_values[0:self.inputs.num_blocks]).astype(int) 
+        # # Set the new fit decision index
+        # self.results.set_fit_decision_index(decision_time)   
         
         # Get each metric from results at that specific decision time
         model_metrics = np.zeros_like(targets)
@@ -599,25 +605,38 @@ class ModelConstructor:
             else:
                 model_metric = getattr(self.score_metrics,metric_keys[i])
             model_metrics[i,:] = self.results.get_metric(model_metric,metric_type='fit')  # Find the metric at that new fit decision index
-        return np.mean((model_metrics - targets) ** 2)
+            
+        return np.sum(abs(model_metrics - targets))
     
-    def run_model_fitting_procedure(self, free_param_keys, free_param_values):
+    def run_model_fitting_procedure(self, free_param_dict):
         '''
         This updates the inputs using the new free parameters
+        
+        1. Update kwargs which updates model inputs
+        2. Run through each step of the model with the new inputs
+        3. Get the best fit decision time that matches the leave times
+        4. Returns back to free_param_loss
         '''
+        
         #* Change the keyword arguments that are being modified
-        for k,v in zip(free_param_keys,free_param_values):
+        for k,v in free_param_dict.items():
             if k != 'decision_time':
                 self.kwargs[k]['true'] = v    
         kwargs = self.kwargs
+        
         #* Pass new set of kwargs to the inputs, then run through model
         self.inputs = ModelInputs(**kwargs) 
-        if 'timing_sd' in free_param_keys: # AgentBehavior doesn't need to be run again if the timing_sd doesn't change
+        
+        #* Update Model
+        if 'timing_sd' in free_param_dict.keys(): # AgentBehavior needs to be run again if the timing_sd changes
             self.agent_behavior = AgentBehavior(self.inputs)
         self.player_behavior = PlayerBehavior(self.inputs, self.agent_behavior)
         self.score_metrics = ScoreMetrics(self.inputs, self.player_behavior)
         self.expected_reward = ExpectedReward(self.inputs, self.score_metrics)
         self.results = Results(self.inputs, self.expected_reward)
+        
+        #* Get new fit decision time 
+        self.fit_model(self.player_behavior.wtd_leave_target_time,self.data_leave_times)
 
 # class ModelFitting:
 #     def __init__(self,model: ModelConstructor):
