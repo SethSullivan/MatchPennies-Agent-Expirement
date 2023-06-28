@@ -10,7 +10,7 @@ from numba_stats import norm
 from functools import cached_property
 from scipy import optimize
 import time
-
+import loss_functions as lf
 wheel = dv.ColorWheel()
 """
 04/04/23
@@ -127,44 +127,44 @@ def tile(arr, num):
 
 
 class ModelInputs:
-    __slots__ = (
-        "agent_means",
-        "agent_sds",
-        "condition_four",
-        "condition_one",
-        "condition_three",
-        "condition_two",
-        "experiment",
-        "gamble_decision_sd",
-        "gamble_delay",
-        "gamble_reach_sd",
-        "gamble_reach_time",
-        "incorrect_cost",
-        "indecision_cost",
-        "movement_sd",
-        "movement_time",
-        "neg_inf_cut_off_value",
-        "nsteps",
-        "num_blocks",
-        "num_timesteps",
-        "prob_selecting_correct_target_gamble",
-        "prob_selecting_correct_target_reaction",
-        "prob_win_when_both_reach",
-        "reaction_plus_movement_time",
-        "reaction_reach_sd",
-        "reaction_sd",
-        "reaction_time",
-        "reward_matrix",
-        "tiled_1500",
-        "tiled_agent_means",
-        "tiled_agent_sds",
-        "timesteps",
-        "timesteps_dict",
-        "timing_sd",
-        "win_reward",
-        "expected",
-        "key",
-    )
+    # __slots__ = (
+    #     "agent_means",
+    #     "agent_sds",
+    #     "condition_four",
+    #     "condition_one",
+    #     "condition_three",
+    #     "condition_two",
+    #     "experiment",
+    #     "gamble_sd",
+    #     "gamble_switch_delay",
+    #     "gamble_reach_sd",
+    #     "gamble_reach_time",
+    #     "incorrect_cost",
+    #     "indecision_cost",
+    #     "movement_sd",
+    #     "movement_time",
+    #     "neg_inf_cut_off_value",
+    #     "nsteps",
+    #     "num_blocks",
+    #     "num_timesteps",
+    #     "prob_selecting_correct_target_gamble",
+    #     "prob_selecting_correct_target_reaction",
+    #     "prob_win_when_both_reach",
+    #     "reaction_plus_movement_time",
+    #     "reaction_reach_sd",
+    #     "reaction_sd",
+    #     "reaction_time",
+    #     "reward_matrix",
+    #     "tiled_1500",
+    #     "tiled_agent_means",
+    #     "tiled_agent_sds",
+    #     "timesteps",
+    #     "timesteps_dict",
+    #     "timing_sd",
+    #     "win_reward",
+    #     "electromechanical_delay",
+    #     "key",
+    # )
 
     def __init__(self, **kwargs):
         """
@@ -196,6 +196,9 @@ class ModelInputs:
                 self.key = "exp"
             else:
                 self.key = "true"
+    
+            self.switch_cost_exists = kwargs.get('switch_cost_exists')
+    
             #  HOW MUCH PEOPLE WEIGH WINS VERSUS CORRECTNESS IS THE BETA TERM
             self.prob_win_when_both_reach = kwargs.get("perc_wins_when_both_reach") / 100
             # self.BETA_ON                   = kwargs.get('BETA_ON')
@@ -205,27 +208,38 @@ class ModelInputs:
             self.reaction_sd = kwargs.get("reaction_sd")
             self.movement_sd = kwargs.get("movement_sd")
             self.timing_sd = kwargs.get("timing_sd")
-            self.gamble_decision_sd = kwargs.get("gamble_decision_sd", {"true": np.array([50]*6), "exp": np.array([10]*6)})
+            self.gamble_switch_sd = kwargs.get("gamble_switch_sd")
+            self.electromechanical_sd = kwargs.get("electromechanical_sd")
+            self.gamble_sd = add_dicts(self.gamble_switch_sd,self.electromechanical_sd,self.timing_sd)
+
+            assert self.electromechanical_sd['true'] == self.electromechanical_sd['exp']
 
             self.reaction_reach_sd = combine_sd_dicts(self.reaction_sd, self.movement_sd)
-            self.gamble_reach_sd = combine_sd_dicts(self.gamble_decision_sd, self.movement_sd)
+            self.gamble_reach_sd = combine_sd_dicts(self.gamble_sd, self.movement_sd)
 
             # Ability
             self.reaction_time = kwargs.get("reaction_time")
-            self.gamble_delay = kwargs.get("gamble_delay", {"true": np.array([150]*6), "exp": np.array([50]*6)})
             self.movement_time = kwargs.get("movement_time")
             self.reaction_plus_movement_time = add_dicts(self.reaction_time, self.movement_time)
-            self.gamble_reach_time = add_dicts(self.timesteps_dict, self.movement_time, self.gamble_delay)
+            
+            self.gamble_switch_delay = kwargs.get("gamble_switch_delay")
+            self.electromechanical_delay = kwargs.get('electromechanical_delay')
+            self.gamble_delay = add_dicts(self.gamble_switch_delay, self.electromechanical_delay)
+            self.gamble_plus_movement_time = add_dicts(self.timesteps_dict, self.movement_time, self.gamble_delay)
 
-            # Reward and cost values
-            self.reward_matrix = kwargs.get("reward_matrix", np.array([[1, 0, 0], [1, -1, 0], [1, 0, -1], [1, -1, -1]]))
-            self.condition_one = np.tile(self.reward_matrix[0], (1800, 1))
-            self.condition_two = np.tile(self.reward_matrix[1], (1800, 1))
-            self.condition_three = np.tile(self.reward_matrix[2], (1800, 1))
-            self.condition_four = np.tile(self.reward_matrix[3], (1800, 1))
+            assert self.electromechanical_delay['exp'] == self.electromechanical_delay['true']
+
+            
 
             # Get reward matrix for Exp2
             if self.experiment == "Exp2":
+                # Reward and cost values
+                self.reward_matrix = kwargs.get("reward_matrix", np.array([[1, 0, 0], [1, -1, 0], [1, 0, -1], [1, -1, -1]]))
+                self.condition_one = np.tile(self.reward_matrix[0], (1800, 1))
+                self.condition_two = np.tile(self.reward_matrix[1], (1800, 1))
+                self.condition_three = np.tile(self.reward_matrix[2], (1800, 1))
+                self.condition_four = np.tile(self.reward_matrix[3], (1800, 1))
+                
                 self.win_reward = np.vstack(
                     (self.condition_one[:, 0], self.condition_two[:, 0], self.condition_three[:, 0], self.condition_four[:, 0])
                 )
@@ -243,7 +257,15 @@ class ModelInputs:
             self.prob_selecting_correct_target_reaction = kwargs.get("prob_selecting_correct_target_reaction", 1.0)
             self.prob_selecting_correct_target_gamble = kwargs.get("prob_selecting_correct_target_gamble", 0.5)
 
-
+            # Ensure that if the switch cost doesn't exist, that the exp and true are the same
+            assert self.switch_cost_exists is not None
+            if not self.switch_cost_exists:
+                assert self.gamble_switch_delay['exp'] == self.gamble_switch_delay['true']
+                assert self.gamble_switch_sd['exp'] == self.gamble_switch_sd['true']
+            # else:
+            #     assert self.gamble_switch_delay['exp'] != self.gamble_switch_delay['true']
+            #     assert self.gamble_switch_sd['exp'] != self.gamble_switch_sd['true']
+            
 class AgentBehavior:
     def __init__(self, model_inputs: ModelInputs):
         self.inputs = model_inputs
@@ -329,18 +351,18 @@ class PlayerBehavior:
 
         assert np.allclose(self.prob_selecting_reaction + self.prob_selecting_gamble, 1.0)
         #*Leave times
-        self.reaction_leave_time = self.agent_behavior.reaction_leave_time + self.inputs.reaction_time[self.key]
-        self.gamble_leave_time = self.inputs.timesteps + self.inputs.gamble_delay[self.key]
+        self.reaction_leave_time   = self.agent_behavior.reaction_leave_time + self.inputs.reaction_time[self.key]
+        self.gamble_leave_time     = self.inputs.timesteps + self.inputs.gamble_delay[self.key]
         self.wtd_leave_target_time = self.prob_selecting_reaction*self.reaction_leave_time + self.prob_selecting_gamble*self.gamble_leave_time
         #*Reach Times
-        self.reaction_reach_time = self.agent_behavior.reaction_leave_time + self.inputs.reaction_plus_movement_time[self.key]
-        self.gamble_reach_time = self.inputs.timesteps + self.inputs.gamble_delay[self.key] + self.inputs.movement_time[self.key]
+        self.reaction_reach_time   = self.agent_behavior.reaction_leave_time + self.inputs.reaction_plus_movement_time[self.key]
+        self.gamble_reach_time     = self.inputs.timesteps + self.inputs.gamble_delay[self.key] + self.inputs.movement_time[self.key]
         self.wtd_reach_target_time = self.prob_selecting_reaction*self.reaction_reach_time + self.prob_selecting_gamble*self.gamble_reach_time
         #*Leave Time SD
         self.reaction_leave_time_sd = np.sqrt(self.agent_behavior.reaction_leave_time_sd**2 + self.inputs.reaction_sd[self.key] ** 2)
         #*If I pass an array, I took gamble leave time sd from the data
-        if isinstance(self.inputs.gamble_decision_sd[self.key], np.ndarray):
-            self.gamble_leave_time_sd = self.inputs.gamble_decision_sd[self.key][:, np.newaxis]
+        if isinstance(self.inputs.gamble_sd[self.key], np.ndarray):
+            self.gamble_leave_time_sd = self.inputs.gamble_sd[self.key][:, np.newaxis]
             self.wtd_leave_target_time_sd = (
                 self.prob_selecting_reaction*self.reaction_leave_time_sd + self.prob_selecting_gamble*self.gamble_leave_time_sd
             )
@@ -348,7 +370,7 @@ class PlayerBehavior:
         else:  # If I didn't, then I need to throw on timing uncertainty and agent uncertainty to the decision sd
             self.gamble_leave_time_sd = np.sqrt(
                 self.agent_behavior.gamble_leave_time_sd**2
-                + self.inputs.gamble_decision_sd[self.key] ** 2
+                + self.inputs.gamble_sd[self.key] ** 2
                 + tile(self.inputs.timing_sd[self.key] ** 2, self.inputs.num_timesteps)
             )
             self.wtd_leave_target_time_sd = (
@@ -574,73 +596,87 @@ class ModelConstructor:
         loss = abs(metric - target[:, np.newaxis])
         decision_index = np.argmin(loss, axis=1) + np.min(self.inputs.timesteps)
         self.results.set_fit_decision_index(decision_index.astype(int))
+        
+class ModelFitting:
+    '''
+    Pass ModelConstructor to fit free parameters
     
-    def fit_multiple_parameters(self, free_params_init: dict, metric_keys: list, targets: np.ndarray):
-        # bnds = tuple([(np.min(self.inputs.timesteps), np.max(self.inputs.timesteps))]*self.inputs.num_blocks)
-        # ans = np.zeros((self.inputs.num_blocks))
-        initial_guess = np.array(list(free_params_init.values()))
-        # self.initial_shape = initial_guess.shape
-        out = optimize.minimize(self.free_param_loss, initial_guess, args=(metric_keys, targets, free_params_init.keys()), 
-                                method="Nelder-Mead", bounds=None, tol = 0.00000001)
+    1. Call run_model_fit_procedure, which calls get_loss from scipy
+    2. get_loss calls update_model with free params supplied by scipy
+    3. update_model runs through the model sequence with the new free parameters
+    '''
+    def __init__(self,model: ModelConstructor):
+        self.model = model
+        self.initial_param_shape = None
+        self.loss = None
+        
+    def run_model_fit_procedure(self, free_params_init: dict, metric_keys: list, targets: np.ndarray,
+                                method='Nelder-Mead', bnds=None, tol = 0.0000001):
+        self.loss = []
+        self.initial_guess = np.array(list(free_params_init.values())) # Get the free param values from dict and make an array, scipy will flatten it if it's 2D
+        if bnds is None:
+            bnds = tuple([[0,500]]*len(self.initial_guess))
+        self.initial_param_shape = self.initial_guess.shape # Used for reshaping the parameter 
+        
+        out = optimize.minimize(self.get_loss, self.initial_guess, args=(metric_keys, targets, free_params_init.keys()), 
+                                method=method, bounds=bnds, tol = tol)
         # ans = out.x + np.min(self.inputs.timesteps)
-        ans = out.x.reshape(self.initial_shape)
+        ans = out.x#.reshape(self.initial_param_shape)
         return ans,out
     
-    def free_param_loss(self, free_params_values, metric_keys, targets, free_params_keys):
-        free_params_values = free_params_values.reshape(self.initial_shape) # Reshape array
+    def get_loss(self, free_params_values, metric_keys, 
+                 targets, free_params_keys):
+        
+        # if len(free_params_values)>1:
+        #     free_params_values = free_params_values.reshape(self.initial_param_shape) # Reshape array
         # Create dictionary back
         d = dict(zip(free_params_keys,free_params_values))
+        
         # Get the new arrays from the optimized free parameter inputs
-        self.run_model_fitting_procedure(d) 
-        # Get the decision time
-        # decision_time = np.array(free_params_values[0:self.inputs.num_blocks]).astype(int) 
-        # # Set the new fit decision index
-        # self.results.set_fit_decision_index(decision_time)   
+        self.update_model(d) 
         
         # Get each metric from results at that specific decision time
         model_metrics = np.zeros_like(targets)
         for i in range(targets.shape[0]): # Skip over decision time 
             if metric_keys[i] == 'wtd_leave_target_time':
-                model_metric = getattr(self.player_behavior,metric_keys[i])
+                model_metric = getattr(self.model.player_behavior, metric_keys[i])
             else:
-                model_metric = getattr(self.score_metrics,metric_keys[i])
-            model_metrics[i,:] = self.results.get_metric(model_metric,metric_type='fit')  # Find the metric at that new fit decision index
-            
-        return np.sum(abs(model_metrics - targets))
+                model_metric = getattr(self.model.score_metrics, metric_keys[i])
+            model_metrics[i,:] = self.model.results.get_metric(model_metric, metric_type='optimal')  # Find the metric at that new fit decision index
+        
+        loss = lf.ape_loss(model_metrics, targets)
+        self.loss.append(loss)
+        return loss
     
-    def run_model_fitting_procedure(self, free_param_dict):
+    def update_model(self, free_param_dict):
         '''
         This updates the inputs using the new free parameters
         
         1. Update kwargs which updates model inputs
         2. Run through each step of the model with the new inputs
-        3. Get the best fit decision time that matches the leave times
-        4. Returns back to free_param_loss
+        3. Returns back to get_loss
         '''
         
         #* Change the keyword arguments that are being modified
         for k,v in free_param_dict.items():
             if k != 'decision_time':
-                self.kwargs[k]['true'] = v    
-        kwargs = self.kwargs
+                self.model.kwargs[k]['true'] = v    
+        kwargs = self.model.kwargs
         
-        #* Pass new set of kwargs to the inputs, then run through model
-        self.inputs = ModelInputs(**kwargs) 
+        #* Pass new set of kwargs to the inputs, then run through model constructor sequence again
+        self.model.inputs = ModelInputs(**kwargs) 
         
         #* Update Model
         if 'timing_sd' in free_param_dict.keys(): # AgentBehavior needs to be run again if the timing_sd changes
-            self.agent_behavior = AgentBehavior(self.inputs)
-        self.player_behavior = PlayerBehavior(self.inputs, self.agent_behavior)
-        self.score_metrics = ScoreMetrics(self.inputs, self.player_behavior)
-        self.expected_reward = ExpectedReward(self.inputs, self.score_metrics)
-        self.results = Results(self.inputs, self.expected_reward)
+            self.model.agent_behavior = AgentBehavior(self.model.inputs)
+            
+        self.model.player_behavior = PlayerBehavior(self.model.inputs, self.model.agent_behavior)
+        self.model.score_metrics   = ScoreMetrics(self.model.inputs, self.model.player_behavior)
+        self.model.expected_reward = ExpectedReward(self.model.inputs, self.model.score_metrics)
+        self.model.results         = Results(self.model.inputs, self.model.expected_reward)
         
-        #* Get new fit decision time 
-        self.fit_model(self.player_behavior.wtd_leave_target_time,self.data_leave_times)
-
-# class ModelFitting:
-#     def __init__(self,model: ModelConstructor):
-#         self.model = model
+        #* Get new fit decision time (as of 6/26/23 I'm no longer fitting these decision times)
+        # self.fit_model(self.player_behavior.wtd_leave_target_time,self.data_leave_times)
 
 class Group_Models():
     def __init__(self, objects: dict, num_blocks: int, num_timesteps: float):
