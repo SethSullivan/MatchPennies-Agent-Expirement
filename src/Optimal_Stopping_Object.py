@@ -421,7 +421,7 @@ class PlayerBehavior:
 
 
 class ScoreMetrics:
-    def __init__(self, model_inputs: ModelInputs, player_behavior: PlayerBehavior):
+    def __init__(self, model_inputs: ModelInputs, player_behavior: PlayerBehavior, agent_behavior: AgentBehavior):
         self.inputs = model_inputs
         #*These don't consider the probability that you select reaction
         # Prob of win
@@ -431,9 +431,9 @@ class ScoreMetrics:
         prob_win_given_gamble_if_agent_make = (
             self.inputs.prob_selecting_correct_target_gamble
             *player_behavior.prob_making_given_gamble
-            *player_behavior.agent_behavior.prob_making
+            *agent_behavior.prob_making
         )
-        prob_win_given_gamble_if_agent_no_make = player_behavior.prob_making_given_gamble*player_behavior.agent_behavior.prob_not_making
+        prob_win_given_gamble_if_agent_no_make = player_behavior.prob_making_given_gamble*agent_behavior.prob_not_making
         
         self.prob_win_given_gamble   = (
             prob_win_given_gamble_if_agent_make 
@@ -443,7 +443,7 @@ class ScoreMetrics:
         # Prob of incorrect
         self.prob_incorrect_given_reaction = (1 - self.inputs.prob_selecting_correct_target_reaction)*player_behavior.prob_making_given_reaction
         self.prob_incorrect_given_gamble   = (
-            (1 - self.inputs.prob_selecting_correct_target_gamble)*player_behavior.prob_making_given_gamble*player_behavior.agent_behavior.prob_making 
+            (1 - self.inputs.prob_selecting_correct_target_gamble)*player_behavior.prob_making_given_gamble*agent_behavior.prob_making 
         ) 
 
         # Prob of indecision
@@ -540,32 +540,26 @@ class Results:
     def set_fit_decision_index(self, index):
         self.fit_decision_index = index
 
-    def get_metric(self, metric, metric_type):
+    def get_metric(self, metric1, metric2=None, metric_type=None):
         if metric_type == "optimal":
             index = self.optimal_decision_index
         elif metric_type == 'fit':
             index = self.fit_decision_index
         else:
             raise(ValueError, "metric_type must be \"optimal\" or \"fit\"")
-
-        ans = np.zeros(metric.shape[0])*np.nan
-        for i in range(metric.shape[0]):
-            ans[i] = metric[i, index[i]]
-        return ans
-
-    def reaction_gamble_metric(self, metric1, metric2, metric_type="optimal"):
-        """
-        First metric is prob of that happening out of the second metric.
-        np.divide handles the case where the denominator is 0 by just returning 0
-
-        Example:
-        Metric 1 = Prob Win Gamble
-        Metric 2 = Prob Win
-        Out      = Perc Wins That Were Gamble (Out of all the wins, how many were gambles)
-        """
-        arr1 = self.get_metric(metric1, metric_type=metric_type)
-        arr2 = self.get_metric(metric2, metric_type=metric_type)
-        return np.divide(arr1, arr2, out=np.zeros_like(arr2), where=arr2 > 1e-10)*100
+        
+        if metric2 is None: # For none-reaction/gamble metrics
+            ans = np.zeros(metric1.shape[0])*np.nan
+            for i in range(metric1.shape[0]):
+                ans[i] = metric1[i, index[i]]
+            return ans
+        else: # For reaction/gamble metrics
+            ans1 = np.zeros(metric1.shape[0])*np.nan
+            ans2 = np.zeros(metric2.shape[0])*np.nan
+            for i in range(metric1.shape[0]):
+                ans1[i] = metric1[i, index[i]]
+                ans2[i] = metric1[i, index[i]]
+            return np.divide(ans1, ans2, out=np.zeros_like(ans2), where=ans2 > 1e-10)*100
 
 
 class ModelConstructor:
@@ -580,7 +574,7 @@ class ModelConstructor:
         self.inputs          = ModelInputs(**kwargs)
         self.agent_behavior  = AgentBehavior(self.inputs)
         self.player_behavior = PlayerBehavior(self.inputs, self.agent_behavior)
-        self.score_metrics   = ScoreMetrics(self.inputs, self.player_behavior)
+        self.score_metrics   = ScoreMetrics(self.inputs, self.player_behavior, self.agent_behavior)
         self.expected_reward = ExpectedReward(self.inputs, self.score_metrics)
         self.results         = Results(self.inputs, self.expected_reward)
         
@@ -618,14 +612,15 @@ class ModelFitting:
             bnds = tuple([[0,500]]*len(self.initial_guess))
         self.initial_param_shape = self.initial_guess.shape # Used for reshaping the parameter 
         
-        out = optimize.minimize(self.get_loss, self.initial_guess, args=(metric_keys, targets, free_params_init.keys()), 
+        out = optimize.minimize(self.get_loss, self.initial_guess, 
+                                args=(metric_keys, targets, free_params_init.keys()), 
                                 method=method, bounds=bnds, tol = tol)
         # ans = out.x + np.min(self.inputs.timesteps)
         ans = out.x#.reshape(self.initial_param_shape)
         return ans,out
     
-    def get_loss(self, free_params_values, metric_keys, 
-                 targets, free_params_keys):
+    def get_loss(self, free_params_values, 
+                 metric_keys, targets, free_params_keys):
         
         # if len(free_params_values)>1:
         #     free_params_values = free_params_values.reshape(self.initial_param_shape) # Reshape array
@@ -671,7 +666,7 @@ class ModelFitting:
             self.model.agent_behavior = AgentBehavior(self.model.inputs)
             
         self.model.player_behavior = PlayerBehavior(self.model.inputs, self.model.agent_behavior)
-        self.model.score_metrics   = ScoreMetrics(self.model.inputs, self.model.player_behavior)
+        self.model.score_metrics   = ScoreMetrics(self.model.inputs, self.model.player_behavior, self.model.agent_behavior)
         self.model.expected_reward = ExpectedReward(self.model.inputs, self.model.score_metrics)
         self.model.results         = Results(self.model.inputs, self.model.expected_reward)
         
