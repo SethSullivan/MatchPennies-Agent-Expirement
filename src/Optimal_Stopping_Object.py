@@ -10,6 +10,7 @@ from numba_stats import norm
 from functools import cached_property
 from scipy import optimize
 import time
+import multiprocessing as mp
 import loss_functions as lf
 wheel = dv.ColorWheel()
 """
@@ -353,33 +354,33 @@ class PlayerBehavior:
         #*Leave times
         self.reaction_leave_time   = self.agent_behavior.reaction_leave_time + self.inputs.reaction_time[self.key]
         self.gamble_leave_time     = self.inputs.timesteps + self.inputs.gamble_delay[self.key]
-        self.wtd_leave_target_time = self.prob_selecting_reaction*self.reaction_leave_time + self.prob_selecting_gamble*self.gamble_leave_time
+        self.wtd_leave_time = self.prob_selecting_reaction*self.reaction_leave_time + self.prob_selecting_gamble*self.gamble_leave_time
         #*Reach Times
         self.reaction_reach_time   = self.agent_behavior.reaction_leave_time + self.inputs.reaction_plus_movement_time[self.key]
         self.gamble_reach_time     = self.inputs.timesteps + self.inputs.gamble_delay[self.key] + self.inputs.movement_time[self.key]
-        self.wtd_reach_target_time = self.prob_selecting_reaction*self.reaction_reach_time + self.prob_selecting_gamble*self.gamble_reach_time
+        self.wtd_reach_time = self.prob_selecting_reaction*self.reaction_reach_time + self.prob_selecting_gamble*self.gamble_reach_time
         #*Leave Time SD
         self.reaction_leave_time_sd = np.sqrt(self.agent_behavior.reaction_leave_time_sd**2 + self.inputs.reaction_sd[self.key] ** 2)
         #*If I pass an array, I took gamble leave time sd from the data
         if isinstance(self.inputs.gamble_sd[self.key], np.ndarray):
             self.gamble_leave_time_sd = self.inputs.gamble_sd[self.key][:, np.newaxis]
-            self.wtd_leave_target_time_sd = (
-                self.prob_selecting_reaction*self.reaction_leave_time_sd + self.prob_selecting_gamble*self.gamble_leave_time_sd
-            )
-
         else:  # If I didn't, then I need to throw on timing uncertainty and agent uncertainty to the decision sd
             self.gamble_leave_time_sd = np.sqrt(
                 self.agent_behavior.gamble_leave_time_sd**2
                 + self.inputs.gamble_sd[self.key] ** 2
                 + tile(self.inputs.timing_sd[self.key] ** 2, self.inputs.num_timesteps)
             )
-            self.wtd_leave_target_time_sd = (
-                self.prob_selecting_reaction*self.reaction_leave_time_sd + self.prob_selecting_gamble*self.gamble_leave_time_sd
-            )
+        self.wtd_leave_time_sd = (
+            self.prob_selecting_reaction*self.reaction_leave_time_sd + self.prob_selecting_gamble*self.gamble_leave_time_sd
+        )
+        self.wtd_leave_time_iqr = (
+            (self.wtd_leave_time + 0.675*self.wtd_leave_time_sd) - 
+            (self.wtd_leave_time - 0.675*self.wtd_leave_time_sd)
+        )
         #*Reach Time SD
         self.reaction_reach_time_sd = np.sqrt(self.reaction_leave_time_sd**2 + self.inputs.movement_sd[self.key] ** 2)
         self.gamble_reach_time_sd   = np.sqrt(self.gamble_leave_time_sd**2 + self.inputs.movement_sd[self.key] ** 2)
-        self.wtd_reach_target_time_sd = (
+        self.wtd_reach_time_sd = (
             self.prob_selecting_reaction*self.reaction_reach_time_sd + self.prob_selecting_gamble*self.gamble_reach_time_sd
         )
         #*Predict Decision Time
@@ -546,7 +547,7 @@ class Results:
         elif metric_type == 'fit':
             index = self.fit_decision_index
         else:
-            raise(ValueError, "metric_type must be \"optimal\" or \"fit\"")
+            raise ValueError("metric_type must be \"optimal\" or \"fit\"")
         
         if metric2 is None: # For none-reaction/gamble metrics
             ans = np.zeros(metric1.shape[0])*np.nan
@@ -608,16 +609,28 @@ class ModelFitting:
                                 method='Nelder-Mead', bnds=None, tol = 0.0000001):
         self.loss = []
         self.initial_guess = np.array(list(free_params_init.values())) # Get the free param values from dict and make an array, scipy will flatten it if it's 2D
+        num_params = len(self.initial_guess)
         if bnds is None:
-            bnds = tuple([[0,500]]*len(self.initial_guess))
+            bnds = tuple([[0,500]])*num_params
         self.initial_param_shape = self.initial_guess.shape # Used for reshaping the parameter 
-        
-        out = optimize.minimize(self.get_loss, self.initial_guess, 
+        if method=='brute':
+            out = optimize.brute(self.get_loss, [slice(0,200,10)]*num_params,
+                                 args=(metric_keys, targets, free_params_init.keys()),
+                                 finish=None,full_output=True,
+                                 )
+            if not isinstance(out[0],np.ndarray):
+                final_param_dict = dict(zip(free_params_init.keys(),[out[0]]))
+            else:
+                final_param_dict = dict(zip(free_params_init.keys(),out[0]))
+                
+            self.update_model(final_param_dict)
+        else:
+            out = optimize.minimize(self.get_loss, self.initial_guess, 
                                 args=(metric_keys, targets, free_params_init.keys()), 
                                 method=method, bounds=bnds, tol = tol)
         # ans = out.x + np.min(self.inputs.timesteps)
-        ans = out.x#.reshape(self.initial_param_shape)
-        return ans,out
+        # ans = out.x#.reshape(self.initial_param_shape)
+        return out
     
     def get_loss(self, free_params_values, 
                  metric_keys, targets, free_params_keys):
@@ -629,16 +642,15 @@ class ModelFitting:
         
         # Get the new arrays from the optimized free parameter inputs
         self.update_model(d) 
-        
         # Get each metric from results at that specific decision time
         model_metrics = np.zeros_like(targets)
         for i in range(targets.shape[0]): # Skip over decision time 
-            if metric_keys[i] == 'wtd_leave_target_time':
+            if 'leave_time' in metric_keys[i]:
                 model_metric = getattr(self.model.player_behavior, metric_keys[i])
             else:
                 model_metric = getattr(self.model.score_metrics, metric_keys[i])
-            model_metrics[i,:] = self.model.results.get_metric(model_metric, metric_type='optimal')  # Find the metric at that new fit decision index
-        
+            model_metrics[i,:] = self.model.results.get_metric(model_metric, metric_type='optimal')  # Find the metric at optimal decision time
+     
         loss = lf.ape_loss(model_metrics, targets)
         self.loss.append(loss)
         return loss
@@ -671,7 +683,7 @@ class ModelFitting:
         self.model.results         = Results(self.model.inputs, self.model.expected_reward)
         
         #* Get new fit decision time (as of 6/26/23 I'm no longer fitting these decision times)
-        # self.fit_model(self.player_behavior.wtd_leave_target_time,self.data_leave_times)
+        # self.fit_model(self.player_behavior.wtd_leave_time,self.data_leave_times)
 
 class Group_Models():
     def __init__(self, objects: dict, num_blocks: int, num_timesteps: float):
