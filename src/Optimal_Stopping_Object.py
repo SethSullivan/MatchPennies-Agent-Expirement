@@ -559,8 +559,8 @@ class Results:
             ans2 = np.zeros(metric2.shape[0])*np.nan
             for i in range(metric1.shape[0]):
                 ans1[i] = metric1[i, index[i]]
-                ans2[i] = metric1[i, index[i]]
-            return np.divide(ans1, ans2, out=np.zeros_like(ans2), where=ans2 > 1e-10)*100
+                ans2[i] = metric2[i, index[i]]
+            return np.divide(ans1, ans2, out=np.zeros_like(ans2), where=ans2 > 1e-10)
 
 
 class ModelConstructor:
@@ -579,7 +579,6 @@ class ModelConstructor:
         self.expected_reward = ExpectedReward(self.inputs, self.score_metrics)
         self.results         = Results(self.inputs, self.expected_reward)
         
-    
     def fit_model(self, metric, target):
         '''
         Fitting the model with no free parameters
@@ -602,12 +601,19 @@ class ModelFitting:
     '''
     def __init__(self,model: ModelConstructor):
         self.model = model
+        self.parameter_arr = []
         self.initial_param_shape = None
-        self.loss = None
+        self.loss_store = None
+        self.optimal_decision_time_store = None
+        self.leave_time_store = None
+        self.leave_time_sd_store = None
         
     def run_model_fit_procedure(self, free_params_init: dict, metric_keys: list, targets: np.ndarray,
                                 method='Nelder-Mead', bnds=None, tol = 0.0000001):
-        self.loss = []
+        self.loss_store = []
+        self.optimal_decision_time_store = [] 
+        self.leave_time_store = []
+        self.leave_time_sd_store = []
         self.initial_guess = np.array(list(free_params_init.values())) # Get the free param values from dict and make an array, scipy will flatten it if it's 2D
         num_params = len(self.initial_guess)
         if bnds is None:
@@ -628,6 +634,13 @@ class ModelFitting:
             out = optimize.minimize(self.get_loss, self.initial_guess, 
                                 args=(metric_keys, targets, free_params_init.keys()), 
                                 method=method, bounds=bnds, tol = tol)
+            self.update_model()
+            
+        self.parameter_arr = np.array(self.parameter_arr)
+        self.optimal_decision_time_store = np.array(self.optimal_decision_time_store)
+        self.leave_time_store = np.array(self.leave_time_store)
+        self.leave_time_sd_store = np.array(self.leave_time_sd_store)
+        
         # ans = out.x + np.min(self.inputs.timesteps)
         # ans = out.x#.reshape(self.initial_param_shape)
         return out
@@ -639,7 +652,7 @@ class ModelFitting:
         #     free_params_values = free_params_values.reshape(self.initial_param_shape) # Reshape array
         # Create dictionary back
         d = dict(zip(free_params_keys,free_params_values))
-        
+        self.parameter_arr.append(free_params_values)
         # Get the new arrays from the optimized free parameter inputs
         self.update_model(d) 
         # Get each metric from results at that specific decision time
@@ -650,9 +663,14 @@ class ModelFitting:
             else:
                 model_metric = getattr(self.model.score_metrics, metric_keys[i])
             model_metrics[i,:] = self.model.results.get_metric(model_metric, metric_type='optimal')  # Find the metric at optimal decision time
-     
+        
         loss = lf.ape_loss(model_metrics, targets)
-        self.loss.append(loss)
+        
+        self.loss_store.append(loss)
+        self.optimal_decision_time_store.append(self.model.results.optimal_decision_time)
+        self.leave_time_store.append(self.model.results.get_metric(self.model.player_behavior.wtd_leave_time,metric_type='optimal'))
+        self.leave_time_sd_store.append(self.model.results.get_metric(self.model.player_behavior.wtd_leave_time_sd,metric_type='optimal'))
+        
         return loss
     
     def update_model(self, free_param_dict):
@@ -778,7 +796,7 @@ if __name__ == "__main__":
 
 #################################################################################################
 #################################################################################################
-###############################################################################################
+#################################################################################################
 @nb.njit(parallel=True)
 def get_optimal_decision_time_for_certain_metric(ob, metric_name="RPMT"):
     """
