@@ -62,7 +62,7 @@ def get_moments(timesteps, time_means, time_sds, prob_agent_less_player, agent_p
             #     y_inverse_integrated[k] = (sc.erfc((mu_y[i] - t)/(np.sqrt(2)*sig_y)))/2 # Swap limits of integration (mu_y[i] - t) now
 
             mu_y = time_means[j]  # Put the timing mean in an easy to use variable
-            prob_x_less_y = prob_agent_less_player[i, j]  # get prob agent is less than player for that specific agent mean (i) and timing mean (j)
+            prob_x_less_y = prob_agent_less_player[i,j]  # get prob agent is less than player for that specific agent mean (i) and timing mean (j)
             prob_x_greater_y = 1 - prob_x_less_y
             y_integrated = 1 - norm.cdf(
                 timesteps, mu_y, sig_y
@@ -128,45 +128,6 @@ def tile(arr, num):
 
 
 class ModelInputs:
-    # __slots__ = (
-    #     "agent_means",
-    #     "agent_sds",
-    #     "condition_four",
-    #     "condition_one",
-    #     "condition_three",
-    #     "condition_two",
-    #     "experiment",
-    #     "gamble_sd",
-    #     "gamble_switch_delay",
-    #     "gamble_reach_sd",
-    #     "gamble_reach_time",
-    #     "incorrect_cost",
-    #     "indecision_cost",
-    #     "movement_sd",
-    #     "movement_time",
-    #     "neg_inf_cut_off_value",
-    #     "nsteps",
-    #     "num_blocks",
-    #     "num_timesteps",
-    #     "prob_selecting_correct_target_gamble",
-    #     "prob_selecting_correct_target_reaction",
-    #     "prob_win_when_both_reach",
-    #     "reaction_plus_movement_time",
-    #     "reaction_reach_sd",
-    #     "reaction_sd",
-    #     "reaction_time",
-    #     "reward_matrix",
-    #     "tiled_1500",
-    #     "tiled_agent_means",
-    #     "tiled_agent_sds",
-    #     "timesteps",
-    #     "timesteps_dict",
-    #     "timing_sd",
-    #     "win_reward",
-    #     "electromechanical_delay",
-    #     "key",
-    # )
-
     def __init__(self, **kwargs):
         """
         Model Inputs
@@ -186,7 +147,7 @@ class ModelInputs:
             self.tiled_agent_sds = np.tile(self.agent_sds, (self.timesteps.shape[-1], 1)).T
 
             self.neg_inf_cut_off_value = -100000
-            check = np.tile(np.arange(900.0, 1100.0, self.nsteps), (self.num_blocks, 1))
+            # check = np.tile(np.arange(900.0, 1100.0, self.nsteps), (self.num_blocks, 1))
             # assert np.isclose(numba_cdf(check,np.array([5]*self.num_blocks), np.array([2]*self.num_blocks)),
             #                   stats.norm.cdf(check,np.array([5]),np.array([2]))).all()
 
@@ -609,7 +570,7 @@ class ModelFitting:
         self.leave_time_sd_store = None
         
     def run_model_fit_procedure(self, free_params_init: dict, metric_keys: list, targets: np.ndarray,
-                                method='Nelder-Mead', bnds=None, tol = 0.0000001):
+                                method='Nelder-Mead', bnds=None, tol = 0.0000001,niter=100):
         self.loss_store = []
         self.optimal_decision_time_store = [] 
         self.leave_time_store = []
@@ -619,6 +580,7 @@ class ModelFitting:
         if bnds is None:
             bnds = tuple([[0,500]])*num_params
         self.initial_param_shape = self.initial_guess.shape # Used for reshaping the parameter 
+        
         if method=='brute':
             out = optimize.brute(self.get_loss, [slice(0,200,10)]*num_params,
                                  args=(metric_keys, targets, free_params_init.keys()),
@@ -630,16 +592,25 @@ class ModelFitting:
                 final_param_dict = dict(zip(free_params_init.keys(),out[0]))
                 
             self.update_model(final_param_dict)
+        elif method=='basinhopping':
+            out = optimize.basinhopping(self.get_loss, self.initial_guess,niter=niter,
+                                 minimizer_kwargs={'method':'Nelder-Mead',
+                                                   'args':(metric_keys, targets, free_params_init.keys())},
+                                 stepsize=0.05
+                                 )
+            final_param_dict = dict(zip(free_params_init.keys(),out.x))
+            self.update_model(final_param_dict)
         else:
             out = optimize.minimize(self.get_loss, self.initial_guess, 
                                 args=(metric_keys, targets, free_params_init.keys()), 
-                                method=method, bounds=bnds, tol = tol)
-            self.update_model()
+                                method=method, bounds=None, tol = tol)
+            final_param_dict = dict(zip(free_params_init.keys(),out.x))
+            self.update_model(final_param_dict)
             
-        self.parameter_arr = np.array(self.parameter_arr)
+        self.parameter_arr               = np.array(self.parameter_arr)
         self.optimal_decision_time_store = np.array(self.optimal_decision_time_store)
-        self.leave_time_store = np.array(self.leave_time_store)
-        self.leave_time_sd_store = np.array(self.leave_time_sd_store)
+        self.leave_time_store            = np.array(self.leave_time_store)
+        self.leave_time_sd_store         = np.array(self.leave_time_sd_store)
         
         # ans = out.x + np.min(self.inputs.timesteps)
         # ans = out.x#.reshape(self.initial_param_shape)
@@ -650,19 +621,26 @@ class ModelFitting:
         
         # if len(free_params_values)>1:
         #     free_params_values = free_params_values.reshape(self.initial_param_shape) # Reshape array
+        # if np.any(free_params_values<0):
+        #     return 1e3
+        
         # Create dictionary back
-        d = dict(zip(free_params_keys,free_params_values))
+        new_parameters_dict = dict(zip(free_params_keys,free_params_values))
         self.parameter_arr.append(free_params_values)
         # Get the new arrays from the optimized free parameter inputs
-        self.update_model(d) 
+        self.update_model(new_parameters_dict) 
         # Get each metric from results at that specific decision time
         model_metrics = np.zeros_like(targets)
-        for i in range(targets.shape[0]): # Skip over decision time 
+        for i in range(targets.shape[0]): 
             if 'leave_time' in metric_keys[i]:
                 model_metric = getattr(self.model.player_behavior, metric_keys[i])
+                model_metrics[i,:] = self.model.results.get_metric(model_metric, metric_type='optimal')  # Find the metric at optimal decision time
+            elif 'decision_time' in metric_keys[i]:
+                model_metric = getattr(self.model.results,metric_keys[i])
+                model_metrics[i,:] = model_metric
             else:
                 model_metric = getattr(self.model.score_metrics, metric_keys[i])
-            model_metrics[i,:] = self.model.results.get_metric(model_metric, metric_type='optimal')  # Find the metric at optimal decision time
+                model_metrics[i,:] = self.model.results.get_metric(model_metric, metric_type='optimal')  # Find the metric at optimal decision time
         
         loss = lf.ape_loss(model_metrics, targets)
         
@@ -684,12 +662,13 @@ class ModelFitting:
         
         #* Change the keyword arguments that are being modified
         for k,v in free_param_dict.items():
-            if k != 'decision_time':
+            if k != 'decision_time' and isinstance(self.model.kwargs[k],dict):
                 self.model.kwargs[k]['true'] = v    
-        kwargs = self.model.kwargs
+            elif k!= 'decision_time':
+                self.model.kwargs[k] = v
         
         #* Pass new set of kwargs to the inputs, then run through model constructor sequence again
-        self.model.inputs = ModelInputs(**kwargs) 
+        self.model.inputs = ModelInputs(**self.model.kwargs) 
         
         #* Update Model
         if 'timing_sd' in free_param_dict.keys(): # AgentBehavior needs to be run again if the timing_sd changes
