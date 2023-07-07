@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import stats
+from scipy.signal import fftconvolve
 import scipy.special as sc
 import numba as nb
 import numba_scipy  # Needs to be imported so that numba recognizes scipy (specificall scipy special erf)
@@ -92,6 +93,20 @@ def get_moments(timesteps, time_means, time_sds, prob_agent_less_player, agent_p
     return EX_R, EX2_R, EX3_R, EX_G, EX2_G, EX3_G
 
 
+def add_skewnorm_and_norm_distributions(timesteps,norm_mean,norm_sd,skewnorm_mean,skewnorm_sd,skewnorm_skew):
+    '''
+    The addition of skewnorm and norm will become essentially normal if the skew is small enough 
+    
+    But it is significant in terms of the new mean (20ms difference)
+    '''
+    dx = timesteps[0,0] - timesteps[0,1]
+    norm_dis = stats.norm.pdf(timesteps, norm_mean, norm_sd)
+    skewnorm_dis = stats.skewnorm.pdf(timesteps, skewnorm_skew, skewnorm_mean, skewnorm_sd)
+
+    conv_pdf = fftconvolve(norm_dis,skewnorm_dis, mode = 'same')*dx
+    mean = np.sum(timesteps*conv_pdf)*dx
+    sd = np.sqrt(np.sum((timesteps-mean)**2*conv_pdf)*dx)
+    skew = np.sqrt(np.sum((timesteps-mean)**3*conv_pdf)*dx)
 def numba_cdf(x, mu_arr, sig_arr):
     if x.ndim == 2:  # If x dim is 1, then we have the x as the (6,1800)
         assert x.shape[0] == mu_arr.shape[0]
@@ -266,6 +281,7 @@ class AgentBehavior:
         Get first three central moments (EX2 is normalized for mean,
         EX3 is normalized for mean and sd) of the new distribution based on timing uncertainty
         """
+        #* Steps done outside for loop in get_moments to make it faster
         inf_timesteps = np.arange(0.0, 2000.0, self.inputs.nsteps)  # Going to 2000 is a good approximation, doesn't get better by going higher
         inf_timesteps_tiled = np.tile(inf_timesteps, (self.inputs.num_blocks, 1))  # Tile to number of blocks
         inf_agent_means_tiled = np.tile(self.inputs.agent_means, (inf_timesteps.shape[0], 1)).T  # Tiled agents with 2000 timesteps
@@ -276,7 +292,6 @@ class AgentBehavior:
         prob_agent_less_player = stats.norm.cdf(
             0, self.inputs.tiled_agent_means - self.inputs.timesteps, np.sqrt(self.inputs.tiled_agent_sds**2 + (tiled_timing_sd) ** 2)
         )
-        prob_player_less_agent = 1 - prob_agent_less_player  # Or do the same as above and swap mu_x and mu_y[j]
         # Call get moments equation
         return get_moments(inf_timesteps, time_means, self.inputs.timing_sd[self.inputs.key], prob_agent_less_player, agent_pdf)
 
