@@ -214,6 +214,7 @@ class Subject():
         self.player_task_leave_time         = getattr(self,self.task_leave_time_metric_name).astype(float)
         self.player_task_leave_time_nan     = self.player_task_leave_time
         self.player_task_leave_time_nan[self.player_task_leave_time==self.big_num] = np.nan     
+        self.player_task_leave_time_nan[self.player_task_leave_time==0] = np.nan     
         self.player_task_movement_time      = getattr(self,self.task_movement_time_metric_name).astype(float)
         self.player_task_movement_time_nan  = self.player_task_movement_time
         self.player_task_movement_time_nan[self.player_task_movement_time==self.big_num] = np.nan          
@@ -303,16 +304,15 @@ class Subject():
             self.reaction_enter_left_target_id = self.reaction_enter_left_target_id[2]
             self.player_reaction_reach_time                     = np.minimum(self.reaction_enter_right_target_id,
                                                                              self.reaction_enter_left_target_id).astype(float)
+            self.player_reaction_reach_time[self.player_reaction_reach_time==self.big_num] = np.nan
             self.player_pos_reaction_time                       = self.player_pos_reaction_leave_time[2] #! Last row is the actual reaction, first two are timing for exp1
             self.player_pos_reaction_movement_time              = self.player_reaction_reach_time - self.player_pos_reaction_leave_time[2]
             self.player_velocity_reaction_time_thresh           = self.player_velocity_reaction_leave_time_thresh[2] 
             self.player_velocity_reaction_movement_time_thresh  = self.player_reaction_reach_time - self.player_velocity_reaction_leave_time_thresh[2]
-
+            self.player_velocity_reaction_movement_time_thresh[self.player_velocity_reaction_movement_time_thresh>450]  = np.nan
             self.player_velocity_reaction_time_linear           = self.player_velocity_reaction_leave_time_linear[2]  
             self.player_velocity_reaction_movement_time_linear  = self.player_reaction_reach_time - self.player_velocity_reaction_leave_time_linear[2] 
             
-
-
         #* In exp2, the reaction stimulus is the agent
         elif self.experiment == 'Exp2':
             #* Get reach time ids
