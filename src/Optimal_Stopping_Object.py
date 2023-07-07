@@ -107,6 +107,7 @@ def add_skewnorm_and_norm_distributions(timesteps,norm_mean,norm_sd,skewnorm_mea
     mean = np.sum(timesteps*conv_pdf)*dx
     sd = np.sqrt(np.sum((timesteps-mean)**2*conv_pdf)*dx)
     skew = np.sqrt(np.sum((timesteps-mean)**3*conv_pdf)*dx)
+    
 def numba_cdf(x, mu_arr, sig_arr):
     if x.ndim == 2:  # If x dim is 1, then we have the x as the (6,1800)
         assert x.shape[0] == mu_arr.shape[0]
@@ -205,8 +206,6 @@ class ModelInputs:
             self.gamble_plus_movement_time = add_dicts(self.timesteps_dict, self.movement_time, self.gamble_delay)
 
             assert self.electromechanical_delay['exp'] == self.electromechanical_delay['true']
-
-            
 
             # Get reward matrix for Exp2
             if self.experiment == "Exp2":
@@ -575,7 +574,7 @@ class ModelFitting:
     2. get_loss calls update_model with free params supplied by scipy
     3. update_model runs through the model sequence with the new free parameters
     '''
-    def __init__(self,model: ModelConstructor):
+    def __init__(self,model: ModelConstructor, optimal_decision_time_model=None):
         self.model = model
         self.parameter_arr = []
         self.initial_param_shape = None
@@ -585,19 +584,21 @@ class ModelFitting:
         self.leave_time_sd_store = None
         
     def run_model_fit_procedure(self, free_params_init: dict, metric_keys: list, targets: np.ndarray,
-                                method='Nelder-Mead', bnds=None, tol = 0.0000001,niter=100):
+                                method='Nelder-Mead', bnds=None, tol = 0.0000001,niter=100,
+                                drop_condition_from_loss=None):
         self.loss_store = []
         self.optimal_decision_time_store = [] 
         self.leave_time_store = []
         self.leave_time_sd_store = []
         self.initial_guess = np.array(list(free_params_init.values())) # Get the free param values from dict and make an array, scipy will flatten it if it's 2D
+        self.drop_condition_from_loss = drop_condition_from_loss
         num_params = len(self.initial_guess)
         if bnds is None:
             bnds = tuple([[0,500]])*num_params
         self.initial_param_shape = self.initial_guess.shape # Used for reshaping the parameter 
         
         if method=='brute':
-            out = optimize.brute(self.get_loss, [slice(0,200,10)]*num_params,
+            out = optimize.brute(self.get_loss, [slice(0,200,5)]*num_params,
                                  args=(metric_keys, targets, free_params_init.keys()),
                                  finish=None,full_output=True,
                                  )
@@ -606,7 +607,6 @@ class ModelFitting:
             else:
                 final_param_dict = dict(zip(free_params_init.keys(),out[0]))
                 
-            self.update_model(final_param_dict)
         elif method=='basinhopping':
             out = optimize.basinhopping(self.get_loss, self.initial_guess,niter=niter,
                                  minimizer_kwargs={'method':'Nelder-Mead',
@@ -614,14 +614,13 @@ class ModelFitting:
                                  stepsize=0.05
                                  )
             final_param_dict = dict(zip(free_params_init.keys(),out.x))
-            self.update_model(final_param_dict)
         else:
             out = optimize.minimize(self.get_loss, self.initial_guess, 
                                 args=(metric_keys, targets, free_params_init.keys()), 
                                 method=method, bounds=None, tol = tol)
             final_param_dict = dict(zip(free_params_init.keys(),out.x))
-            self.update_model(final_param_dict)
-            
+        
+        self.update_model(final_param_dict)  # Update model one last time
         self.parameter_arr               = np.array(self.parameter_arr)
         self.optimal_decision_time_store = np.array(self.optimal_decision_time_store)
         self.leave_time_store            = np.array(self.leave_time_store)
@@ -636,11 +635,13 @@ class ModelFitting:
         
         # if len(free_params_values)>1:
         #     free_params_values = free_params_values.reshape(self.initial_param_shape) # Reshape array
-        # if np.any(free_params_values<0):
-        #     return 1e3
-        
         # Create dictionary back
         new_parameters_dict = dict(zip(free_params_keys,free_params_values))
+        # If the standard deviation and mean combo reaches below 0, return a high loss
+        if 'gamble_switch_delay' in free_params_keys and 'gamble_switch_sd' in free_params_keys:
+            if new_parameters_dict['gamble_switch_delay'] - 2*new_parameters_dict['gamble_switch_sd']<0:
+                return 1e3
+        
         self.parameter_arr.append(free_params_values)
         # Get the new arrays from the optimized free parameter inputs
         self.update_model(new_parameters_dict) 
@@ -657,7 +658,7 @@ class ModelFitting:
                 model_metric = getattr(self.model.score_metrics, metric_keys[i])
                 model_metrics[i,:] = self.model.results.get_metric(model_metric, metric_type='optimal')  # Find the metric at optimal decision time
         
-        loss = lf.ape_loss(model_metrics, targets)
+        loss = lf.ape_loss(model_metrics, targets,drop_condition_num=self.drop_condition_from_loss)
         
         self.loss_store.append(loss)
         self.optimal_decision_time_store.append(self.model.results.optimal_decision_time)
