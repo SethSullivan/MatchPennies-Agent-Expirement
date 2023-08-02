@@ -222,6 +222,8 @@ class MovementMetrics:
                 movement_onset_times = np.argmax(self.raw_data.task_speed_data > self.vel_threshold,axis=3)
             elif self.metric_type == 'velocity_linear':
                 raise NotImplementedError('Still haven\'t implemented this in the refactor')
+        else:
+            raise ValueError('task argument should be \'reaction\' or \'task\'')
         movement_onset_times = movement_onset_times.astype(np.float)
         #* Any time they never left the start should be nan, not zero
         movement_onset_times[movement_onset_times==0] = np.nan
@@ -456,7 +458,7 @@ class SubjectBuilder:
                  reaction_speed_data, reaction_trial_type_array, reaction_trial_start, 
                  agent_reaction_decision_array, agent_reaction_leave_time, interval_trial_start, interval_reach_time, coincidence_trial_start, coincidence_reach_time, 
                  task_xypos_data, task_dist_data, task_xyvelocity_data, task_speed_data, agent_task_decision_array, agent_task_leave_time,
-                 ):     
+                 **kwargs):     
         
         self.exp_info = ExperimentInfo(
             subjects = subjects, experiment=experiment, num_task_blocks=num_task_blocks, 
@@ -477,11 +479,11 @@ class SubjectBuilder:
             task_xyvelocity_data=task_xyvelocity_data, task_speed_data=task_speed_data, 
             agent_task_decision_array=agent_task_decision_array, agent_task_leave_time=agent_task_leave_time,
         )
-        
+        movement_metrics_type = kwargs.get('movement_metrics_type','velocity')
         self.movement_metrics = MovementMetrics(
             exp_info=self.exp_info, 
             raw_data=self.raw_data, 
-            metric_type = 'velocity',
+            metric_type = movement_metrics_type,
         )
         
         self.score_metrics = ScoreMetrics(
