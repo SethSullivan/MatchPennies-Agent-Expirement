@@ -574,8 +574,15 @@ class ModelFitting:
     2. get_loss calls update_model with free params supplied by scipy
     3. update_model runs through the model sequence with the new free parameters
     '''
-    def __init__(self,model: ModelConstructor, optimal_decision_time_model=None):
+    def __init__(self,model: ModelConstructor, fixed_decision_time=None):
         self.model = model
+        # Use these two if I want to fit the unknown model switch delay, 
+        # this fixes the optimal decision time and calculates things off of that
+        self.fixed_decision_time = fixed_decision_time
+        # Set the fit decision time
+        if self.fixed_decision_time is not None:
+            self.model.results.set_fit_decision_index(self.fixed_decision_time.astype(int))
+            
         self.parameter_arr = []
         self.initial_param_shape = None
         self.loss_store = None
@@ -642,6 +649,12 @@ class ModelFitting:
             if new_parameters_dict['gamble_switch_delay'] - 2*new_parameters_dict['gamble_switch_sd']<0:
                 return 1e3
         
+        # If we aren't using some fixed decision time (aka fitting the unexpected gamble delay model), then we want to use fit
+        if self.fixed_decision_time is None:
+            metric_type = 'optimal'
+        else:
+            metric_type = 'fit'
+        
         self.parameter_arr.append(free_params_values)
         # Get the new arrays from the optimized free parameter inputs
         self.update_model(new_parameters_dict) 
@@ -650,20 +663,20 @@ class ModelFitting:
         for i in range(targets.shape[0]): 
             if 'leave_time' in metric_keys[i]:
                 model_metric = getattr(self.model.player_behavior, metric_keys[i])
-                model_metrics[i,:] = self.model.results.get_metric(model_metric, metric_type='optimal')  # Find the metric at optimal decision time
+                model_metrics[i,:] = self.model.results.get_metric(model_metric, metric_type=metric_type)  # Find the metric at optimal decision time
             elif 'decision_time' in metric_keys[i]:
                 model_metric = getattr(self.model.results,metric_keys[i])
                 model_metrics[i,:] = model_metric
             else:
                 model_metric = getattr(self.model.score_metrics, metric_keys[i])
-                model_metrics[i,:] = self.model.results.get_metric(model_metric, metric_type='optimal')  # Find the metric at optimal decision time
+                model_metrics[i,:] = self.model.results.get_metric(model_metric, metric_type=metric_type)  # Find the metric at optimal decision time
         
         loss = lf.ape_loss(model_metrics, targets,drop_condition_num=self.drop_condition_from_loss)
         
         self.loss_store.append(loss)
         self.optimal_decision_time_store.append(self.model.results.optimal_decision_time)
-        self.leave_time_store.append(self.model.results.get_metric(self.model.player_behavior.wtd_leave_time,metric_type='optimal'))
-        self.leave_time_sd_store.append(self.model.results.get_metric(self.model.player_behavior.wtd_leave_time_sd,metric_type='optimal'))
+        self.leave_time_store.append(self.model.results.get_metric(self.model.player_behavior.wtd_leave_time,metric_type=metric_type))
+        self.leave_time_sd_store.append(self.model.results.get_metric(self.model.player_behavior.wtd_leave_time_sd,metric_type=metric_type))
         
         return loss
     
