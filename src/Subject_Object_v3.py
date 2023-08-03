@@ -4,6 +4,7 @@ import numpy as np
 import os
 import warnings
 from functools import cached_property
+from copy import deepcopy
 
 SCORE_METRIC_NAMES = ('wins','incorrects','indecisions')
 
@@ -83,7 +84,7 @@ class RawData():
                  agent_reaction_decision_array, agent_reaction_leave_time, interval_trial_start, 
                  interval_reach_time, coincidence_trial_start, coincidence_reach_time, 
                  task_xypos_data, task_dist_data, task_xyvelocity_data, task_speed_data, 
-                 agent_task_decision_array, agent_task_leave_time,
+                 agent_task_target_selection_array, agent_task_leave_time,
                  ):
         self.exp_info = exp_info
         #* Reaction Data
@@ -114,10 +115,11 @@ class RawData():
             self.task_speed_data                = self.slice_array(task_speed_data)
             # self.task_xyforce_data              = self.slice_array(task_xyforce_data)
             # self.task_force_data                = self.slice_array(task_force_data)
-            self.agent_task_decision_array      = self.slice_array(agent_task_decision_array)
+            self.agent_task_target_selection_array      = self.slice_array(agent_task_target_selection_array)
             self.agent_task_leave_time          = self.slice_array(agent_task_leave_time)
             self.agent_task_reach_time          = self.agent_task_leave_time + 150
             
+            self.agent_task_decision_array = deepcopy(self.agent_task_target_selection_array)
             self.agent_task_decision_array[self.agent_task_reach_time>1500] = 0
                     
         # self.player_task_leave_time                = self.slice_array(kwargs.get('player_task_leave_time'))
@@ -221,8 +223,7 @@ class MovementMetrics:
         
         return ans
         
-    
-    def movement_onset_times(self, task):
+    def movement_onset_times(self, task, replace_zeros_with_nan = True):
         if task == 'reaction':
             if self.metric_type == 'position':
                 movement_onset_times = np.argmax(self.raw_data.reaction_dist_data > self.exp_info.start_radius,axis=3)
@@ -240,8 +241,11 @@ class MovementMetrics:
         else:
             raise ValueError('task argument should be \'reaction\' or \'task\'')
         movement_onset_times = movement_onset_times.astype(np.float)
+        
         #* Any time they never left the start should be nan, not zero
-        movement_onset_times[movement_onset_times==0] = np.nan
+        if replace_zeros_with_nan:
+            movement_onset_times[movement_onset_times==0] = np.nan
+            
         return movement_onset_times
         
     def movement_times(self, task) -> np.array:
@@ -324,7 +328,47 @@ class MovementMetrics:
         ans = np.logical_and(self.task_decision_array!=0, self.raw_data.agent_task_decision_array!=0)
         return ans
     
+    @cached_property
+    def inital_decision_direction(self):
+        '''
+        This gets the hand position of the participant, 30ms after their movement onset
         
+        If they are to the right (greater than) the start, their initial decision direction is right
+        
+        1 is right, -1 is left
+        '''
+        time_for_init_reach_direction = self.movement_onset_times('task') + 30
+        xpos = self.raw_data.task_xypos_data[...,0]
+        xpos_at_init_reach_direction = np.zeros(time_for_init_reach_direction.shape)*np.nan
+        ans = np.zeros_like(xpos_at_init_reach_direction)*np.nan
+        for i in range(self.exp_info.num_subjects):
+            for j in range(self.exp_info.num_task_blocks):
+                for k in range(self.exp_info.num_task_trials):
+                    
+                    if not np.isnan(time_for_init_reach_direction[i,j,k]):         
+                        xpos_at_init_reach_direction[i,j,k] = xpos[i,j,k,int(time_for_init_reach_direction[i,j,k])]
+                    else:
+                        continue
+                    
+                    if xpos_at_init_reach_direction[i,j,k]>self.exp_info.startx:
+                        ans[i,j,k] = 1
+                    else:
+                        ans[i,j,k] = -1
+        return ans
+
+    @property
+    def correct_initial_decisions(self):
+        initial_decision_direction = self.inital_decision_direction
+        ans = np.count_nonzero(initial_decision_direction == self.raw_data.agent_task_target_selection_array,axis=2)
+        return ans
+    
+    @property
+    def find_final_target_selection(self):
+        #TODO Find the target they are closest to at 1.5s 
+        
+        
+        
+                    
 class ScoreMetrics:
     def __init__(self, exp_info: ExperimentInfo, raw_data: RawData, movement_metrics: MovementMetrics):
         self.exp_info = exp_info
@@ -354,7 +398,7 @@ class ScoreMetrics:
         Returns a dictionary of wins, incorrects, and indecisions
         '''
         score_mask_dict = dict(zip(SCORE_METRIC_NAMES,(self.win_mask,self.incorrect_mask,self.indecision_mask)))
-        return np.count_nonzero(score_mask_dict[score_type], axis=2)    
+        return np.count_nonzero(score_mask_dict[score_type], axis=2)
     
     @cached_property
     def trial_results(self):
@@ -366,17 +410,17 @@ class ScoreMetrics:
     
     @cached_property
     def exp2_points_scored(self):
-        points_c0 = self.score_metric['wins'][0]
-        points_c1 = self.score_metric['wins'][1] - self.score_metric['incorrects'][1]
-        points_c2 = self.score_metric['wins'][2] - self.score_metric['indecisions'][2] 
-        points_c3 = self.score_metric['wins'][3] - self.score_metric['incorrects'][3] - self.score_metric['indecisions'][3] 
+        points_c0 = self.score_metric('wins')[:,0]
+        points_c1 = self.score_metric('wins')[:,1] - self.score_metric('incorrects')[:,1]
+        points_c2 = self.score_metric('wins')[:,2] - self.score_metric('indecisions')[:,2]
+        points_c3 = self.score_metric('wins')[:,3] - self.score_metric('incorrects')[:,3] - self.score_metric('indecisions')[:,3]
         
         return np.array([points_c0,points_c1,points_c2,points_c3])
     
     @cached_property
     def both_reached_mask(self):
         ans = np.logical_and(~self.indecision_mask!=0, 
-                                           self.raw_data.agent_task_decision_array!=0)
+                             self.raw_data.agent_task_decision_array!=0)
         return ans
     
     def wins_when_both_reach(self,perc=True):
@@ -394,6 +438,9 @@ class ScoreMetrics:
             return (np.count_nonzero(incorrect_and_both_reached_mask,axis=2)/np.count_nonzero(self.both_reached_mask,axis=2))*100
         else:
             return np.count_nonzero(incorrect_and_both_reached_mask,axis=2)
+        
+    def correct_decisions(self, perc=True):
+        pass
     
     
 class ReactGuessScoreMetrics:
@@ -521,7 +568,7 @@ class SubjectBuilder:
                  reaction_xypos_data,reaction_dist_data, reaction_xyvelocity_data, 
                  reaction_speed_data, reaction_trial_type_array, reaction_trial_start, 
                  agent_reaction_decision_array, agent_reaction_leave_time, interval_trial_start, interval_reach_time, coincidence_trial_start, coincidence_reach_time, 
-                 task_xypos_data, task_dist_data, task_xyvelocity_data, task_speed_data, agent_task_decision_array, agent_task_leave_time,
+                 task_xypos_data, task_dist_data, task_xyvelocity_data, task_speed_data, agent_task_target_selection_array, agent_task_leave_time,
                  **kwargs):     
         
         self.exp_info = ExperimentInfo(
@@ -541,7 +588,7 @@ class SubjectBuilder:
             coincidence_trial_start=coincidence_trial_start, coincidence_reach_time=coincidence_reach_time, 
             task_xypos_data=task_xypos_data, task_dist_data=task_dist_data, 
             task_xyvelocity_data=task_xyvelocity_data, task_speed_data=task_speed_data, 
-            agent_task_decision_array=agent_task_decision_array, agent_task_leave_time=agent_task_leave_time,
+            agent_task_target_selection_array=agent_task_target_selection_array, agent_task_leave_time=agent_task_leave_time,
         )
         movement_metrics_type = kwargs.get('movement_metrics_type','velocity')
         self.movement_metrics = MovementMetrics(
