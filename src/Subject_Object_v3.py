@@ -5,6 +5,8 @@ import os
 import warnings
 from functools import cached_property
 
+SCORE_METRIC_NAMES = ('wins','incorrects','indecisions')
+
 def mask_array(arr,mask):
     '''
     Applies the mask to the array then replaces the 0s with nans
@@ -12,10 +14,23 @@ def mask_array(arr,mask):
     new_arr = arr*mask # Apply mask
     new_arr[~mask] = np.nan # Replace the 0s from the mask with np nan
     return new_arr
-    
+
+def collapse_across_subjects(metric,num_blocks):
+    '''
+    Flattens out the subject dimension to get array of all the subjects 
+    '''
+    temp = np.swapaxes(metric,0,1)
+    ans = np.reshape(temp,(num_blocks,-1))
+    return ans
+
+def perc(metric,num_trials=80):
+    return (metric/num_trials)*100
+
 class ExperimentInfo:
-    def __init__(self, subjects, experiment,num_task_blocks,num_task_trials_initial,num_reaction_blocks,
-                 num_reaction_trials,num_timing_trials,select_trials,
+    def __init__(self, subjects, experiment, num_task_blocks,
+                 num_task_trials_initial, num_reaction_blocks,
+                 num_reaction_trials, num_timing_trials,
+                 select_trials,
                  **kwargs):
         self.subjects = subjects
         self.num_subjects = len(self.subjects)
@@ -142,6 +157,9 @@ class MovementMetrics:
                  **kwargs):        
         self.exp_info = exp_info
         self.raw_data = raw_data
+        self.coincidence_reach_time = self.raw_data.coincidence_reach_time
+        self.interval_reach_time = self.raw_data.interval_reach_time
+        
         self.vel_threshold = kwargs.get('velocity_threshold',0.05)
         self.metric_type   = kwargs.get('metric_type','velocity')
 
@@ -180,13 +198,10 @@ class MovementMetrics:
         '''
         if task == 'reaction':
             enter_right_target_id, enter_left_target_id = self.right_left_target_ids(task=task)
-            if self.exp_info.experiment == 'Exp1':
-                enter_right_target_id = enter_right_target_id[2] # If it's the reaction for Exp1, just use the 3rd block bc 1 and 2 are timing tasks
-                enter_left_target_id = enter_left_target_id[2]
-                
             reach_times = np.minimum(enter_right_target_id, enter_left_target_id).astype(float)        
             reach_times[reach_times==self.big_num] = np.nan
-    
+        
+        
             return reach_times
         elif task == 'task':
             reach_times = np.minimum(self.task_enter_right_target_id, self.task_enter_left_target_id).astype(float)        
@@ -194,17 +209,17 @@ class MovementMetrics:
             return reach_times
     
     @cached_property
-    def player_task_decision_array(self):
+    def task_decision_array(self):
         #* Determine the decision array based on target selection or indecision
         reach_times = np.minimum(self.task_enter_right_target_id, self.task_enter_left_target_id).astype(float)        
-        player_task_decision_array = np.zeros((self.exp_info.num_subjects, self.exp_info.num_task_blocks, self.exp_info.num_task_trials))*np.nan
+        ans = np.zeros((self.exp_info.num_subjects, self.exp_info.num_task_blocks, self.exp_info.num_task_trials))*np.nan
         
-        player_task_decision_array[self.task_enter_right_target_id < self.task_enter_left_target_id] = 1 # Player selected right target
-        player_task_decision_array[self.task_enter_left_target_id < self.task_enter_right_target_id] = -1 # Player selected left target
-        player_task_decision_array[reach_times > 1500] = 0 # Player failed to select a target
-        player_task_decision_array[reach_times == self.big_num] = 0 # Player never left start and thus failed to select a target
+        ans[self.task_enter_right_target_id < self.task_enter_left_target_id] = 1 # Player selected right target
+        ans[self.task_enter_left_target_id < self.task_enter_right_target_id] = -1 # Player selected left target
+        ans[reach_times > 1500] = 0 # Player failed to select a target
+        ans[reach_times == self.big_num] = 0 # Player never left start and thus failed to select a target
         
-        return player_task_decision_array
+        return ans
         
     
     def movement_onset_times(self, task):
@@ -306,7 +321,7 @@ class MovementMetrics:
 
     @property
     def both_reached_mask(self):
-        ans = np.logical_and(self.player_task_decision_array!=0, self.raw_data.agent_task_decision_array!=0)
+        ans = np.logical_and(self.task_decision_array!=0, self.raw_data.agent_task_decision_array!=0)
         return ans
     
         
@@ -314,31 +329,31 @@ class ScoreMetrics:
     def __init__(self, exp_info: ExperimentInfo, raw_data: RawData, movement_metrics: MovementMetrics):
         self.exp_info = exp_info
         self.raw_data = raw_data
-        self.player_task_decision_array = movement_metrics.player_task_decision_array
+        self.task_decision_array = movement_metrics.task_decision_array
         self.both_reached_mask = movement_metrics.both_reached_mask
         self.agent_task_decision_array = raw_data.agent_task_decision_array
         
     @cached_property
     def win_mask(self):
         ans = np.logical_or(
-            self.player_task_decision_array*self.agent_task_decision_array == 1, 
-            np.logical_and(self.player_task_decision_array!=0, self.agent_task_decision_array==0)
+            self.task_decision_array*self.agent_task_decision_array == 1, 
+            np.logical_and(self.task_decision_array!=0, self.agent_task_decision_array==0)
         )
         return ans
     
     @cached_property
     def indecision_mask(self):
-        return self.player_task_decision_array == 0
+        return self.task_decision_array == 0
     
     @cached_property
     def incorrect_mask(self):
-        return (self.player_task_decision_array*self.agent_task_decision_array == -1)
+        return (self.task_decision_array*self.agent_task_decision_array == -1)
     
     def score_metric(self, score_type):
         '''
         Returns a dictionary of wins, incorrects, and indecisions
         '''
-        score_mask_dict = {'wins': self.win_mask, 'incorrects': self.incorrect_mask, 'indecisions': self.indecision_mask}
+        score_mask_dict = dict(zip(SCORE_METRIC_NAMES,(self.win_mask,self.incorrect_mask,self.indecision_mask)))
         return np.count_nonzero(score_mask_dict[score_type], axis=2)    
     
     @cached_property
@@ -368,7 +383,7 @@ class ScoreMetrics:
         win_and_both_reached_mask = self.both_reached_mask*self.win_mask
         if perc:
             # Number of wins when both reached, divided by the number of times both reach 
-            return (np.count_nonzero(win_and_both_reached_mask,axis=2)/np.count_nonzero(self.both_reached_mask))*100
+            return (np.count_nonzero(win_and_both_reached_mask,axis=2)/np.count_nonzero(self.both_reached_mask,axis=2))*100
         else:
             return np.count_nonzero(win_and_both_reached_mask,axis=2)
         
@@ -376,12 +391,12 @@ class ScoreMetrics:
         incorrect_and_both_reached_mask = self.both_reached_mask*self.incorrect_mask
         if perc:
             # Number of wins when both reached, divided by the number of times both reach 
-            return (np.count_nonzero(incorrect_and_both_reached_mask,axis=2)/np.count_nonzero(self.both_reached_mask))*100
+            return (np.count_nonzero(incorrect_and_both_reached_mask,axis=2)/np.count_nonzero(self.both_reached_mask,axis=2))*100
         else:
             return np.count_nonzero(incorrect_and_both_reached_mask,axis=2)
     
     
-class ReactionGambleMetrics:
+class ReactGuessScoreMetrics:
     def __init__(self, exp_info: ExperimentInfo, raw_data: RawData, 
                  movement_metrics: MovementMetrics, score_metrics: ScoreMetrics):
         self.exp_info = exp_info
@@ -391,6 +406,7 @@ class ReactionGambleMetrics:
         self.incorrect_mask = score_metrics.incorrect_mask
         self.trial_results = score_metrics.trial_results
         self.score_metric = score_metrics.score_metric
+        self.both_reached_mask = movement_metrics.both_reached_mask
         self.reaction_time_threshold = 200
         self.react_guess_mask = dict(zip(('react','guess'), self.get_react_guess_mask()))
         
@@ -430,7 +446,7 @@ class ReactionGambleMetrics:
     def react_guess_indecisions(self, react_or_guess):
         return np.count_nonzero(self.react_guess_results(react_or_guess)==3,axis=2)
     
-    def reaction_guess_that_were_score_metric(self, metric, react_or_guess):
+    def react_guess_that_were_score_metric(self, metric, react_or_guess):
         '''
         Out of the x reaction/guess decisions, how many were wins, indecisions, incorrects 
         '''
@@ -450,7 +466,46 @@ class ReactionGambleMetrics:
         
         return numerator,denominator,np.divide(numerator,denominator, # gamble_wins/total_gambles
                     out=np.zeros_like(numerator)*np.nan,where=denominator!=0)*100
+    
+    def perc_react_guess_score_metric_when_both_reach(self,metric_name,react_or_guess):
+        react_guess_both_reached_mask = self.react_guess_mask[react_or_guess]*self.both_reached_mask
+        total_react_guess_when_both_reach = np.count_nonzero(react_guess_both_reached_mask,axis=2)
+        react_guess_wins_when_both_decide        = np.count_nonzero(mask_array(self.trial_results,react_guess_both_reached_mask) == 1,axis=2) # Count where the both decided reaction trials are equal to 1 for the trial results array
+        react_guess_indecisions_when_both_decide = np.count_nonzero(mask_array(self.trial_results,react_guess_both_reached_mask) == 2,axis=2) # Count where the both decided reaction trials are equal to 1 for the trial results array
+        react_guess_incorrects_when_both_decide  = np.count_nonzero(mask_array(self.trial_results,react_guess_both_reached_mask) == 3,axis=2) # Count where the both decided reaction trials are equal to 1 for the trial results array
+        perc_wins = np.divide(react_guess_wins_when_both_decide,
+                              total_react_guess_when_both_reach, # react_guess_wins_when_both_decide/total_reactions
+                              out=np.zeros_like(react_guess_wins_when_both_decide)*np.nan,
+                              where=total_react_guess_when_both_reach!=0)*100
         
+        perc_indecisions = np.divide(react_guess_indecisions_when_both_decide,
+                                     total_react_guess_when_both_reach, # react_guess_wins_when_both_decide/total_reactions
+                                     out=np.zeros_like(react_guess_wins_when_both_decide)*np.nan,
+                                     where=total_react_guess_when_both_reach!=0)*100
+        
+        perc_incorrects = np.divide(react_guess_incorrects_when_both_decide,
+                                    total_react_guess_when_both_reach, # react_guess_wins_when_both_decide/total_reactions
+                                    out=np.zeros_like(react_guess_wins_when_both_decide)*np.nan,
+                                    where=total_react_guess_when_both_reach!=0)*100
+        ans = dict(zip(SCORE_METRIC_NAMES,(perc_wins,perc_indecisions,perc_incorrects)))
+        return ans[metric_name]
+
+class ReactGuessMovementMetrics:
+    def __init__(self, exp_info: ExperimentInfo, raw_data: RawData, 
+                 movement_metrics: MovementMetrics, score_metrics: ScoreMetrics):
+        self.exp_info = exp_info
+        self.raw_data = raw_data
+        self.reaction_times = movement_metrics.reaction_times
+        self.movement_onset_times = movement_metrics.movement_onset_times
+        self.incorrect_mask = score_metrics.incorrect_mask
+        self.trial_results = score_metrics.trial_results
+        self.score_metric = score_metrics.score_metric
+        self.both_reached_mask = movement_metrics.both_reached_mask
+        self.reaction_time_threshold = 200
+        self.react_guess_mask = dict(zip(('react','guess'), self.get_react_guess_mask()))
+        
+        
+    
 class SubjectBuilder:
     def __init__(self,subjects,experiment,num_task_blocks,num_task_trials_initial,num_reaction_blocks,
                  num_reaction_trials,num_timing_trials, select_trials,
@@ -491,11 +546,18 @@ class SubjectBuilder:
             movement_metrics=self.movement_metrics
         )
         
-        self.reaction_gamble_metrics = ReactionGambleMetrics(
+        self.react_guess_score_metrics = ReactGuessScoreMetrics(
             exp_info=self.exp_info, raw_data=self.raw_data, 
             movement_metrics=self.movement_metrics, 
             score_metrics=self.score_metrics
         )
+        
+        self.react_guess_movement_metrics = ReactGuessMovementMetrics(
+            exp_info=self.exp_info, raw_data=self.raw_data, 
+            movement_metrics=self.movement_metrics, 
+            score_metrics=self.score_metrics
+        )
+        
     def __repr__(self):
         return f'{self.__class__.__name__} {self.subject}'
         
