@@ -402,7 +402,7 @@ class ReactGuessScoreMetrics:
         self.exp_info = exp_info
         self.raw_data = raw_data
         self.reaction_times = movement_metrics.reaction_times
-        self.movement_onset_times = movement_metrics.movement_onset_times
+        self.movement_onset_times = movement_metrics.movement_onset_times('task')
         self.incorrect_mask = score_metrics.incorrect_mask
         self.trial_results = score_metrics.trial_results
         self.score_metric = score_metrics.score_metric
@@ -419,7 +419,7 @@ class ReactGuessScoreMetrics:
     
     def get_react_guess_mask(self):
         guess_mask =  (
-            ((self.movement_onset_times(task='task')
+            ((self.movement_onset_times
             - self.raw_data.agent_task_leave_time) 
             <= self.reaction_time_threshold)
             | self.incorrect_mask
@@ -457,14 +457,14 @@ class ReactGuessScoreMetrics:
                     out=np.zeros_like(numerator)*np.nan,where=denominator!=0)*100
         
         
-    def score_metric_that_were_reaction_guess(self,metric, react_or_guess):
+    def score_metric_that_were_reaction_guess(self,metric_name, react_or_guess):
         '''
         Out of the wins, indecisions, incorrects, how many were reactions and guesses
         '''
-        numerator = self.react_guess_score_metric_dict(react_or_guess)[metric] # Total reaction/guess wins, indecions, incorrects   
-        denominator = self.score_metric(metric) # Total wins, indecisions, incorrects
+        numerator = self.react_guess_score_metric_dict(react_or_guess)[metric_name] # Total reaction/guess wins, indecions, incorrects   
+        denominator = self.score_metric(metric_name) # Total wins, indecisions, incorrects
         
-        return numerator,denominator,np.divide(numerator,denominator, # gamble_wins/total_gambles
+        return np.divide(numerator,denominator, # gamble_wins/total_gambles
                     out=np.zeros_like(numerator)*np.nan,where=denominator!=0)*100
     
     def perc_react_guess_score_metric_when_both_reach(self,metric_name,react_or_guess):
@@ -492,19 +492,28 @@ class ReactGuessScoreMetrics:
 
 class ReactGuessMovementMetrics:
     def __init__(self, exp_info: ExperimentInfo, raw_data: RawData, 
-                 movement_metrics: MovementMetrics, score_metrics: ScoreMetrics):
+                 movement_metrics: MovementMetrics, score_metrics: ScoreMetrics,
+                 react_guess_mask):
         self.exp_info = exp_info
         self.raw_data = raw_data
         self.reaction_times = movement_metrics.reaction_times
-        self.movement_onset_times = movement_metrics.movement_onset_times
+        self.movement_onset_times = movement_metrics.movement_onset_times('task')
+        self.target_reach_times = movement_metrics.target_reach_times('task')
         self.incorrect_mask = score_metrics.incorrect_mask
         self.trial_results = score_metrics.trial_results
         self.score_metric = score_metrics.score_metric
         self.both_reached_mask = movement_metrics.both_reached_mask
         self.reaction_time_threshold = 200
-        self.react_guess_mask = dict(zip(('react','guess'), self.get_react_guess_mask()))
+        self.react_guess_mask = react_guess_mask
         
-        
+    def react_guess_movement_onset_times(self, react_or_guess):
+        return mask_array(self.movement_onset_times,self.react_guess_mask[react_or_guess])
+    
+    def react_guess_target_reach_times(self, react_or_guess):
+        return mask_array(self.target_reach_times,self.react_guess_mask[react_or_guess])
+    
+    def react_guess_agent_movement_onset_times(self, react_or_guess):
+        return mask_array(self.raw_data.agent_task_leave_time, self.react_guess_mask[react_or_guess])
     
 class SubjectBuilder:
     def __init__(self,subjects,experiment,num_task_blocks,num_task_trials_initial,num_reaction_blocks,
@@ -555,7 +564,8 @@ class SubjectBuilder:
         self.react_guess_movement_metrics = ReactGuessMovementMetrics(
             exp_info=self.exp_info, raw_data=self.raw_data, 
             movement_metrics=self.movement_metrics, 
-            score_metrics=self.score_metrics
+            score_metrics=self.score_metrics,
+            react_guess_mask=self.react_guess_score_metrics.react_guess_mask,
         )
         
     def __repr__(self):
