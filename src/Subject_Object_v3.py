@@ -3,8 +3,9 @@ from matplotlib import pyplot as plt
 import numpy as np
 import os
 import warnings
-from functools import cached_property
+from functools import cached_property, lru_cache
 from copy import deepcopy
+import read_data_functions as rdf
 
 SCORE_METRIC_NAMES = ('wins','incorrects','indecisions')
 
@@ -166,7 +167,7 @@ class MovementMetrics:
         self.metric_type   = kwargs.get('metric_type','velocity')
 
         if self.metric_type not in ['position','velocity','velocity linear']:
-            raise ValueError('type should be \'position\', \'velocity\', or \'velocity linear\'')
+            raise ValueError('metric_type should be \'position\', \'velocity\', or \'velocity linear\'')
         
         if self.exp_info.experiment == 'Exp2':
             self.reaction_gamble_mask = self.raw_data.reaction_trial_type_array == 0
@@ -175,6 +176,9 @@ class MovementMetrics:
         self.big_num = 100000
         self.task_enter_right_target_id,self.task_enter_left_target_id = self.right_left_target_ids('task')
     
+        self.reaction_times = None # Here for autocomplete purposes
+        self.get_reaction_times() # I'm setting reaction times in this function, it's in a function so I can unfilter if I want to 
+        
     def right_left_target_ids(self,task):
         if task == 'reaction':
             xydata = self.raw_data.reaction_xypos_data
@@ -259,27 +263,26 @@ class MovementMetrics:
     def player_minus_agent_movement_onset_times(self, task) -> np.array:
         return self.movement_onset_times(task=task) - self.raw_data.agent_task_movement_onset_time
     
-    @property
-    def reaction_times(self):
+    def get_reaction_times(self, filter_=True) -> None:
         '''
         In exp1, the start of the trial is the stimulus, so movement onset == reaction time
         In exp2, the agent is the stimulus, so the (movement onset - agent onset) == reaction time
         '''
         
         if self.exp_info.experiment == 'Exp1':
-            ans = self.movement_onset_times(task='reaction')[:,-1,:] #! Last row is the actual reaction, first two are timing for exp1
+            self.reaction_times = self.movement_onset_times(task='reaction')[:,-1,:] #! Last row is the actual reaction, first two are timing for exp1
         elif self.exp_info.experiment == 'Exp2':
-            ans = self.movement_onset_times(task='reaction') - self.raw_data.agent_reaction_leave_time
+            self.reaction_times = self.movement_onset_times(task='reaction') - self.raw_data.agent_reaction_leave_time
         #* Filter out fault reaction times
-        if filter:
-            ans[(ans>600)|(ans<170)] = np.nan
-        return ans
-
+        if filter_:
+            self.reaction_times[(self.reaction_times>600)|(self.reaction_times<170)] = np.nan
+    
+    @lru_cache
     def exp2_react_gamble_reaction_time_all(self, react_or_guess):
         if react_or_guess == 'react':
-            return self.reaction_times[self.reaction_react_mask].reshape(2,50)
+            return self.reaction_times[self.reaction_react_mask].reshape(self.exp_info.num_subjects,2,50)
         elif react_or_guess == 'guess':
-            return self.reaction_times[self.reaction_gamble_mask].reshape(2,50)
+            return self.reaction_times[self.reaction_gamble_mask].reshape(self.exp_info.num_subjects,2,50)
         
     def exp2_react_gamble_reaction_time_split(self, react_or_guess, mixed_or_only):
         '''
@@ -294,16 +297,16 @@ class MovementMetrics:
         elif mixed_or_only == 'only':
             slice_num = 1
             
-        return self.exp2_react_gamble_reaction_time_all(react_or_guess)[slice_num,:]
+        return self.exp2_react_gamble_reaction_time_all(react_or_guess)[:,slice_num,:]
         
     def exp2_react_gamble_movement_time_all(self, react_or_guess):
         '''
         All the react or gamble movement times in one (2,50) array
         '''
         if react_or_guess == 'react':
-            return self.movement_times[self.reaction_react_mask].reshape(2,50)
+            return self.movement_times('reaction')[self.reaction_react_mask].reshape(self.exp_info.num_subjects,2,50)
         elif react_or_guess == 'guess':
-            return self.movement_times[self.reaction_gamble_mask].reshape(2,50)
+            return self.movement_times('reaction')[self.reaction_gamble_mask].reshape(self.exp_info.num_subjects,2,50)
         
     def exp2_react_gamble_movement_time_split(self, react_or_guess, mixed_or_only):
         '''
@@ -318,7 +321,7 @@ class MovementMetrics:
         elif mixed_or_only == 'only':
             slice_num = 1
             
-        return self.exp2_react_gamble_movement_time_all(react_or_guess)[slice_num,:]
+        return self.exp2_react_gamble_movement_time_all(react_or_guess)[:,slice_num,:]
     
     def exp2_react_gamble_repeats_or_alternates(self, react_or_guess, repeats_or_alternates):
         raise NotImplementedError('Still need to implement this')
@@ -364,9 +367,22 @@ class MovementMetrics:
     
     @property
     def find_final_target_selection(self):
-        #TODO Find the target they are closest to at 1.5s 
+        #TODO
+        xpos_at_end = self.raw_data.task_xypos_data[...,1500,0]
+        xdist_to_right_target = abs(xpos_at_end - self.exp_info.target1x)
+        xdist_to_left_target = abs(xpos_at_end - self.exp_info.target2x)
+        closer_to_right = xdist_to_right_target < xdist_to_left_target
+        ans = np.zeros_like(xpos_at_end)
+        ans[closer_to_right] = 1
+        ans[~closer_to_right] = -1
         
-        
+        print(ans)        
+        return ans
+    
+    @property
+    def check_change_of_mind(self):
+        return np.where(self.find_final_target_selection!=self.inital_decision_direction)
+    
         
                     
 class ScoreMetrics:
@@ -616,6 +632,8 @@ class SubjectBuilder:
         )
         
     def __repr__(self):
-        return f'{self.__class__.__name__} {self.subject}'
+        return f'{self.__class__.__name__} {self.exp_info.experiment} Object'
         
-        
+if __name__ == '__main__':
+    group = rdf.generate_subject_object_v3('Exp1')
+    
