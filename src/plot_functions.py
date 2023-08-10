@@ -84,7 +84,7 @@ def scatter_with_correlation(ax,xdata,ydata,**kwargs):
     if correlation:
         ax.plot(x,y,c='grey')
         if show_spear:
-            ax.text(0.5,0.5,f'r = {spear_r.statistic:0.3f}\n p = {spear_r.pvalue:0.3f}',transform=ax.transAxes)
+            ax.text(0.5,0.5,f'r = {spear_r.correlation:0.3f}\n p = {spear_r.pvalue:0.3f}',transform=ax.transAxes)
             
     return ax,spear_r
 
