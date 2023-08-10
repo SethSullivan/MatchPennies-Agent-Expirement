@@ -22,7 +22,9 @@ class Statistics():
         self.f1_xlabel          = f1_xlabel
         self.f2_xlabel          = f2_xlabel
         self.f2_xticklabels     = f2_xticklabels
-        self.M_init                  = M
+        self.M_init             = M
+        self.FACTOR1            = 'Factor_1'
+        self.FACTOR2            = 'Factor_2'      
         
         assert self.experiment == 'Exp1' or self.experiment == 'Exp2'
 
@@ -53,13 +55,13 @@ class Statistics():
             
         self.test = test
         # Check to make sure that factor 1 is the means for exp1 or the incorrect punishment for exp2
-        assert self.df['Factor 1'].str.contains('1000').any() or self.df['Factor 1'].str.contains('-1 Inc').any() or self.df['Factor 1'].str.contains('Reaction').any()
+        assert self.df[self.factor1].str.contains('1000').any() or self.df[self.factor1].str.contains('-1 Inc').any() or self.df[self.factor1].str.contains('Reaction').any()
         
-        self.anova = pg.rm_anova(data=self.df, dv=dv, within=['Factor 1','Factor 2'], subject='Subject', detailed=True)
+        self.anova = pg.rm_anova(data=self.df, dv=dv, within=[self.factor1,self.FACTOR2], subject='Subject', detailed=True)
         if dv not in self.anova_dict.keys():
             self.anova_dict.update({dv:self.anova})
         
-        assert self.anova['Source'][2] == 'Factor 1 * Factor 2' # Make sure row 2 is the interaction 
+        assert self.anova['Source'][2] == f'{self.factor1} * {self.FACTOR2}' # Make sure row 2 is the interaction 
         
         metric = self.df_to_array(self.df[dv])
         
