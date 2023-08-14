@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import copy
 wheel  = dv.ColorWheel()
 class Statistics():
+    FACTOR1            = 'Factor_1'
+    FACTOR2            = 'Factor_2'  
     def __init__(self,df,experiment,num_subjects,num_blocks,num_trials,trial_block_titles,xlab,
                  f1_xticklabels,f2_xticklabels,f1_xlabel,f2_xlabel,M):
         self.experiment         = experiment
@@ -22,9 +24,7 @@ class Statistics():
         self.f1_xlabel          = f1_xlabel
         self.f2_xlabel          = f2_xlabel
         self.f2_xticklabels     = f2_xticklabels
-        self.M_init             = M
-        self.FACTOR1            = 'Factor_1'
-        self.FACTOR2            = 'Factor_2'      
+        self.M_init             = M    
         
         assert self.experiment == 'Exp1' or self.experiment == 'Exp2'
 
@@ -47,7 +47,7 @@ class Statistics():
         return ans
     
     
-    def run_statistics(self,dv,change_m = None,alternative='two-sided',test='mean'):
+    def run_statistics(self, dv, anova_type='rm_anova', change_m = None,alternative='two-sided',test='mean'):
         if change_m is None:
             self.M = copy.deepcopy(self.M_init)
         else:
@@ -55,34 +55,40 @@ class Statistics():
             
         self.test = test
         # Check to make sure that factor 1 is the means for exp1 or the incorrect punishment for exp2
-        assert self.df[self.factor1].str.contains('1000').any() or self.df[self.factor1].str.contains('-1 Inc').any() or self.df[self.factor1].str.contains('Reaction').any()
+        assert self.df[self.FACTOR1].str.contains('1000').any() or self.df[self.FACTOR1].str.contains('-1 Inc').any() or self.df[self.FACTOR1].str.contains('Reaction').any()
         
-        self.anova = pg.rm_anova(data=self.df, dv=dv, within=[self.factor1,self.FACTOR2], subject='Subject', detailed=True)
-        if dv not in self.anova_dict.keys():
-            self.anova_dict.update({dv:self.anova})
+        if anova_type == 'rm_anova':
+            self.anova = pg.rm_anova(data=self.df, dv=dv, within=[self.FACTOR1,self.FACTOR2], 
+                                     subject='Subject', detailed=True)
+            if dv not in self.anova_dict.keys():
+                self.anova_dict.update({dv:self.anova})
         
-        assert self.anova['Source'][2] == f'{self.factor1} * {self.FACTOR2}' # Make sure row 2 is the interaction 
+            assert self.anova['Source'][2] == f'{self.FACTOR1} * {self.FACTOR2}' # Make sure row 2 is the interaction 
         
-        metric = self.df_to_array(self.df[dv])
+            metric = self.df_to_array(self.df[dv])
         
-        #* Don't collapse 
-        if self.anova['p-GG-corr'][2] <0.05:
-            print('Significant interaction, doing pairwise bootstraps for each condition...')
-            self.collapse_factor = [None]
-            pval_dict,cles_dict = self.pairwise_bootstrap(metric,alternative=alternative)
-            return self.anova,[pval_dict,cles_dict]
+            #* Don't collapse 
+            if self.anova['p-GG-corr'][2] <0.05:
+                print('Significant interaction, doing pairwise bootstraps for each condition...')
+                self.collapse_factor = [None]
+                pval_dict,cles_dict = self.pairwise_bootstrap(metric,alternative=alternative)
+                return self.anova,[pval_dict,cles_dict]
 
-        #* Collapse
-        else:
-            if self.anova['p-GG-corr'][2] <0.1:
-                print('Interaction significance close')
-            self.collapse_factor = ['f1','f2']
-            print('Non-significant interaction, collapsing across conditions...')
-            f1_collapse_pvals_dict,f1_collapse_cles_dict,\
-            f2_collapse_pvals_dict,f2_collapse_cles_dict = self.collapsed_bootstrap(metric,alternative = alternative)
-                    
-            d = dict(zip(['f1pvals','f1eff','f2pvals','f2eff'],[f1_collapse_pvals_dict,f1_collapse_cles_dict,f2_collapse_pvals_dict,f2_collapse_cles_dict]))
-            return self.anova,[f1_collapse_pvals_dict,f1_collapse_cles_dict,f2_collapse_pvals_dict,f2_collapse_cles_dict]
+            #* Collapse
+            else:
+                if self.anova['p-GG-corr'][2] <0.1:
+                    print('Interaction significance close')
+                self.collapse_factor = ['f1','f2']
+                print('Non-significant interaction, collapsing across conditions...')
+                f1_collapse_pvals_dict,f1_collapse_cles_dict,\
+                f2_collapse_pvals_dict,f2_collapse_cles_dict = self.collapsed_bootstrap(metric,alternative = alternative)
+                        
+                d = dict(zip(['f1pvals','f1eff','f2pvals','f2eff'],[f1_collapse_pvals_dict,f1_collapse_cles_dict,f2_collapse_pvals_dict,f2_collapse_cles_dict]))
+                return self.anova,[f1_collapse_pvals_dict,f1_collapse_cles_dict,f2_collapse_pvals_dict,f2_collapse_cles_dict]
+            
+        elif anova_type == 'rm_manova':
+            raise NotImplementedError('Still need to implement repeated measures MANOVA')
+
 
 
     def pairwise_bootstrap(self,data,condition_nums=None,alternative='two-sided',
