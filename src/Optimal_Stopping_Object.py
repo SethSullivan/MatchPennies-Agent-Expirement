@@ -156,8 +156,8 @@ class ModelInputs:
             self.agent_sds = kwargs.get("agent_sds")  # If exp2, need to be np.array([50]*4)
             self.nsteps = 1
             self.num_timesteps = kwargs.get("num_timesteps")
-            self.timesteps = kwargs.get("timesteps", np.tile(np.arange(0.0, float(self.num_timesteps), self.nsteps), (self.num_blocks, 1)))
-            self.timesteps_dict = {"true": self.timesteps, "exp": self.timesteps}
+            self.timesteps = kwargs.get("timesteps", np.tile(np.arange(0.0, float(self.num_timesteps), self.nsteps), (2, self.num_blocks, 1)))
+            self.old_timesteps = kwargs.get("timesteps", np.tile(np.arange(0.0, float(self.num_timesteps), self.nsteps), (self.num_blocks, 1)))
             self.tiled_1500 = np.full_like(self.timesteps, 1500.0)
             self.tiled_agent_means = np.tile(self.agent_means, (self.timesteps.shape[-1], 1)).T
             self.tiled_agent_sds = np.tile(self.agent_sds, (self.timesteps.shape[-1], 1)).T
@@ -171,9 +171,9 @@ class ModelInputs:
         if True:
             self.expected = kwargs.get("expected")
             if self.expected:
-                self.key = "exp"
+                self.key = 1 # 1 refers to 'exp' row
             else:
-                self.key = "true"
+                self.key = 0 # 0 refers to 'true' row
     
             self.switch_cost_exists = kwargs.get('switch_cost_exists')
     
@@ -188,24 +188,22 @@ class ModelInputs:
             self.timing_sd = kwargs.get("timing_sd")
             self.gamble_switch_sd = kwargs.get("gamble_switch_sd")
             self.electromechanical_sd = kwargs.get("electromechanical_sd")
-            self.gamble_sd = add_dicts(self.gamble_switch_sd,self.electromechanical_sd,self.timing_sd)
+            self.gamble_sd = self.gamble_switch_sd[:,np.newaxis] + self.electromechanical_sd[:,np.newaxis] + self.timing_sd
 
-            assert self.electromechanical_sd['true'] == self.electromechanical_sd['exp']
-
-            self.reaction_reach_sd = combine_sd_dicts(self.reaction_sd, self.movement_sd)
-            self.gamble_reach_sd = combine_sd_dicts(self.gamble_sd, self.movement_sd)
+            self.reaction_reach_sd = np.sqrt(self.reaction_sd**2 + self.movement_sd**2)
+            self.gamble_reach_sd = np.sqrt(self.gamble_sd**2 + self.movement_sd[:,np.newaxis]**2)
 
             # Ability
             self.reaction_time = kwargs.get("reaction_time")
             self.movement_time = kwargs.get("movement_time")
-            self.reaction_plus_movement_time = add_dicts(self.reaction_time, self.movement_time)
+            self.reaction_plus_movement_time = self.reaction_time + self.movement_time
             
             self.gamble_switch_delay = kwargs.get("gamble_switch_delay")
             self.electromechanical_delay = kwargs.get('electromechanical_delay')
-            self.gamble_delay = add_dicts(self.gamble_switch_delay, self.electromechanical_delay)
-            self.gamble_plus_movement_time = add_dicts(self.timesteps_dict, self.movement_time, self.gamble_delay)
+            self.gamble_delay = self.gamble_switch_delay + self.electromechanical_delay
+            self.gamble_plus_movement_time = self.timesteps + self.movement_time[:,np.newaxis,np.newaxis] + self.gamble_delay[:,np.newaxis,np.newaxis]
 
-            assert self.electromechanical_delay['exp'] == self.electromechanical_delay['true']
+            assert self.electromechanical_delay[0] == self.electromechanical_delay[0]
 
             # Get reward matrix for Exp2
             if self.experiment == "Exp2":
@@ -236,11 +234,11 @@ class ModelInputs:
             # Ensure that if the switch cost doesn't exist, that the exp and true are the same
             assert self.switch_cost_exists is not None
             if not self.switch_cost_exists:
-                assert self.gamble_switch_delay['exp'] == self.gamble_switch_delay['true']
-                assert self.gamble_switch_sd['exp'] == self.gamble_switch_sd['true']
+                assert self.gamble_switch_delay[1] == self.gamble_switch_delay[0] #! 0 refers to 'true' and 1 refers to 'exp'
+                assert self.gamble_switch_sd[1] == self.gamble_switch_sd[0]
             # else:
-            #     assert self.gamble_switch_delay['exp'] != self.gamble_switch_delay['true']
-            #     assert self.gamble_switch_sd['exp'] != self.gamble_switch_sd['true']
+            #     assert self.gamble_switch_delay[1] != self.gamble_switch_delay[0]
+            #     assert self.gamble_switch_sd[1] != self.gamble_switch_sd[0]
             
 class AgentBehavior:
     def __init__(self, model_inputs: ModelInputs):
@@ -261,7 +259,7 @@ class AgentBehavior:
     @cached_property
     def prob_agent_has_gone(self):
         # temp = numba_cdf(self.inputs.timesteps,self.inputs.agent_means,self.inputs.agent_sds)
-        temp = stats.norm.cdf(self.inputs.timesteps, self.inputs.agent_means, self.inputs.agent_sds)
+        temp = stats.norm.cdf(self.inputs.old_timesteps, self.inputs.agent_means[:,np.newaxis], self.inputs.agent_sds[:,np.newaxis])
         return temp
 
     @cached_property
@@ -286,10 +284,10 @@ class AgentBehavior:
         inf_agent_means_tiled = np.tile(self.inputs.agent_means, (inf_timesteps.shape[0], 1)).T  # Tiled agents with 2000 timesteps
         inf_agent_sds_tiled = np.tile(self.inputs.agent_sds, (inf_timesteps.shape[0], 1)).T  # Tiled agetn sds with 2000 timesteps
         tiled_timing_sd = np.tile(self.inputs.timing_sd[self.inputs.key], (self.inputs.timesteps.shape[-1], 1)).T  # Tile timing sd
-        time_means = self.inputs.timesteps[0, :]  # Get the timing means that player can select as their stopping time
+        time_means = self.inputs.timesteps[0, 0, :]  # Get the timing means that player can select as their stopping time
         agent_pdf = stats.norm.pdf(inf_timesteps_tiled, inf_agent_means_tiled, inf_agent_sds_tiled)  # Find agent pdf tiled 2000
         prob_agent_less_player = stats.norm.cdf(
-            0, self.inputs.tiled_agent_means - self.inputs.timesteps, np.sqrt(self.inputs.tiled_agent_sds**2 + (tiled_timing_sd) ** 2)
+            0, self.inputs.tiled_agent_means - self.inputs.timesteps[0,...], np.sqrt(self.inputs.tiled_agent_sds**2 + (tiled_timing_sd) ** 2)
         )
         # Call get moments equation
         return get_moments(inf_timesteps, time_means, self.inputs.timing_sd[self.inputs.key], prob_agent_less_player, agent_pdf)
@@ -320,30 +318,25 @@ class PlayerBehavior:
         self.inputs = model_inputs
         self.agent_behavior = agent_behavior
 
-        if self.inputs.expected:
-            self.key = "exp"
-        else:
-            self.key = "true"
-
         assert np.allclose(self.prob_selecting_reaction + self.prob_selecting_gamble, 1.0)
         #*Leave times
-        self.reaction_leave_time   = self.agent_behavior.reaction_leave_time + self.inputs.reaction_time[self.key]
-        self.gamble_leave_time     = self.inputs.timesteps + self.inputs.gamble_delay[self.key]
+        self.reaction_leave_time   = self.agent_behavior.reaction_leave_time + self.inputs.reaction_time[self.inputs.key]
+        self.gamble_leave_time     = self.inputs.timesteps + self.inputs.gamble_delay[self.inputs.key]
         self.wtd_leave_time = self.prob_selecting_reaction*self.reaction_leave_time + self.prob_selecting_gamble*self.gamble_leave_time
         #*Reach Times
-        self.reaction_reach_time   = self.agent_behavior.reaction_leave_time + self.inputs.reaction_plus_movement_time[self.key]
-        self.gamble_reach_time     = self.inputs.timesteps + self.inputs.gamble_delay[self.key] + self.inputs.movement_time[self.key]
+        self.reaction_reach_time   = self.agent_behavior.reaction_leave_time + self.inputs.reaction_plus_movement_time[self.inputs.key]
+        self.gamble_reach_time     = self.inputs.timesteps + self.inputs.gamble_delay[self.inputs.key] + self.inputs.movement_time[self.inputs.key]
         self.wtd_reach_time = self.prob_selecting_reaction*self.reaction_reach_time + self.prob_selecting_gamble*self.gamble_reach_time
         #*Leave Time SD
-        self.reaction_leave_time_sd = np.sqrt(self.agent_behavior.reaction_leave_time_sd**2 + self.inputs.reaction_sd[self.key] ** 2)
+        self.reaction_leave_time_sd = np.sqrt(self.agent_behavior.reaction_leave_time_sd**2 + self.inputs.reaction_sd[self.inputs.key] ** 2)
         #*If I pass an array, I took gamble leave time sd from the data
-        if isinstance(self.inputs.gamble_sd[self.key], np.ndarray):
-            self.gamble_leave_time_sd = self.inputs.gamble_sd[self.key][:, np.newaxis]
+        if isinstance(self.inputs.gamble_sd[self.inputs.key], np.ndarray):
+            self.gamble_leave_time_sd = self.inputs.gamble_sd[self.inputs.key][:, np.newaxis]
         else:  # If I didn't, then I need to throw on timing uncertainty and agent uncertainty to the decision sd
             self.gamble_leave_time_sd = np.sqrt(
                 self.agent_behavior.gamble_leave_time_sd**2
-                + self.inputs.gamble_sd[self.key] ** 2
-                + tile(self.inputs.timing_sd[self.key] ** 2, self.inputs.num_timesteps)
+                + self.inputs.gamble_sd[self.inputs.key] ** 2
+                + tile(self.inputs.timing_sd[self.inputs.key] ** 2, self.inputs.num_timesteps)
             )
         self.wtd_leave_time_sd = (
             self.prob_selecting_reaction*self.reaction_leave_time_sd + self.prob_selecting_gamble*self.gamble_leave_time_sd
@@ -353,8 +346,8 @@ class PlayerBehavior:
             (self.wtd_leave_time - 0.675*self.wtd_leave_time_sd)
         )
         #*Reach Time SD
-        self.reaction_reach_time_sd = np.sqrt(self.reaction_leave_time_sd**2 + self.inputs.movement_sd[self.key] ** 2)
-        self.gamble_reach_time_sd   = np.sqrt(self.gamble_leave_time_sd**2 + self.inputs.movement_sd[self.key] ** 2)
+        self.reaction_reach_time_sd = np.sqrt(self.reaction_leave_time_sd**2 + self.inputs.movement_sd[self.inputs.key] ** 2)
+        self.gamble_reach_time_sd   = np.sqrt(self.gamble_leave_time_sd**2 + self.inputs.movement_sd[self.inputs.key] ** 2)
         self.wtd_reach_time_sd = (
             self.prob_selecting_reaction*self.reaction_reach_time_sd + self.prob_selecting_gamble*self.gamble_reach_time_sd
         )
@@ -367,7 +360,7 @@ class PlayerBehavior:
     @property
     def prob_selecting_reaction(self):
         combined_sd = np.sqrt(
-            self.inputs.timing_sd[self.key] ** 2 + self.inputs.agent_sds**2
+            self.inputs.timing_sd[self.inputs.key] ** 2 + self.inputs.agent_sds**2
         )  # Prob of SELECTING only includes timing uncertainty and agent uncertainty
         tiled_combined_sd = np.tile(combined_sd, (self.inputs.timesteps.shape[-1], 1)).T
         diff = self.inputs.timesteps - self.inputs.tiled_agent_means
@@ -384,14 +377,14 @@ class PlayerBehavior:
         # Calculate the prob of making it on a reaction
         #! Cutoff agent distribution isn't normal, so might not be able to simply add these, problem for later
         mu = self.reaction_reach_time
-        sd = np.sqrt(self.agent_behavior.reaction_leave_time_sd**2 + self.inputs.reaction_reach_sd[self.key] ** 2)
+        sd = np.sqrt(self.agent_behavior.reaction_leave_time_sd**2 + self.inputs.reaction_reach_sd[self.inputs.key] ** 2)
         # temp = numba_cdf(np.array([1500]),mu.flatten(),sd.flatten()).reshape(self.inputs.timesteps.shape)
         return stats.norm.cdf(1500, mu, sd)
 
     @property
     def prob_making_given_gamble(self):
         mu = self.gamble_reach_time
-        sd = np.tile(self.inputs.gamble_reach_sd[self.key], (self.inputs.timesteps.shape[-1], 1)).T
+        sd = np.tile(self.inputs.gamble_reach_sd[self.inputs.key], (self.inputs.timesteps.shape[-1], 1)).T
         # temp = numba_cdf(np.array([1500]), mu.flatten(),sd.flatten()).reshape(self.inputs.timesteps.shape)
         return stats.norm.cdf(1500, mu, sd)
 
@@ -565,7 +558,8 @@ class ModelConstructor:
         loss = abs(metric - target[:, np.newaxis])
         decision_index = np.argmin(loss, axis=1) + np.min(self.inputs.timesteps)
         self.results.set_fit_decision_index(decision_index.astype(int))
-        
+
+
 class ModelFitting:
     '''
     Pass ModelConstructor to fit free parameters
@@ -584,14 +578,14 @@ class ModelFitting:
             self.model.results.set_fit_decision_index(self.fixed_decision_time.astype(int))
             
         self.parameter_arr = []
-        self.initial_param_shape = None
-        self.loss_store = None
+        self.initial_param_shape         = None
+        self.loss_store                  = None
         self.optimal_decision_time_store = None
-        self.leave_time_store = None
-        self.leave_time_sd_store = None
+        self.leave_time_store            = None
+        self.leave_time_sd_store         = None
         
     def run_model_fit_procedure(self, free_params_init: dict, metric_keys: list, targets: np.ndarray,
-                                method='Nelder-Mead', bnds=None, tol = 0.0000001,niter=100,
+                                method='Nelder-Mead', bnds=None, tol = 0.0000001, niter=100,
                                 drop_condition_from_loss=None):
         self.loss_store = []
         self.optimal_decision_time_store = [] 
@@ -603,12 +597,13 @@ class ModelFitting:
         if bnds is None:
             bnds = tuple([[0,500]])*num_params
         self.initial_param_shape = self.initial_guess.shape # Used for reshaping the parameter 
-        
+        rranges = tuple([slice(0,200,5)]*num_params)
+        #* Select fit method
         if method=='brute':
-            out = optimize.brute(self.get_loss, [slice(0,200,5)]*num_params,
+            out = optimize.brute(self.get_loss, rranges,
                                  args=(metric_keys, targets, free_params_init.keys()),
                                  finish=None,full_output=True,
-                                 )
+                                 ) 
             if not isinstance(out[0],np.ndarray):
                 final_param_dict = dict(zip(free_params_init.keys(),[out[0]]))
             else:
@@ -627,7 +622,8 @@ class ModelFitting:
                                 method=method, bounds=None, tol = tol)
             final_param_dict = dict(zip(free_params_init.keys(),out.x))
         
-        self.update_model(final_param_dict)  # Update model one last time
+        #* Update model one last time
+        self.update_model(final_param_dict)  
         self.parameter_arr               = np.array(self.parameter_arr)
         self.optimal_decision_time_store = np.array(self.optimal_decision_time_store)
         self.leave_time_store            = np.array(self.leave_time_store)
@@ -638,7 +634,8 @@ class ModelFitting:
         return out
     
     def get_loss(self, free_params_values, 
-                 metric_keys, targets, free_params_keys):
+                 metric_keys, targets, 
+                 free_params_keys, metric_type='optimal',):
         
         # if len(free_params_values)>1:
         #     free_params_values = free_params_values.reshape(self.initial_param_shape) # Reshape array
@@ -650,10 +647,10 @@ class ModelFitting:
                 return 1e3
         
         # If we aren't using some fixed decision time (aka fitting the unexpected gamble delay model), then we want to use fit
-        if self.fixed_decision_time is None:
-            metric_type = 'optimal'
-        else:
-            metric_type = 'fit'
+        # if self.fixed_decision_time is None:
+        #     metric_type = 'optimal'
+        # else:
+        #     metric_type = 'fit'
         
         self.parameter_arr.append(free_params_values)
         # Get the new arrays from the optimized free parameter inputs
@@ -692,7 +689,7 @@ class ModelFitting:
         #* Change the keyword arguments that are being modified
         for k,v in free_param_dict.items():
             if k != 'decision_time' and isinstance(self.model.kwargs[k],dict):
-                self.model.kwargs[k]['true'] = v    
+                self.model.kwargs[k][0] = v
             elif k!= 'decision_time':
                 self.model.kwargs[k] = v
         
