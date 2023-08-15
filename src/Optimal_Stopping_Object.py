@@ -157,7 +157,7 @@ class ModelInputs:
             self.nsteps = 1
             self.num_timesteps = kwargs.get("num_timesteps")
             self.timesteps = kwargs.get("timesteps", np.tile(np.arange(0.0, float(self.num_timesteps), self.nsteps), (2, self.num_blocks, 1)))
-            self.old_timesteps = kwargs.get("timesteps", np.tile(np.arange(0.0, float(self.num_timesteps), self.nsteps), (self.num_blocks, 1)))
+            self.old_timesteps = np.tile(np.arange(0.0, float(self.num_timesteps), self.nsteps), (self.num_blocks, 1))
             self.tiled_1500 = np.full_like(self.timesteps, 1500.0)
             self.tiled_agent_means = np.tile(self.agent_means, (self.timesteps.shape[-1], 1)).T
             self.tiled_agent_sds = np.tile(self.agent_sds, (self.timesteps.shape[-1], 1)).T
@@ -188,7 +188,7 @@ class ModelInputs:
             self.timing_sd = kwargs.get("timing_sd")
             self.gamble_switch_sd = kwargs.get("gamble_switch_sd")
             self.electromechanical_sd = kwargs.get("electromechanical_sd")
-            self.gamble_sd = self.gamble_switch_sd[:,np.newaxis] + self.electromechanical_sd[:,np.newaxis] + self.timing_sd
+            self.gamble_sd = self.gamble_switch_sd + self.electromechanical_sd + self.timing_sd
 
             self.reaction_reach_sd = np.sqrt(self.reaction_sd**2 + self.movement_sd**2)
             self.gamble_reach_sd = np.sqrt(self.gamble_sd**2 + self.movement_sd[:,np.newaxis]**2)
@@ -201,7 +201,7 @@ class ModelInputs:
             self.gamble_switch_delay = kwargs.get("gamble_switch_delay")
             self.electromechanical_delay = kwargs.get('electromechanical_delay')
             self.gamble_delay = self.gamble_switch_delay + self.electromechanical_delay
-            self.gamble_plus_movement_time = self.timesteps + self.movement_time[:,np.newaxis,np.newaxis] + self.gamble_delay[:,np.newaxis,np.newaxis]
+            self.gamble_plus_movement_time = self.timesteps + self.movement_time[:,np.newaxis] + self.gamble_delay[...,np.newaxis]
 
             assert self.electromechanical_delay[0] == self.electromechanical_delay[0]
 
@@ -277,6 +277,8 @@ class AgentBehavior:
         """
         Get first three central moments (EX2 is normalized for mean,
         EX3 is normalized for mean and sd) of the new distribution based on timing uncertainty
+        
+        IF I EVER USE TIMING_SD as something that could be not accounted for I'll have to fix this
         """
         #* Steps done outside for loop in get_moments to make it faster
         inf_timesteps = np.arange(0.0, 2000.0, self.inputs.nsteps)  # Going to 2000 is a good approximation, doesn't get better by going higher
@@ -320,12 +322,12 @@ class PlayerBehavior:
 
         assert np.allclose(self.prob_selecting_reaction + self.prob_selecting_gamble, 1.0)
         #*Leave times
-        self.reaction_leave_time   = self.agent_behavior.reaction_leave_time + self.inputs.reaction_time[self.inputs.key]
-        self.gamble_leave_time     = self.inputs.timesteps + self.inputs.gamble_delay[self.inputs.key]
+        self.reaction_leave_time   = self.agent_behavior.reaction_leave_time + self.inputs.reaction_time[self.inputs.key] #! Keeping key here bc I don't plan on messing with reaction time expected versus gamble
+        self.gamble_leave_time     = self.inputs.timesteps + self.inputs.gamble_delay[:,np.newaxis]
         self.wtd_leave_time = self.prob_selecting_reaction*self.reaction_leave_time + self.prob_selecting_gamble*self.gamble_leave_time
         #*Reach Times
         self.reaction_reach_time   = self.agent_behavior.reaction_leave_time + self.inputs.reaction_plus_movement_time[self.inputs.key]
-        self.gamble_reach_time     = self.inputs.timesteps + self.inputs.gamble_delay[self.inputs.key] + self.inputs.movement_time[self.inputs.key]
+        self.gamble_reach_time     = self.inputs.timesteps + self.inputs.gamble_delay[:,np.newaxis] + self.inputs.movement_time[:,np.newaxis]
         self.wtd_reach_time = self.prob_selecting_reaction*self.reaction_reach_time + self.prob_selecting_gamble*self.gamble_reach_time
         #*Leave Time SD
         self.reaction_leave_time_sd = np.sqrt(self.agent_behavior.reaction_leave_time_sd**2 + self.inputs.reaction_sd[self.inputs.key] ** 2)
