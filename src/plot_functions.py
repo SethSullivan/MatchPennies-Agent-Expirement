@@ -88,7 +88,7 @@ def scatter_with_correlation(ax,xdata,ydata,**kwargs):
             
     return ax,spear_r
 
-def unity_optimal_plot(ax,xdata,ydata,**kwargs):
+def unity_optimal_plot(ax,xdata,ydata,it,**kwargs):
     figsize = kwargs.get('figsize',(10,5))
     num_blocks = kwargs.get('num_blocks',6)
     for i in range(num_blocks):
@@ -99,7 +99,7 @@ def unity_optimal_plot(ax,xdata,ydata,**kwargs):
         ax0.set_ylim(ylocs[0],ylocs[-1])
         ax0.set_xlabel('Optimal Mean Decision Time (ms)')
         ax0.set_ylabel('Participant Mean Decision Time (ms)')
-        ax0.set_title(f'Optimal Simulation vs. Participant Mean Decision Time\nCondition: {trial_block_titles[i]}')
+        ax0.set_title(f'Optimal Simulation vs. Participant Mean Decision Time\nCondition: {it.trial_block_titles[i]}')
 
 
         diff = data_metric[:,i] - all_subjects_sim_results_dict[metric][:,i] 

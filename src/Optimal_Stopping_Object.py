@@ -6,7 +6,7 @@ import scipy.special as sc
 import numba as nb
 import numba_scipy  # Needs to be imported so that numba recognizes scipy (specificall scipy special erf)
 import data_visualization as dv
-import copy
+from copy import deepcopy 
 from numba_stats import norm
 from functools import cached_property
 from scipy import optimize
@@ -42,7 +42,7 @@ _ = nb_sum(np.array([2, 2]))
 
 @nb.njit(parallel=True, fastmath=True)
 def get_moments(timesteps, time_means, time_sds, prob_agent_less_player, agent_pdf):
-    shape = (len(time_sds), len(time_means))
+    shape = (time_sds.shape[0], time_means.shape[-1])
     EX_R, EX2_R, EX3_R = np.zeros((shape)), np.zeros((shape)), np.zeros((shape))
     EX_G, EX2_G, EX3_G = np.zeros((shape)), np.zeros((shape)), np.zeros((shape))
     dx = timesteps[1] - timesteps[0]
@@ -51,7 +51,7 @@ def get_moments(timesteps, time_means, time_sds, prob_agent_less_player, agent_p
         sig_y = time_sds[i]
         xpdf = agent_pdf[i, :]
 
-        for j in range(len(time_means)):  # Need to loop through every possible decision time mean
+        for j in range(time_means.shape[-1]):  # Need to loop through every possible decision time mean
             #*Commented out is the old way of doing this bc sc.erfc is recognized by numba, but now I know how to use norm.cdf with numba (which is the same as the error function)
             # xpdf = (1/(sig_x*np.sqrt(2*np.pi)))*np.e**((-0.5)*((timesteps - mu_x)/sig_x)**2) # Pdf of agent, used when getting expected value EX_R, etc.
             # prob_x_less_y = (sc.erfc((mu_x - mu_y[i])/(np.sqrt(2)*np.sqrt(sig_x**2 + sig_y**2))))/2 # Probability of a reaction decision, aka player decides after agent
@@ -62,12 +62,10 @@ def get_moments(timesteps, time_means, time_sds, prob_agent_less_player, agent_p
             #     y_integrated[k] = (sc.erfc((t - mu_y[i])/(np.sqrt(2)*sig_y)))/2 # Going from x to infinity is the complementary error function (bc we want all the y's that are greater than x)
             #     y_inverse_integrated[k] = (sc.erfc((mu_y[i] - t)/(np.sqrt(2)*sig_y)))/2 # Swap limits of integration (mu_y[i] - t) now
 
-            mu_y = time_means[j]  # Put the timing mean in an easy to use variable
+            mu_y = time_means[j] # Put the timing mean in an easy to use variable,
             prob_x_less_y = prob_agent_less_player[i,j]  # get prob agent is less than player for that specific agent mean (i) and timing mean (j)
             prob_x_greater_y = 1 - prob_x_less_y
-            y_integrated = 1 - norm.cdf(
-                timesteps, mu_y, sig_y
-            )  # For ALL timesteps, what's the probabilit for every timing mean (from 0 to 2000) that the timing mean is greater than that current timestep
+            y_integrated = 1 - norm.cdf(timesteps, mu_y, sig_y) # For ALL timesteps, what's the probabilit for every timing mean (from 0 to 2000) that the timing mean is greater than that current timestep
             y_inverse_integrated = 1 - y_integrated
 
             if prob_x_less_y != 0:
@@ -201,7 +199,7 @@ class ModelInputs:
             self.gamble_switch_delay = kwargs.get("gamble_switch_delay")
             self.electromechanical_delay = kwargs.get('electromechanical_delay')
             self.gamble_delay = self.gamble_switch_delay + self.electromechanical_delay
-            self.gamble_plus_movement_time = self.timesteps + self.movement_time[:,np.newaxis] + self.gamble_delay[...,np.newaxis]
+            self.gamble_plus_movement_time = self.timesteps + self.movement_time[:,np.newaxis,np.newaxis] + self.gamble_delay[...,np.newaxis]
 
             assert self.electromechanical_delay[0] == self.electromechanical_delay[0]
 
@@ -233,9 +231,11 @@ class ModelInputs:
 
             # Ensure that if the switch cost doesn't exist, that the exp and true are the same
             assert self.switch_cost_exists is not None
+            
             if not self.switch_cost_exists:
                 assert self.gamble_switch_delay[1] == self.gamble_switch_delay[0] #! 0 refers to 'true' and 1 refers to 'exp'
                 assert self.gamble_switch_sd[1] == self.gamble_switch_sd[0]
+                assert np.sum(self.gamble_switch_delay + self.gamble_switch_sd) == 0
             # else:
             #     assert self.gamble_switch_delay[1] != self.gamble_switch_delay[0]
             #     assert self.gamble_switch_sd[1] != self.gamble_switch_sd[0]
@@ -265,12 +265,12 @@ class AgentBehavior:
     @cached_property
     def prob_not_making(self):
         ans = 1 - stats.norm.cdf(1500,self.inputs.agent_means + 150,self.inputs.agent_sds)
-        return ans[:,np.newaxis]
+        return ans[np.newaxis,:]
     
     @cached_property
     def prob_making(self):
         ans = stats.norm.cdf(1500,self.inputs.agent_means + 150,self.inputs.agent_sds)
-        return ans[:,np.newaxis]
+        return ans[np.newaxis,:]
     
     @property
     def agent_moments(self):
@@ -281,24 +281,21 @@ class AgentBehavior:
         IF I EVER USE TIMING_SD as something that could be not accounted for I'll have to fix this
         """
         #* Steps done outside for loop in get_moments to make it faster
-        inf_timesteps = np.arange(0.0, 2000.0, self.inputs.nsteps)  # Going to 2000 is a good approximation, doesn't get better by going higher
-        inf_timesteps_tiled = np.tile(inf_timesteps, (self.inputs.num_blocks, 1))  # Tile to number of blocks
-        inf_agent_means_tiled = np.tile(self.inputs.agent_means, (inf_timesteps.shape[0], 1)).T  # Tiled agents with 2000 timesteps
-        inf_agent_sds_tiled = np.tile(self.inputs.agent_sds, (inf_timesteps.shape[0], 1)).T  # Tiled agetn sds with 2000 timesteps
-        tiled_timing_sd = np.tile(self.inputs.timing_sd[self.inputs.key], (self.inputs.timesteps.shape[-1], 1)).T  # Tile timing sd
-        time_means = self.inputs.timesteps[0, 0, :]  # Get the timing means that player can select as their stopping time
-        agent_pdf = stats.norm.pdf(inf_timesteps_tiled, inf_agent_means_tiled, inf_agent_sds_tiled)  # Find agent pdf tiled 2000
+        # Creates a 1,2000 inf timesteps, that can broadcast to 6,2000
+        inf_timesteps = np.arange(0.0, 2000.0, self.inputs.nsteps)[np.newaxis,:]  # Going to 2000 is a good approximation, doesn't get better by going higher
+        tiled_timing_sd = np.tile(self.inputs.timing_sd[self.inputs.key], (inf_timesteps.shape[-1], 1)).T  # Tile timing sd
+        time_means = deepcopy(self.inputs.timesteps[0,0,:]) # Get the timing means that player can select as their stopping time
+        agent_pdf = stats.norm.pdf(inf_timesteps, self.inputs.agent_means, self.inputs.agent_sds)  # Find agent pdf tiled 2000
         prob_agent_less_player = stats.norm.cdf(
-            0, self.inputs.tiled_agent_means - self.inputs.timesteps[0,...], np.sqrt(self.inputs.tiled_agent_sds**2 + (tiled_timing_sd) ** 2)
+            0, self.inputs.agent_means - inf_timesteps, np.sqrt(self.inputs.agent_sds**2 + (tiled_timing_sd) ** 2)
         )
         # Call get moments equation
-        return get_moments(inf_timesteps, time_means, self.inputs.timing_sd[self.inputs.key], prob_agent_less_player, agent_pdf)
+        return get_moments(inf_timesteps.squeeze(), time_means.squeeze(), self.inputs.timing_sd[self.inputs.key,:], prob_agent_less_player, agent_pdf)
 
     def cutoff_agent_behavior(self):
         # Get the First Three moments for the left and right distributions (if X<Y and if X>Y respectively)
-        moments = self.agent_moments
+        EX_R, EX2_R, EX3_R, EX_G, EX2_G, EX3_G = self.agent_moments
         # no_inf_moments = [np.nan_to_num(x,nan=np.nan,posinf=np.nan,neginf=np.nan) for x in moments]
-        EX_R, EX2_R, EX3_R, EX_G, EX2_G, EX3_G = moments
 
         self.reaction_leave_time, self.reaction_leave_time_var, self.cutoff_reaction_skew = EX_R, EX2_R, EX3_R
         self.reaction_leave_time_sd = np.sqrt(self.reaction_leave_time_var)
@@ -327,7 +324,7 @@ class PlayerBehavior:
         self.wtd_leave_time = self.prob_selecting_reaction*self.reaction_leave_time + self.prob_selecting_gamble*self.gamble_leave_time
         #*Reach Times
         self.reaction_reach_time   = self.agent_behavior.reaction_leave_time + self.inputs.reaction_plus_movement_time[self.inputs.key]
-        self.gamble_reach_time     = self.inputs.timesteps + self.inputs.gamble_delay[:,np.newaxis] + self.inputs.movement_time[:,np.newaxis]
+        self.gamble_reach_time     = self.inputs.timesteps + self.inputs.gamble_delay[:,np.newaxis] + self.inputs.movement_time[:,np.newaxis,np.newaxis]
         self.wtd_reach_time = self.prob_selecting_reaction*self.reaction_reach_time + self.prob_selecting_gamble*self.gamble_reach_time
         #*Leave Time SD
         self.reaction_leave_time_sd = np.sqrt(self.agent_behavior.reaction_leave_time_sd**2 + self.inputs.reaction_sd[self.inputs.key] ** 2)
@@ -361,13 +358,12 @@ class PlayerBehavior:
 
     @property
     def prob_selecting_reaction(self):
+        # Prob of SELECTING only includes timing uncertainty and agent uncertainty
         combined_sd = np.sqrt(
-            self.inputs.timing_sd[self.inputs.key] ** 2 + self.inputs.agent_sds**2
-        )  # Prob of SELECTING only includes timing uncertainty and agent uncertainty
-        tiled_combined_sd = np.tile(combined_sd, (self.inputs.timesteps.shape[-1], 1)).T
-        diff = self.inputs.timesteps - self.inputs.tiled_agent_means
-        # ans = 1 - numba_cdf(np.array([0.0]),diff.flatten(),tiled_combined_sd.flatten()).reshape(self.inputs.timesteps.shape)
-        ans = 1 - stats.norm.cdf(0, diff, tiled_combined_sd)
+            self.inputs.timing_sd[self.inputs.key]**2 + self.inputs.agent_sds.squeeze()**2
+        )  
+        diff = self.inputs.timesteps - self.inputs.agent_means
+        ans = 1 - stats.norm.cdf(0, diff, combined_sd[np.newaxis,:,np.newaxis])
         return ans
 
     @property
@@ -487,15 +483,15 @@ class Results:
 
     @property
     def optimal_decision_index(self):
-        return np.nanargmax(self.er.exp_reward, axis=1).astype(int)
+        return np.nanargmax(self.er.exp_reward, axis=2).astype(int)
 
     @property
     def optimal_decision_time(self):
-        return np.nanargmax(self.er.exp_reward, axis=1)*self.inputs.nsteps + np.min(self.inputs.timesteps)
+        return np.nanargmax(self.er.exp_reward, axis=2)*self.inputs.nsteps + np.min(self.inputs.timesteps)
 
     @property
     def optimal_exp_reward(self):
-        return np.nanmax(self.er.exp_reward, axis=1)
+        return np.nanmax(self.er.exp_reward, axis=2)
 
     @property
     def fit_decision_time(self):
@@ -511,25 +507,43 @@ class Results:
     def set_fit_decision_index(self, index):
         self.fit_decision_index = index
 
-    def get_metric(self, metric1, metric2=None, metric_type=None):
-        if metric_type == "optimal":
-            index = self.optimal_decision_index
-        elif metric_type == 'fit':
-            index = self.fit_decision_index
+    def get_metric(self, metric1, metric2=None, 
+                   decision_type = 'optimal', metric_type='true'):
+        '''
+        The decision index will always choose from the self.inputs.key
+          - MEANING that if the model EXPECTS no delays, then it'll use that decision time
+          
+        THEN it will apply that decision time onto the chosen metric_type array,
+          - If the model is 'expected' then it should use the optimal decision type at the key associated with
+            expectation (aka self.inputs.key = 1)
+            - It will then apply that decision index onto the TRUE array
+        '''
+        
+        if decision_type == "optimal":
+            index = self.optimal_decision_index[self.inputs.key,:]
+        elif decision_type == 'fit':
+            index = self.fit_decision_index[self.inputs.key,:]
         else:
-            raise ValueError("metric_type must be \"optimal\" or \"fit\"")
+            raise ValueError("decision_type must be \"optimal\" or \"fit\"")
+        
+        if metric_type == 'true':
+            metric_type_index = 0
+        elif metric_type == 'expected':
+            metric_type_index = 1
+        else:
+            raise ValueError('metric_type must be \'true\' or \'expected\'')
         
         if metric2 is None: # For none-reaction/gamble metrics
-            ans = np.zeros(metric1.shape[0])*np.nan
-            for i in range(metric1.shape[0]):
-                ans[i] = metric1[i, index[i]]
+            ans = np.zeros(metric1.shape[1])*np.nan
+            for i in range(metric1.shape[1]):
+                ans[i] = metric1[metric_type_index, i, index[i]]
             return ans
         else: # For reaction/gamble metrics
-            ans1 = np.zeros(metric1.shape[0])*np.nan
-            ans2 = np.zeros(metric2.shape[0])*np.nan
-            for i in range(metric1.shape[0]):
-                ans1[i] = metric1[i, index[i]]
-                ans2[i] = metric2[i, index[i]]
+            ans1 = np.zeros(metric1.shape[1])*np.nan
+            ans2 = np.zeros(metric2.shape[1])*np.nan
+            for i in range(metric1.shape[1]):
+                ans1[i] = metric1[metric_type_index, i, index[i]]
+                ans2[i] = metric2[metric_type_index, i, index[i]]
             return np.divide(ans1, ans2, out=np.zeros_like(ans2), where=ans2 > 1e-10)
 
 
@@ -637,22 +651,15 @@ class ModelFitting:
     
     def get_loss(self, free_params_values, 
                  metric_keys, targets, 
-                 free_params_keys, metric_type='optimal',):
+                 free_params_keys, decision_type='optimal',):
         
-        # if len(free_params_values)>1:
-        #     free_params_values = free_params_values.reshape(self.initial_param_shape) # Reshape array
         # Create dictionary back
         new_parameters_dict = dict(zip(free_params_keys,free_params_values))
+        
         # If the standard deviation and mean combo reaches below 0, return a high loss
         if 'gamble_switch_delay' in free_params_keys and 'gamble_switch_sd' in free_params_keys:
             if new_parameters_dict['gamble_switch_delay'] - 2*new_parameters_dict['gamble_switch_sd']<0:
                 return 1e3
-        
-        # If we aren't using some fixed decision time (aka fitting the unexpected gamble delay model), then we want to use fit
-        # if self.fixed_decision_time is None:
-        #     metric_type = 'optimal'
-        # else:
-        #     metric_type = 'fit'
         
         self.parameter_arr.append(free_params_values)
         # Get the new arrays from the optimized free parameter inputs
@@ -662,20 +669,29 @@ class ModelFitting:
         for i in range(targets.shape[0]): 
             if 'leave_time' in metric_keys[i]:
                 model_metric = getattr(self.model.player_behavior, metric_keys[i])
-                model_metrics[i,:] = self.model.results.get_metric(model_metric, metric_type=metric_type)  # Find the metric at optimal decision time
+                # Find the metric at optimal decision time
+                #! Metric type always being 'true' means that we use the decision_type for expected vs true, but the metric array
+                #! We're using is ALWAYS the 'true' array. If we're fitting the true gamble delay, then the expected metric arrays shouldn't change
+                model_metrics[i,:] = self.model.results.get_metric(model_metric, 
+                                                                   decision_type=decision_type, 
+                                                                    metric_type='true')  
             elif 'decision_time' in metric_keys[i]:
                 model_metric = getattr(self.model.results,metric_keys[i])
                 model_metrics[i,:] = model_metric
             else:
                 model_metric = getattr(self.model.score_metrics, metric_keys[i])
-                model_metrics[i,:] = self.model.results.get_metric(model_metric, metric_type=metric_type)  # Find the metric at optimal decision time
+                model_metrics[i,:] = self.model.results.get_metric(model_metric, 
+                                                                   decision_type=decision_type, 
+                                                                    metric_type='true')  # Find the metric at optimal decision time
         
-        loss = lf.ape_loss(model_metrics, targets,drop_condition_num=self.drop_condition_from_loss)
+        loss = lf.ape_loss(model_metrics, targets, drop_condition_num=self.drop_condition_from_loss)
         
         self.loss_store.append(loss)
-        self.optimal_decision_time_store.append(self.model.results.optimal_decision_time)
-        self.leave_time_store.append(self.model.results.get_metric(self.model.player_behavior.wtd_leave_time,metric_type=metric_type))
-        self.leave_time_sd_store.append(self.model.results.get_metric(self.model.player_behavior.wtd_leave_time_sd,metric_type=metric_type))
+        self.optimal_decision_time_store.append(self.model.results.optimal_decision_time[self.models.inputs.key]) # index at key bc I want the decision time for either expected or true
+        self.leave_time_store.append(self.model.results.get_metric(self.model.player_behavior.wtd_leave_time,
+                                                                   decision_type=decision_type,metric_type='true'))
+        self.leave_time_sd_store.append(self.model.results.get_metric(self.model.player_behavior.wtd_leave_time_sd,
+                                                                      decision_type=decision_type,metric_type='true'))
         
         return loss
     
@@ -690,16 +706,14 @@ class ModelFitting:
         
         #* Change the keyword arguments that are being modified
         for k,v in free_param_dict.items():
-            if k != 'decision_time' and isinstance(self.model.kwargs[k],dict):
-                self.model.kwargs[k][0] = v
-            elif k!= 'decision_time':
-                self.model.kwargs[k] = v
+            self.model.kwargs[k][0] = v #! Always changing the TRUE value, the expected value should always be set as of 8/15/23
         
         #* Pass new set of kwargs to the inputs, then run through model constructor sequence again
         self.model.inputs = ModelInputs(**self.model.kwargs) 
         
         #* Update Model
         if 'timing_sd' in free_param_dict.keys(): # AgentBehavior needs to be run again if the timing_sd changes
+            print('AgentBehavior is being run again')
             self.model.agent_behavior = AgentBehavior(self.model.inputs)
             
         self.model.player_behavior = PlayerBehavior(self.model.inputs, self.model.agent_behavior)
