@@ -37,6 +37,7 @@ class InitialThangs:
             self.f2_xlabel = 'Agent SD Movement Onset Time (ms)'
             self.f1_collapse_xticklabs = ['1000','1100','1200']
             self.f2_collapse_xticklabs = ['50','150']
+            self.num_rows,self.num_cols = 2,3
             
         if experiment == 'Exp2':
             self.tp3_title = "Win = 1\nIncorrect = 0\nIndecision = 0"
