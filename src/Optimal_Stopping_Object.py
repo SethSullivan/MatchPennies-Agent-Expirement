@@ -312,16 +312,22 @@ class PlayerBehavior:
 
         assert np.allclose(self.prob_selecting_reaction + self.prob_selecting_gamble, 1.0)
         #*Leave times
-        self.reaction_leave_time   = self.agent_behavior.reaction_leave_time + self.inputs.reaction_time[self.inputs.key] #! Keeping key here bc I don't plan on messing with reaction time expected versus gamble
+        self.reaction_leave_time   = self.agent_behavior.reaction_leave_time + self.inputs.reaction_time[self.inputs.key]
         self.gamble_leave_time     = self.inputs.timesteps + self.inputs.gamble_delay[:,np.newaxis]
         self.wtd_leave_time = self.prob_selecting_reaction*self.reaction_leave_time + self.prob_selecting_gamble*self.gamble_leave_time
         #*Reach Times
         self.reaction_reach_time   = self.agent_behavior.reaction_leave_time + self.inputs.reaction_plus_movement_time[self.inputs.key]
-        self.gamble_reach_time     = self.inputs.timesteps + self.inputs.gamble_delay[:,np.newaxis] + self.inputs.movement_time[:,np.newaxis,np.newaxis]
+        self.gamble_reach_time     = self.inputs.timesteps + self.inputs.gamble_delay[:,np.newaxis] + self.inputs.movement_time[self.inputs.key]
         self.wtd_reach_time = self.prob_selecting_reaction*self.reaction_reach_time + self.prob_selecting_gamble*self.gamble_reach_time
         #*Leave Time SD
-        self.reaction_leave_time_sd = np.sqrt(self.agent_behavior.reaction_leave_time_sd**2 + self.inputs.reaction_sd[self.inputs.key] ** 2)
-        self.gamble_leave_time_sd = np.moveaxis(np.tile(self.inputs.gamble_sd, (self.inputs.num_timesteps,1,1)), 0,-1) #! NOT SURE IF AGENT BEHAVIOR SHOULD INFLUENCE THIS
+        self.reaction_leave_time_sd = np.sqrt(self.agent_behavior.reaction_leave_time_sd**2 
+                                              + self.inputs.reaction_sd[self.inputs.key] ** 2)
+        
+        #! NOT SURE IF AGENT BEHAVIOR SHOULD INFLUENCE THIS, (8/16/23 i say it should bc it looks like gamble leave time sd changes for 1000 and 1100 conditions btwn 50 and 150)
+        # Also, the model predicts high gamble switch sd when not accounting for it in order to get the best fit. This doesn't seem reflective of reality
+        self.gamble_leave_time_sd = np.sqrt(self.agent_behavior.gamble_leave_time_sd**2 
+                                            + np.moveaxis(np.tile(self.inputs.gamble_sd, (self.inputs.num_timesteps,1,1)), 0,-1)**2
+                                    )
         #* If each element in the array is the same, then I passed a constant
         #TODO NEED TO DECIDE WHAT I'M GOING TO SAY THE LEAVE TIME SD IS. RIGHT NOW I PASS COINCIDENCE TIME SD
         # TODO BUT THE GAMBLE LEAVE TIME SD IS ALSO DEPENDENT ON THE AGENT'S LEAVE TIME SD
@@ -379,7 +385,7 @@ class PlayerBehavior:
         # Calculate the prob of making it on a reaction
         #! Cutoff agent distribution isn't normal, so might not be able to simply add these, problem for later
         mu = self.reaction_reach_time
-        sd = np.sqrt(self.agent_behavior.reaction_leave_time_sd**2 + self.reaction_reach_time_sd[self.inputs.key] ** 2)
+        sd = np.sqrt(self.agent_behavior.reaction_leave_time_sd**2 + self.reaction_reach_time_sd ** 2)
         # temp = numba_cdf(np.array([1500]),mu.flatten(),sd.flatten()).reshape(self.inputs.timesteps.shape)
         return stats.norm.cdf(1500, mu, sd)
 
@@ -487,7 +493,7 @@ class Results:
 
     @property
     def optimal_decision_index(self):
-        return np.nanargmax(self.er.exp_reward, axis=2).astype(int)
+        return np.nanargmax(self.er.exp_reward, axis=2).astype(int)*self.inputs.nsteps
 
     @property
     def optimal_decision_time(self):
@@ -524,7 +530,7 @@ class Results:
         '''
         
         if decision_type == "optimal":
-            index = self.optimal_decision_index[self.inputs.key,:]
+            index = self.optimal_decision_index[self.inputs.key,:] # Need self inputs key so that if it's expected, we take the optimal decision time for EXPECTED inputs
         elif decision_type == 'fit':
             index = self.fit_decision_index[self.inputs.key,:]
         else:
@@ -540,14 +546,21 @@ class Results:
         if metric2 is None: # For none-reaction/gamble metrics
             ans = np.zeros(metric1.shape[1])*np.nan
             for i in range(metric1.shape[1]):
-                ans[i] = metric1[metric_type_index, i, index[i]]
+                if metric1.ndim < 3:
+                    ans[i] = metric1[i,index[i]]
+                else:
+                    ans[i] = metric1[metric_type_index, i, index[i]]
             return ans
         else: # For reaction/gamble metrics
             ans1 = np.zeros(metric1.shape[1])*np.nan
             ans2 = np.zeros(metric2.shape[1])*np.nan
             for i in range(metric1.shape[1]):
-                ans1[i] = metric1[metric_type_index, i, index[i]]
-                ans2[i] = metric2[metric_type_index, i, index[i]]
+                if metric1.ndim < 3:
+                    ans1[i] = metric1[i,index[i]]
+                    ans2[i] = metric2[i,index[i]]
+                else:
+                    ans1[i] = metric1[metric_type_index, i, index[i]]
+                    ans2[i] = metric2[metric_type_index, i, index[i]]
             return np.divide(ans1, ans2, out=np.zeros_like(ans2), where=ans2 > 1e-10)
 
 
@@ -798,30 +811,6 @@ class Group_Models():
                     denom[i, j] = metric_denom[j, indices[i, j]]
             ans = num/denom
         return ans
-
-def main():
-    m = ModelConstructor(
-        experiment="Exp1",
-        num_blocks=6,
-        BETA_ON=False,
-        agent_means=np.array([1000, 1000, 1100, 1100, 1200, 1200]).astype(float),
-        agent_sds=np.array([100]*6).astype(float),
-        reaction_time={"true": 275, "exp": 275},
-        movement_time={"true": 150, "exp": 150},
-        reaction_sd={"true": 25, "exp": 25},
-        movement_sd={"true": 25, "exp": 25},
-        timing_sd={"true": np.array([150]*6), "exp": np.array([150]*6)},
-        perc_wins_when_both_reach=np.array([0.8]*6),
-        gamble_sd={"true": 150, "exp": 10},
-        gamble_delay={"true": 125, "exp": 50},
-    )
-
-    return
-
-
-if __name__ == "__main__":
-    main()
-
 
 #################################################################################################
 #################################################################################################
