@@ -137,10 +137,6 @@ def combine_sd_dicts(d1, d2):
     return {k: np.sqrt(v) for k, v in temp.items()}
 
 
-def tile(arr, num):
-    return np.tile(arr, (num, 1)).T
-
-
 class ModelInputs:
     def __init__(self, **kwargs):
         """
@@ -186,10 +182,7 @@ class ModelInputs:
             self.timing_sd = kwargs.get("timing_sd")
             self.gamble_switch_sd = kwargs.get("gamble_switch_sd")
             self.electromechanical_sd = kwargs.get("electromechanical_sd")
-            self.gamble_sd = self.gamble_switch_sd + self.electromechanical_sd + self.timing_sd
-
-            self.reaction_reach_sd = np.sqrt(self.reaction_sd**2 + self.movement_sd**2)
-            self.gamble_reach_sd = np.sqrt(self.gamble_sd**2 + self.movement_sd[:,np.newaxis]**2)
+            self.gamble_sd = np.sqrt(self.gamble_switch_sd**2 + self.electromechanical_sd**2 + self.timing_sd**2)
 
             # Ability
             self.reaction_time = kwargs.get("reaction_time")
@@ -328,15 +321,22 @@ class PlayerBehavior:
         self.wtd_reach_time = self.prob_selecting_reaction*self.reaction_reach_time + self.prob_selecting_gamble*self.gamble_reach_time
         #*Leave Time SD
         self.reaction_leave_time_sd = np.sqrt(self.agent_behavior.reaction_leave_time_sd**2 + self.inputs.reaction_sd[self.inputs.key] ** 2)
-        #*If I pass an array, I took gamble leave time sd from the data
-        if isinstance(self.inputs.gamble_sd[self.inputs.key], np.ndarray):
-            self.gamble_leave_time_sd = self.inputs.gamble_sd[self.inputs.key][:, np.newaxis]
-        else:  # If I didn't, then I need to throw on timing uncertainty and agent uncertainty to the decision sd
-            self.gamble_leave_time_sd = np.sqrt(
-                self.agent_behavior.gamble_leave_time_sd**2
-                + self.inputs.gamble_sd[self.inputs.key] ** 2
-                + tile(self.inputs.timing_sd[self.inputs.key] ** 2, self.inputs.num_timesteps)
-            )
+        self.gamble_leave_time_sd = np.moveaxis(np.tile(self.inputs.gamble_sd, (self.inputs.num_timesteps,1,1)), 0,-1) #! NOT SURE IF AGENT BEHAVIOR SHOULD INFLUENCE THIS
+        #* If each element in the array is the same, then I passed a constant
+        #TODO NEED TO DECIDE WHAT I'M GOING TO SAY THE LEAVE TIME SD IS. RIGHT NOW I PASS COINCIDENCE TIME SD
+        # TODO BUT THE GAMBLE LEAVE TIME SD IS ALSO DEPENDENT ON THE AGENT'S LEAVE TIME SD
+        # TODO (OR IS IT? DOES GAMBLE LEAVE TIME SD CHANGE ACROSS CONDITIONS?)
+        
+        # If every element isn't the same, then I passed the subjects actual leave time uncertainty in the task 
+        # (I DON'T DO THIS ANYMORE 8/16/23 ESPECIALLY WHEN FITTING the GUESS SD)
+        # if not (self.inputs.gamble_sd == self.inputs.gamble_sd).all()
+        #     self.gamble_leave_time_sd = self.inputs.gamble_sd[:, np.newaxis]
+        # else:  # If I didn't, then I need to throw on timing uncertainty 
+        #     self.gamble_leave_time_sd = np.sqrt(
+        #         self.agent_behavior.gamble_leave_time_sd**2
+        #         + self.inputs.gamble_sd ** 2
+        #         + tile(self.inputs.timing_sd ** 2, self.inputs.num_timesteps)
+        #     )
         self.wtd_leave_time_sd = (
             self.prob_selecting_reaction*self.reaction_leave_time_sd + self.prob_selecting_gamble*self.gamble_leave_time_sd
         )
@@ -346,10 +346,14 @@ class PlayerBehavior:
         )
         #*Reach Time SD
         self.reaction_reach_time_sd = np.sqrt(self.reaction_leave_time_sd**2 + self.inputs.movement_sd[self.inputs.key] ** 2)
-        self.gamble_reach_time_sd   = np.sqrt(self.gamble_leave_time_sd**2 + self.inputs.movement_sd[self.inputs.key] ** 2)
+        self.gamble_reach_time_sd   = np.sqrt(self.gamble_leave_time_sd**2 + self.inputs.movement_sd[:,np.newaxis,np.newaxis]** 2) # NEed to put these nweaxis in so that it's added on the first axis (aka expected veruss true axis) 
         self.wtd_reach_time_sd = (
             self.prob_selecting_reaction*self.reaction_reach_time_sd + self.prob_selecting_gamble*self.gamble_reach_time_sd
         )
+        
+        assert self.gamble_reach_time_sd.shape == self.gamble_leave_time_sd.shape
+        assert self.reaction_reach_time_sd.shape == self.reaction_leave_time_sd.shape
+        
         #*Predict Decision Time
         self.predicted_decision_time = (
             self.prob_selecting_reaction*self.agent_behavior.reaction_leave_time
@@ -360,10 +364,10 @@ class PlayerBehavior:
     def prob_selecting_reaction(self):
         # Prob of SELECTING only includes timing uncertainty and agent uncertainty
         combined_sd = np.sqrt(
-            self.inputs.timing_sd[self.inputs.key]**2 + self.inputs.agent_sds.squeeze()**2
-        )  
+            self.inputs.timing_sd[...,np.newaxis]**2 + self.inputs.agent_sds**2
+        )
         diff = self.inputs.timesteps - self.inputs.agent_means
-        ans = 1 - stats.norm.cdf(0, diff, combined_sd[np.newaxis,:,np.newaxis])
+        ans = 1 - stats.norm.cdf(0, diff, combined_sd)
         return ans
 
     @property
@@ -375,14 +379,14 @@ class PlayerBehavior:
         # Calculate the prob of making it on a reaction
         #! Cutoff agent distribution isn't normal, so might not be able to simply add these, problem for later
         mu = self.reaction_reach_time
-        sd = np.sqrt(self.agent_behavior.reaction_leave_time_sd**2 + self.inputs.reaction_reach_sd[self.inputs.key] ** 2)
+        sd = np.sqrt(self.agent_behavior.reaction_leave_time_sd**2 + self.reaction_reach_time_sd[self.inputs.key] ** 2)
         # temp = numba_cdf(np.array([1500]),mu.flatten(),sd.flatten()).reshape(self.inputs.timesteps.shape)
         return stats.norm.cdf(1500, mu, sd)
 
     @property
     def prob_making_given_gamble(self):
         mu = self.gamble_reach_time
-        sd = np.tile(self.inputs.gamble_reach_sd[self.inputs.key], (self.inputs.timesteps.shape[-1], 1)).T
+        sd = self.gamble_reach_time_sd
         # temp = numba_cdf(np.array([1500]), mu.flatten(),sd.flatten()).reshape(self.inputs.timesteps.shape)
         return stats.norm.cdf(1500, mu, sd)
 
@@ -599,6 +603,7 @@ class ModelFitting:
         self.optimal_decision_time_store = None
         self.leave_time_store            = None
         self.leave_time_sd_store         = None
+        self.gamble_leave_time_sd_store         = None
         
     def run_model_fit_procedure(self, free_params_init: dict, metric_keys: list, targets: np.ndarray,
                                 method='Nelder-Mead', bnds=None, tol = 0.0000001, niter=100,
@@ -607,6 +612,7 @@ class ModelFitting:
         self.optimal_decision_time_store = [] 
         self.leave_time_store = []
         self.leave_time_sd_store = []
+        self.gamble_leave_time_sd_store = []
         self.initial_guess = np.array(list(free_params_init.values())) # Get the free param values from dict and make an array, scipy will flatten it if it's 2D
         self.drop_condition_from_loss = drop_condition_from_loss
         num_params = len(self.initial_guess)
@@ -644,6 +650,7 @@ class ModelFitting:
         self.optimal_decision_time_store = np.array(self.optimal_decision_time_store)
         self.leave_time_store            = np.array(self.leave_time_store)
         self.leave_time_sd_store         = np.array(self.leave_time_sd_store)
+        self.gamble_leave_time_sd_store         = np.array(self.gamble_leave_time_sd_store)
         
         # ans = out.x + np.min(self.inputs.timesteps)
         # ans = out.x#.reshape(self.initial_param_shape)
@@ -687,12 +694,13 @@ class ModelFitting:
         loss = lf.ape_loss(model_metrics, targets, drop_condition_num=self.drop_condition_from_loss)
         
         self.loss_store.append(loss)
-        self.optimal_decision_time_store.append(self.model.results.optimal_decision_time[self.models.inputs.key]) # index at key bc I want the decision time for either expected or true
+        self.optimal_decision_time_store.append(self.model.results.optimal_decision_time[self.model.inputs.key]) # index at key bc I want the decision time for either expected or true
         self.leave_time_store.append(self.model.results.get_metric(self.model.player_behavior.wtd_leave_time,
                                                                    decision_type=decision_type,metric_type='true'))
         self.leave_time_sd_store.append(self.model.results.get_metric(self.model.player_behavior.wtd_leave_time_sd,
                                                                       decision_type=decision_type,metric_type='true'))
-        
+        self.gamble_leave_time_sd_store.append(self.model.results.get_metric(self.model.player_behavior.gamble_leave_time_sd,
+                                                                   decision_type=decision_type,metric_type='true'))
         return loss
     
     def update_model(self, free_param_dict):
