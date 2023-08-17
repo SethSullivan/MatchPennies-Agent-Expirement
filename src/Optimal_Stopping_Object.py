@@ -180,19 +180,19 @@ class ModelInputs:
             self.reaction_sd = kwargs.get("reaction_sd")
             self.movement_sd = kwargs.get("movement_sd")
             self.timing_sd = kwargs.get("timing_sd")
-            self.gamble_switch_sd = kwargs.get("gamble_switch_sd")
+            self.guess_switch_sd = kwargs.get("guess_switch_sd")
             self.electromechanical_sd = kwargs.get("electromechanical_sd") #! 8/17/23 Decided I don't need this, timing_sd takes care of this bc there's implicitly electromechanical sd involved
-            self.gamble_sd = np.sqrt(self.gamble_switch_sd**2 + self.timing_sd**2)
+            self.guess_sd = np.sqrt(self.guess_switch_sd**2 + self.timing_sd**2)
 
             # Ability
             self.reaction_time = kwargs.get("reaction_time")
             self.movement_time = kwargs.get("movement_time")
             self.reaction_plus_movement_time = self.reaction_time + self.movement_time
             
-            self.gamble_switch_delay = kwargs.get("gamble_switch_delay")
+            self.guess_switch_delay = kwargs.get("guess_switch_delay")
             self.electromechanical_delay = kwargs.get('electromechanical_delay')
-            self.gamble_delay = self.gamble_switch_delay + self.electromechanical_delay
-            self.gamble_plus_movement_time = self.timesteps + self.movement_time[:,np.newaxis,np.newaxis] + self.gamble_delay[...,np.newaxis]
+            self.guess_delay = self.guess_switch_delay + self.electromechanical_delay
+            self.guess_plus_movement_time = self.timesteps + self.movement_time[:,np.newaxis,np.newaxis] + self.guess_delay[...,np.newaxis]
 
             assert self.electromechanical_delay[0] == self.electromechanical_delay[0]
 
@@ -220,18 +220,18 @@ class ModelInputs:
                 self.indecision_cost = kwargs.get("indecision_cost", 0)
             # Prob of selecting the correct target
             self.prob_selecting_correct_target_reaction = kwargs.get("prob_selecting_correct_target_reaction", 1.0)
-            self.prob_selecting_correct_target_gamble = kwargs.get("prob_selecting_correct_target_gamble", 0.5)
+            self.prob_selecting_correct_target_guess = kwargs.get("prob_selecting_correct_target_guess", 0.5)
 
             # Ensure that if the switch cost doesn't exist, that the exp and true are the same
             assert self.switch_cost_exists is not None
             
             if not self.switch_cost_exists:
-                assert self.gamble_switch_delay[1] == self.gamble_switch_delay[0] #! 0 refers to 'true' and 1 refers to 'exp'
-                assert self.gamble_switch_sd[1] == self.gamble_switch_sd[0]
-                assert np.sum(self.gamble_switch_delay + self.gamble_switch_sd) == 0
+                assert self.guess_switch_delay[1] == self.guess_switch_delay[0] #! 0 refers to 'true' and 1 refers to 'exp'
+                assert self.guess_switch_sd[1] == self.guess_switch_sd[0]
+                assert np.sum(self.guess_switch_delay + self.guess_switch_sd) == 0
             # else:
-            #     assert self.gamble_switch_delay[1] != self.gamble_switch_delay[0]
-            #     assert self.gamble_switch_sd[1] != self.gamble_switch_sd[0]
+            #     assert self.guess_switch_delay[1] != self.guess_switch_delay[0]
+            #     assert self.guess_switch_sd[1] != self.guess_switch_sd[0]
             
 class AgentBehavior:
     def __init__(self, model_inputs: ModelInputs):
@@ -241,10 +241,10 @@ class AgentBehavior:
         self.reaction_leave_time = None
         self.reaction_leave_time_sd = None
 
-        self.gamble_leave_time_var = None
-        self.cutoff_gamble_skew = None
-        self.gamble_leave_time = None
-        self.gamble_leave_time_sd = None
+        self.guess_leave_time_var = None
+        self.cutoff_guess_skew = None
+        self.guess_leave_time = None
+        self.guess_leave_time_sd = None
 
         #*Get agent behavior
         self.cutoff_agent_behavior()
@@ -293,58 +293,58 @@ class AgentBehavior:
         self.reaction_leave_time, self.reaction_leave_time_var, self.cutoff_reaction_skew = EX_R, EX2_R, EX3_R
         self.reaction_leave_time_sd = np.sqrt(self.reaction_leave_time_var)
 
-        self.gamble_leave_time, self.gamble_leave_time_var, self.cutoff_gamble_skew = EX_G, EX2_G, EX3_G
-        self.gamble_leave_time_sd = np.sqrt(self.gamble_leave_time_var)
+        self.guess_leave_time, self.guess_leave_time_var, self.cutoff_guess_skew = EX_G, EX2_G, EX3_G
+        self.guess_leave_time_sd = np.sqrt(self.guess_leave_time_var)
 
 
 class PlayerBehavior:
     """
     This class contains the following for EVERY timestep
 
-    1. Reaction/gamble leave/reach times and uncertainties
-    2. Prob Selecting Reaction/Gamble
-    3. Prob Making Given Reaction/Gamble
+    1. Reaction/guess leave/reach times and uncertainties
+    2. Prob Selecting Reaction/guess
+    3. Prob Making Given Reaction/guess
     """
 
     def __init__(self, model_inputs: ModelInputs, agent_behavior: AgentBehavior):
         self.inputs = model_inputs
         self.agent_behavior = agent_behavior
 
-        assert np.allclose(self.prob_selecting_reaction + self.prob_selecting_gamble, 1.0)
+        assert np.allclose(self.prob_selecting_reaction + self.prob_selecting_guess, 1.0)
         #*Leave times
         self.reaction_leave_time   = self.agent_behavior.reaction_leave_time + self.inputs.reaction_time[self.inputs.key]
-        self.gamble_leave_time     = self.inputs.timesteps + self.inputs.gamble_delay[:,np.newaxis]
-        self.wtd_leave_time = self.prob_selecting_reaction*self.reaction_leave_time + self.prob_selecting_gamble*self.gamble_leave_time
+        self.guess_leave_time     = self.inputs.timesteps + self.inputs.guess_delay[:,np.newaxis]
+        self.wtd_leave_time = self.prob_selecting_reaction*self.reaction_leave_time + self.prob_selecting_guess*self.guess_leave_time
         #*Reach Times
         self.reaction_reach_time   = self.agent_behavior.reaction_leave_time + self.inputs.reaction_plus_movement_time[self.inputs.key]
-        self.gamble_reach_time     = self.inputs.timesteps + self.inputs.gamble_delay[:,np.newaxis] + self.inputs.movement_time[self.inputs.key]
-        self.wtd_reach_time = self.prob_selecting_reaction*self.reaction_reach_time + self.prob_selecting_gamble*self.gamble_reach_time
+        self.guess_reach_time     = self.inputs.timesteps + self.inputs.guess_delay[:,np.newaxis] + self.inputs.movement_time[self.inputs.key]
+        self.wtd_reach_time = self.prob_selecting_reaction*self.reaction_reach_time + self.prob_selecting_guess*self.guess_reach_time
         #*Leave Time SD
         self.reaction_leave_time_sd = np.sqrt(self.agent_behavior.reaction_leave_time_sd**2 
                                               + self.inputs.reaction_sd[self.inputs.key] ** 2)
         
-        #! NOT SURE IF AGENT BEHAVIOR SHOULD INFLUENCE THIS, (8/16/23 i say it should bc it looks like gamble leave time sd changes for 1000 and 1100 conditions btwn 50 and 150)
-        # Also, the model predicts high gamble switch sd when not accounting for it in order to get the best fit. This doesn't seem reflective of reality
-        self.gamble_leave_time_sd = np.sqrt(self.agent_behavior.gamble_leave_time_sd**2 
-                                            + np.moveaxis(np.tile(self.inputs.gamble_sd, (self.inputs.num_timesteps,1,1)), 0,-1)**2
+        #! NOT SURE IF AGENT BEHAVIOR SHOULD INFLUENCE THIS, (8/16/23 i say it should bc it looks like guess leave time sd changes for 1000 and 1100 conditions btwn 50 and 150)
+        # Also, the model predicts high guess switch sd when not accounting for it in order to get the best fit. This doesn't seem reflective of reality
+        self.guess_leave_time_sd = np.sqrt(self.agent_behavior.guess_leave_time_sd**2 
+                                            + np.moveaxis(np.tile(self.inputs.guess_sd, (self.inputs.num_timesteps,1,1)), 0,-1)**2
                                     )
         #* If each element in the array is the same, then I passed a constant
         #TODO NEED TO DECIDE WHAT I'M GOING TO SAY THE LEAVE TIME SD IS. RIGHT NOW I PASS COINCIDENCE TIME SD
-        # TODO BUT THE GAMBLE LEAVE TIME SD IS ALSO DEPENDENT ON THE AGENT'S LEAVE TIME SD
-        # TODO (OR IS IT? DOES GAMBLE LEAVE TIME SD CHANGE ACROSS CONDITIONS?)
+        # TODO BUT THE guess LEAVE TIME SD IS ALSO DEPENDENT ON THE AGENT'S LEAVE TIME SD
+        # TODO (OR IS IT? DOES guess LEAVE TIME SD CHANGE ACROSS CONDITIONS?)
         
         # If every element isn't the same, then I passed the subjects actual leave time uncertainty in the task 
         # (I DON'T DO THIS ANYMORE 8/16/23 ESPECIALLY WHEN FITTING the GUESS SD)
-        # if not (self.inputs.gamble_sd == self.inputs.gamble_sd).all()
-        #     self.gamble_leave_time_sd = self.inputs.gamble_sd[:, np.newaxis]
+        # if not (self.inputs.guess_sd == self.inputs.guess_sd).all()
+        #     self.guess_leave_time_sd = self.inputs.guess_sd[:, np.newaxis]
         # else:  # If I didn't, then I need to throw on timing uncertainty 
-        #     self.gamble_leave_time_sd = np.sqrt(
-        #         self.agent_behavior.gamble_leave_time_sd**2
-        #         + self.inputs.gamble_sd ** 2
+        #     self.guess_leave_time_sd = np.sqrt(
+        #         self.agent_behavior.guess_leave_time_sd**2
+        #         + self.inputs.guess_sd ** 2
         #         + tile(self.inputs.timing_sd ** 2, self.inputs.num_timesteps)
         #     )
         self.wtd_leave_time_sd = (
-            self.prob_selecting_reaction*self.reaction_leave_time_sd + self.prob_selecting_gamble*self.gamble_leave_time_sd
+            self.prob_selecting_reaction*self.reaction_leave_time_sd + self.prob_selecting_guess*self.guess_leave_time_sd
         )
         self.wtd_leave_time_iqr = (
             (self.wtd_leave_time + 0.675*self.wtd_leave_time_sd) - 
@@ -352,18 +352,18 @@ class PlayerBehavior:
         )
         #*Reach Time SD
         self.reaction_reach_time_sd = np.sqrt(self.reaction_leave_time_sd**2 + self.inputs.movement_sd[self.inputs.key] ** 2)
-        self.gamble_reach_time_sd   = np.sqrt(self.gamble_leave_time_sd**2 + self.inputs.movement_sd[:,np.newaxis,np.newaxis]** 2) # NEed to put these nweaxis in so that it's added on the first axis (aka expected veruss true axis) 
+        self.guess_reach_time_sd   = np.sqrt(self.guess_leave_time_sd**2 + self.inputs.movement_sd[:,np.newaxis,np.newaxis]** 2) # NEed to put these nweaxis in so that it's added on the first axis (aka expected veruss true axis) 
         self.wtd_reach_time_sd = (
-            self.prob_selecting_reaction*self.reaction_reach_time_sd + self.prob_selecting_gamble*self.gamble_reach_time_sd
+            self.prob_selecting_reaction*self.reaction_reach_time_sd + self.prob_selecting_guess*self.guess_reach_time_sd
         )
         
-        assert self.gamble_reach_time_sd.shape == self.gamble_leave_time_sd.shape
+        assert self.guess_reach_time_sd.shape == self.guess_leave_time_sd.shape
         assert self.reaction_reach_time_sd.shape == self.reaction_leave_time_sd.shape
         
         #*Predict Decision Time
         self.predicted_decision_time = (
             self.prob_selecting_reaction*self.agent_behavior.reaction_leave_time
-            + self.prob_selecting_gamble*self.agent_behavior.gamble_leave_time
+            + self.prob_selecting_guess*self.agent_behavior.guess_leave_time
         )
 
     @property
@@ -377,7 +377,7 @@ class PlayerBehavior:
         return ans
 
     @property
-    def prob_selecting_gamble(self):
+    def prob_selecting_guess(self):
         return 1 - self.prob_selecting_reaction
 
     @property
@@ -390,9 +390,9 @@ class PlayerBehavior:
         return stats.norm.cdf(1500, mu, sd)
 
     @property
-    def prob_making_given_gamble(self):
-        mu = self.gamble_reach_time
-        sd = self.gamble_reach_time_sd
+    def prob_making_given_guess(self):
+        mu = self.guess_reach_time
+        sd = self.guess_reach_time_sd
         # temp = numba_cdf(np.array([1500]), mu.flatten(),sd.flatten()).reshape(self.inputs.timesteps.shape)
         return stats.norm.cdf(1500, mu, sd)
 
@@ -405,51 +405,51 @@ class ScoreMetrics:
         self.prob_win_given_reaction = self.inputs.prob_selecting_correct_target_reaction*player_behavior.prob_making_given_reaction
         # Prob that you are correct and made it, OR you made it and the agent didn't, minus the probability of both of those things happening 
         # THIS INCLUDES THE AGENT NOT MAKING IT, will be basically 0 for everything but 1200,150 condition
-        prob_win_given_gamble_if_agent_make = (
-            self.inputs.prob_selecting_correct_target_gamble
-            *player_behavior.prob_making_given_gamble
+        prob_win_given_guess_if_agent_make = (
+            self.inputs.prob_selecting_correct_target_guess
+            *player_behavior.prob_making_given_guess
             *agent_behavior.prob_making
         )
-        prob_win_given_gamble_if_agent_no_make = player_behavior.prob_making_given_gamble*agent_behavior.prob_not_making
+        prob_win_given_guess_if_agent_no_make = player_behavior.prob_making_given_guess*agent_behavior.prob_not_making
         
-        self.prob_win_given_gamble   = (
-            prob_win_given_gamble_if_agent_make 
-            + prob_win_given_gamble_if_agent_no_make 
-            # - (prob_win_given_gamble_if_agent_make*prob_win_given_gamble_if_agent_no_make) #! Had to take this out for things to add up to 1, not sure why (6/23/23)
+        self.prob_win_given_guess   = (
+            prob_win_given_guess_if_agent_make 
+            + prob_win_given_guess_if_agent_no_make 
+            # - (prob_win_given_guess_if_agent_make*prob_win_given_guess_if_agent_no_make) #! Had to take this out for things to add up to 1, not sure why (6/23/23)
         )
         # Prob of incorrect
         self.prob_incorrect_given_reaction = (1 - self.inputs.prob_selecting_correct_target_reaction)*player_behavior.prob_making_given_reaction
-        self.prob_incorrect_given_gamble   = (
-            (1 - self.inputs.prob_selecting_correct_target_gamble)*player_behavior.prob_making_given_gamble*agent_behavior.prob_making 
+        self.prob_incorrect_given_guess   = (
+            (1 - self.inputs.prob_selecting_correct_target_guess)*player_behavior.prob_making_given_guess*agent_behavior.prob_making 
         ) 
 
         # Prob of indecision
         self.prob_indecision_given_reaction = 1 - player_behavior.prob_making_given_reaction
-        self.prob_indecision_given_gamble   = 1 - player_behavior.prob_making_given_gamble
+        self.prob_indecision_given_guess   = 1 - player_behavior.prob_making_given_guess
 
-        #*Prob making on reaction and gamble depends on the prob of selecting reaction and gamble too
+        #*Prob making on reaction and guess depends on the prob of selecting reaction and guess too
         self.prob_making_reaction = player_behavior.prob_making_given_reaction*player_behavior.prob_selecting_reaction
-        self.prob_making_gamble   = player_behavior.prob_making_given_gamble*player_behavior.prob_selecting_gamble
-        self.prob_making          = self.prob_making_gamble + self.prob_making_reaction
+        self.prob_making_guess   = player_behavior.prob_making_given_guess*player_behavior.prob_selecting_guess
+        self.prob_making          = self.prob_making_guess + self.prob_making_reaction
 
-        #*Multiply the actual probability of making it times the prob of getting it right for reaction and gamble
+        #*Multiply the actual probability of making it times the prob of getting it right for reaction and guess
         self.prob_win_reaction = self.prob_win_given_reaction*player_behavior.prob_selecting_reaction
-        self.prob_win_gamble   = self.prob_win_given_gamble*player_behavior.prob_selecting_gamble
-        self.prob_win          = self.prob_win_reaction + self.prob_win_gamble
+        self.prob_win_guess   = self.prob_win_given_guess*player_behavior.prob_selecting_guess
+        self.prob_win          = self.prob_win_reaction + self.prob_win_guess
 
         #*Probability of receiving an incorrect cost
         self.prob_incorrect_reaction = self.prob_incorrect_given_reaction*player_behavior.prob_selecting_reaction
-        self.prob_incorrect_gamble   = self.prob_incorrect_given_gamble*player_behavior.prob_selecting_gamble
-        self.prob_incorrect          = self.prob_incorrect_reaction + self.prob_incorrect_gamble
+        self.prob_incorrect_guess   = self.prob_incorrect_given_guess*player_behavior.prob_selecting_guess
+        self.prob_incorrect          = self.prob_incorrect_reaction + self.prob_incorrect_guess
 
         #*Probability of receiving an indecision cost (No chance of success for indecision, so we just multiply by the two marginal probs calculated in last section)
         self.prob_indecision_reaction = self.prob_indecision_given_reaction*player_behavior.prob_selecting_reaction
-        self.prob_indecision_gamble   = self.prob_indecision_given_gamble*player_behavior.prob_selecting_gamble
-        self.prob_indecision          = self.prob_indecision_reaction + self.prob_indecision_gamble
+        self.prob_indecision_guess   = self.prob_indecision_given_guess*player_behavior.prob_selecting_guess
+        self.prob_indecision          = self.prob_indecision_reaction + self.prob_indecision_guess
 
         self.correct_decisions = (
             player_behavior.prob_selecting_reaction*self.inputs.prob_selecting_correct_target_reaction
-            + player_behavior.prob_selecting_gamble*self.inputs.prob_selecting_correct_target_gamble
+            + player_behavior.prob_selecting_guess*self.inputs.prob_selecting_correct_target_guess
         )
 
         assert np.allclose(self.prob_win + self.prob_incorrect + self.prob_indecision, 1.0)
@@ -465,10 +465,10 @@ class ExpectedReward:
             + score_metrics.prob_indecision_reaction*self.inputs.indecision_cost
         )
 
-        self.exp_reward_gamble = (
-            score_metrics.prob_win_gamble*self.inputs.win_reward
-            + score_metrics.prob_incorrect_gamble*self.inputs.incorrect_cost
-            + score_metrics.prob_indecision_gamble*self.inputs.indecision_cost
+        self.exp_reward_guess = (
+            score_metrics.prob_win_guess*self.inputs.win_reward
+            + score_metrics.prob_incorrect_guess*self.inputs.incorrect_cost
+            + score_metrics.prob_indecision_guess*self.inputs.indecision_cost
         )
 
         self.exp_reward = (
@@ -482,7 +482,7 @@ class Results:
     """
     This class contains
     1. Find optimal function that uses the optimal index on the metrics calculated at every time step (From ScoreMetrics)
-    2. Gets gamble/reaction calculations w/ first input being the gamble or reaction and second being the value that divides it
+    2. Gets guess/reaction calculations w/ first input being the guess or reaction and second being the value that divides it
         - So we can get perc_reaction_wins which is (prob_win_reaction/prob_win)*100
     """
 
@@ -530,9 +530,9 @@ class Results:
         '''
         
         if decision_type == "optimal":
-            index = self.optimal_decision_index[self.inputs.key,:] # Need self inputs key so that if it's expected, we take the optimal decision time for EXPECTED inputs
+            timing_index = self.optimal_decision_index[self.inputs.key,:] # Need self inputs key so that if it's expected, we take the optimal decision time for EXPECTED inputs
         elif decision_type == 'fit':
-            index = self.fit_decision_index[self.inputs.key,:]
+            timing_index = self.fit_decision_index[self.inputs.key,:]
         else:
             raise ValueError("decision_type must be \"optimal\" or \"fit\"")
         
@@ -543,24 +543,24 @@ class Results:
         else:
             raise ValueError('metric_type must be \'true\' or \'expected\'')
         
-        if metric2 is None: # For none-reaction/gamble metrics
+        if metric2 is None: # For non-reaction/guess metrics
             ans = np.zeros(metric1.shape[1])*np.nan
             for i in range(metric1.shape[1]):
                 if metric1.ndim < 3:
-                    ans[i] = metric1[i,index[i]]
+                    ans[i] = metric1[i,timing_index[i]]
                 else:
-                    ans[i] = metric1[metric_type_index, i, index[i]]
+                    ans[i] = metric1[metric_type_index, i, timing_index[i]]
             return ans
-        else: # For reaction/gamble metrics
+        else: # For reaction/guess perc metrics
             ans1 = np.zeros(metric1.shape[1])*np.nan
             ans2 = np.zeros(metric2.shape[1])*np.nan
             for i in range(metric1.shape[1]):
                 if metric1.ndim < 3:
-                    ans1[i] = metric1[i,index[i]]
-                    ans2[i] = metric2[i,index[i]]
+                    ans1[i] = metric1[i,timing_index[i]]
+                    ans2[i] = metric2[i,timing_index[i]]
                 else:
-                    ans1[i] = metric1[metric_type_index, i, index[i]]
-                    ans2[i] = metric2[metric_type_index, i, index[i]]
+                    ans1[i] = metric1[metric_type_index, i, timing_index[i]]
+                    ans2[i] = metric2[metric_type_index, i, timing_index[i]]
             return np.divide(ans1, ans2, out=np.zeros_like(ans2), where=ans2 > 1e-10)
 
 
@@ -619,7 +619,7 @@ class ModelFitting:
         self.optimal_decision_time_store = None
         self.leave_time_store            = None
         self.leave_time_sd_store         = None
-        self.gamble_leave_time_sd_store         = None
+        self.guess_leave_time_sd_store         = None
         
     def run_model_fit_procedure(self, free_params_init: dict, metric_keys: list, targets: np.ndarray,
                                 method='Nelder-Mead', bnds=None, tol = 0.0000001, niter=100,
@@ -628,7 +628,7 @@ class ModelFitting:
         self.optimal_decision_time_store = [] 
         self.leave_time_store = []
         self.leave_time_sd_store = []
-        self.gamble_leave_time_sd_store = []
+        self.guess_leave_time_sd_store = []
         self.initial_guess = np.array(list(free_params_init.values())) # Get the free param values from dict and make an array, scipy will flatten it if it's 2D
         self.drop_condition_from_loss = drop_condition_from_loss
         num_params = len(self.initial_guess)
@@ -666,7 +666,7 @@ class ModelFitting:
         self.optimal_decision_time_store = np.array(self.optimal_decision_time_store)
         self.leave_time_store            = np.array(self.leave_time_store)
         self.leave_time_sd_store         = np.array(self.leave_time_sd_store)
-        self.gamble_leave_time_sd_store         = np.array(self.gamble_leave_time_sd_store)
+        self.guess_leave_time_sd_store         = np.array(self.guess_leave_time_sd_store)
         
         # ans = out.x + np.min(self.inputs.timesteps)
         # ans = out.x#.reshape(self.initial_param_shape)
@@ -680,8 +680,8 @@ class ModelFitting:
         new_parameters_dict = dict(zip(free_params_keys,free_params_values))
         
         # If the standard deviation and mean combo reaches below 0, return a high loss
-        if 'gamble_switch_delay' in free_params_keys and 'gamble_switch_sd' in free_params_keys:
-            if new_parameters_dict['gamble_switch_delay'] - 2*new_parameters_dict['gamble_switch_sd']<0:
+        if 'guess_switch_delay' in free_params_keys and 'guess_switch_sd' in free_params_keys:
+            if new_parameters_dict['guess_switch_delay'] - 2*new_parameters_dict['guess_switch_sd']<0:
                 return 1e3
         
         self.parameter_arr.append(free_params_values)
@@ -694,7 +694,7 @@ class ModelFitting:
                 model_metric = getattr(self.model.player_behavior, metric_keys[i])
                 # Find the metric at optimal decision time
                 #! Metric type always being 'true' means that we use the decision_type for expected vs true, but the metric array
-                #! We're using is ALWAYS the 'true' array. If we're fitting the true gamble delay, then the expected metric arrays shouldn't change
+                #! We're using is ALWAYS the 'true' array. If we're fitting the true guess delay, then the expected metric arrays shouldn't change
                 model_metrics[i,:] = self.model.results.get_metric(model_metric, 
                                                                    decision_type=decision_type, 
                                                                     metric_type='true')  
@@ -715,7 +715,7 @@ class ModelFitting:
                                                                    decision_type=decision_type,metric_type='true'))
         self.leave_time_sd_store.append(self.model.results.get_metric(self.model.player_behavior.wtd_leave_time_sd,
                                                                       decision_type=decision_type,metric_type='true'))
-        self.gamble_leave_time_sd_store.append(self.model.results.get_metric(self.model.player_behavior.gamble_leave_time_sd,
+        self.guess_leave_time_sd_store.append(self.model.results.get_metric(self.model.player_behavior.guess_leave_time_sd,
                                                                    decision_type=decision_type,metric_type='true'))
         return loss
     
@@ -788,7 +788,7 @@ class Group_Models():
         ans = np.zeros((self.num_subjects, self.num_blocks))
         num = np.zeros((self.num_subjects, self.num_blocks))
         denom = np.zeros((self.num_subjects, self.num_blocks))
-        # If it's not a reaction gamble metric
+        # If it's not a reaction guess metric
         if metric_name2 is None:
             # Get inner objects
             inner_objs = getattr(self, object_name)
