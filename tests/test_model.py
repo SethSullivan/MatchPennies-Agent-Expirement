@@ -38,6 +38,11 @@ indecision_cost = 0.0
 incorrect_cost = 0.0
 
 def test_true_and_expected_models_return_same_optimal_decision_time():
+    '''
+    ensuring that model with knowledge of delay and without knowledge of delay 
+    have the same optimal decision time when the expected and true delays are 
+    the same between them
+    '''
     model_true = ModelConstructor(
         experiment=experiment,
         num_blocks=it.num_blocks,
