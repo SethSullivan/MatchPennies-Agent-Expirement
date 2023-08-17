@@ -38,7 +38,7 @@ class ExperimentInfo:
         self.num_subjects = len(self.subjects)
         #* Target Info 
         #* Target information is same for both Exp1 and Exp2 for Aim 1, so just use this file for both
-        self.filename = kwargs.get('filename', 'D:\OneDrive - University of Delaware - o365\Subject_Data\MatchPennies_Agent_Exp2\\Sub1_Task\\Sub1_TaskTarget_Table.csv')
+        self.filename = kwargs.get('filename', 'D:\\OneDrive - University of Delaware - o365\\Subject_Data\\MatchPennies_Agent_Exp2\\Sub1_Task\\Sub1_TaskTarget_Table.csv')
         df = pd.read_csv(self.filename)
         df["X"] = df["X"]/100
         df["Y"] = df["Y"]/100
@@ -244,7 +244,7 @@ class MovementMetrics:
                 raise NotImplementedError('Still haven\'t implemented this in the refactor')
         else:
             raise ValueError('task argument should be \'reaction\' or \'task\'')
-        movement_onset_times = movement_onset_times.astype(np.float)
+        movement_onset_times = movement_onset_times.astype(float)
         
         #* Any time they never left the start should be nan, not zero
         if replace_zeros_with_nan:
@@ -383,59 +383,6 @@ class MovementMetrics:
     def check_change_of_mind(self):
         return np.where(self.find_final_target_selection!=self.inital_decision_direction)
     
-class DecisionMetrics:
-    def __init__(self, exp_info: ExperimentInfo, raw_data: RawData, movement_metrics: MovementMetrics,
-                 react_guess_score_metrics: ReactGuessScoreMetrics):
-        self.exp_info = exp_info
-        self.raw_data = raw_data
-        self.player_stopping_times = self.predict_stopping_times()
-        self.react_guess_score_metrics = self.react_guess_score_metrics
-    
-    def predict_stopping_times(self):
-        #TODO FINISH THIS UP 
-        '''
-        Using the percentage reactions and gambles to predict the stopping time
-        '''
-        timesteps = np.arange(500,1800,1)
-        player_stopping_times                  = np.zeros((self.exp_info.num_subjects, self.exp_info.num_task_blocks))
-        player_stopping_times_index            = np.zeros((self.exp_info.num_subjects, self.exp_info.num_task_blocks))
-        temp_predicted_perc_reaction_decisions = np.zeros((self.exp_info.num_subjects, self.exp_info.num_task_blocks,len(timesteps)))
-        temp_predicted_perc_gamble_decisions   = np.zeros((self.exp_info.num_subjects, self.exp_info.num_task_blocks,len(timesteps)))
-        predicted_perc_reaction_decisions      = np.zeros((self.exp_info.num_subjects, self.exp_info.num_task_blocks))
-        predicted_perc_gamble_decisions        = np.zeros((self.exp_info.num_subjects, self.exp_info.num_task_blocks))
-        react_loss                             = np.zeros((self.exp_info.num_subjects, self.exp_info.num_task_blocks,len(timesteps)))
-        gamble_loss                            = np.zeros((self.exp_info.num_subjects, self.exp_info.num_task_blocks,len(timesteps)))
-        for i in range(self.exp_info.num_subjects):
-            for j in range(self.exp_info.num_task_blocks):
-                for k,t in enumerate(timesteps):
-                    temp_predicted_perc_reaction_decisions[j,k]   = np.count_nonzero(self.raw_data.agent_task_leave_time[i,j,:]<=t)/self.num_task_trials*100
-                    react_loss[i,j,k]                             = abs(self.react_guess_score_metrics.total_reaction_guess('react')[i,j]/self.num_task_trials*100 - 
-                                                                        temp_predicted_perc_reaction_decisions[i,j,k])
-                    temp_predicted_perc_gamble_decisions[i,j,k]   = np.count_nonzero(self.raw_data.agent_task_leave_time[i,j,:]>t)/self.num_task_trials*100
-                    gamble_loss[i,j,k]                            = abs(self.react_guess_score_metrics.total_reaction_guess('react')[i,j]/self.num_task_trials*100
-                                                                        - temp_predicted_perc_gamble_decisions[i,j,k])
-                    
-                player_stopping_times_index[i,j]       = np.argmin(react_loss[i,j,:]+gamble_loss[i,j,:])
-                # self.predicted_perc_reaction_decisions[i,j] = temp_predicted_perc_reaction_decisions[i,j,int(self.player_stopping_times_index[i,j])]
-                # self.predicted_perc_gamble_decisions[i,j]   = temp_predicted_perc_gamble_decisions[i,j,int(self.player_stopping_times_index[i,j])]
-        
-        return player_stopping_times_index + np.min(timesteps)
-        
-    def predicted_guess_or_react_decisions(self,react_or_guess, perc=True):    
-        '''
-        This is based on the predicted stopping times
-        '''   
-        for j in range(self.exp_info.num_task_blocks):
-            for k,t in enumerate(timesteps):
-                # Get the perc reaction decisions at every possible stopping time k
-                if react_or_guess == 'react':
-                    temp_predicted_decisions[j,k] = np.count_nonzero(self.raw_data.agent_task_leave_time[j,:]<=t)/self.num_task_trials*100
-                elif react_or_guess == 'guess':
-                    temp_predicted_decisions[j,k] = np.count_nonzero(self.raw_data.agent_task_leave_time[j,:]>t)/self.num_task_trials*100
-                else:
-                    raise ValueError('react_or_guess must be \'react\' or \'guess'\)
-            ans = temp_predicted_decisions[j] = temp_predicted_decisions[j, int(self.player_st)
-        return temp_predicted_decisions
         
 class ScoreMetrics:
     def __init__(self, exp_info: ExperimentInfo, raw_data: RawData, movement_metrics: MovementMetrics):
@@ -512,8 +459,7 @@ class ScoreMetrics:
             return np.count_nonzero(incorrect_and_both_reached_mask,axis=2)
         
     def correct_decisions(self, perc=True):
-        pass
-    
+        raise NotImplementedError('Correct decisions are not implemented')    
     
 class ReactGuessScoreMetrics:
     def __init__(self, exp_info: ExperimentInfo, raw_data: RawData, 
@@ -547,7 +493,7 @@ class ReactGuessScoreMetrics:
         
         return react_mask, guess_mask
     
-    def total_reaction_guess(self, react_or_guess):
+    def react_guess_decisions(self, react_or_guess):
         return np.count_nonzero(self.react_guess_mask[react_or_guess],axis=2)
     
     def react_guess_results(self, react_or_guess):
@@ -570,7 +516,7 @@ class ReactGuessScoreMetrics:
         Out of the x reaction/guess decisions, how many were wins, indecisions, incorrects 
         '''
         numerator = self.react_guess_score_metric_dict(react_or_guess)[metric] # 
-        denominator = self.total_reaction_guess(react_or_guess)
+        denominator = self.react_guess_decisions(react_or_guess)
         
         return np.divide(numerator,denominator, # gamble_wins/total_gambles
                     out=np.zeros_like(numerator)*np.nan,where=denominator!=0)*100
@@ -615,9 +561,8 @@ class ReactGuessMovementMetrics:
                  react_guess_mask):
         self.exp_info = exp_info
         self.raw_data = raw_data
+        self.movement_metrics= movement_metrics
         self.reaction_times = movement_metrics.reaction_times
-        self.movement_onset_times = movement_metrics.movement_onset_times('task')
-        self.target_reach_times = movement_metrics.target_reach_times('task')
         self.incorrect_mask = score_metrics.incorrect_mask
         self.trial_results = score_metrics.trial_results
         self.score_metric = score_metrics.score_metric
@@ -625,13 +570,13 @@ class ReactGuessMovementMetrics:
         self.reaction_time_threshold = 200
         self.react_guess_mask = react_guess_mask
         
-    def react_guess_movement_onset_times(self, react_or_guess):
-        return mask_array(self.movement_onset_times,self.react_guess_mask[react_or_guess])
+    def movement_onset_times(self, react_or_guess):
+        return mask_array(self.movement_metrics.movement_onset_times('task'),self.react_guess_mask[react_or_guess])
     
-    def react_guess_target_reach_times(self, react_or_guess):
-        return mask_array(self.target_reach_times,self.react_guess_mask[react_or_guess])
+    def target_reach_times(self, react_or_guess):
+        return mask_array(self.movement_metrics.target_reach_times('task'),self.react_guess_mask[react_or_guess])
     
-    def react_guess_agent_movement_onset_times(self, react_or_guess):
+    def agent_movement_onset_times(self, react_or_guess):
         return mask_array(self.raw_data.agent_task_leave_time, self.react_guess_mask[react_or_guess])
     
 class SubjectBuilder:
@@ -689,7 +634,61 @@ class SubjectBuilder:
         
     def __repr__(self):
         return f'{self.__class__.__name__} {self.exp_info.experiment} Object'
+
+class DecisionMetrics:
+    def __init__(self, exp_info: ExperimentInfo, raw_data: RawData, movement_metrics: MovementMetrics,
+                 react_guess_score_metrics: ReactGuessScoreMetrics):
+        self.exp_info = exp_info
+        self.raw_data = raw_data
+        self.player_stopping_times = self.predict_stopping_times()
+        self.react_guess_score_metrics = self.react_guess_score_metrics
+    
+    def predict_stopping_times(self):
+        #TODO FINISH THIS UP 
+        '''
+        Using the percentage reactions and gambles to predict the stopping time
+        '''
+        timesteps = np.arange(500,1800,1)
+        player_stopping_times                  = np.zeros((self.exp_info.num_subjects, self.exp_info.num_task_blocks))
+        player_stopping_times_index            = np.zeros((self.exp_info.num_subjects, self.exp_info.num_task_blocks))
+        temp_predicted_perc_reaction_decisions = np.zeros((self.exp_info.num_subjects, self.exp_info.num_task_blocks,len(timesteps)))
+        temp_predicted_perc_gamble_decisions   = np.zeros((self.exp_info.num_subjects, self.exp_info.num_task_blocks,len(timesteps)))
+        predicted_perc_reaction_decisions      = np.zeros((self.exp_info.num_subjects, self.exp_info.num_task_blocks))
+        predicted_perc_gamble_decisions        = np.zeros((self.exp_info.num_subjects, self.exp_info.num_task_blocks))
+        react_loss                             = np.zeros((self.exp_info.num_subjects, self.exp_info.num_task_blocks,len(timesteps)))
+        gamble_loss                            = np.zeros((self.exp_info.num_subjects, self.exp_info.num_task_blocks,len(timesteps)))
+        for i in range(self.exp_info.num_subjects):
+            for j in range(self.exp_info.num_task_blocks):
+                for k,t in enumerate(timesteps):
+                    temp_predicted_perc_reaction_decisions[j,k]   = np.count_nonzero(self.raw_data.agent_task_leave_time[i,j,:]<=t)/self.num_task_trials*100
+                    react_loss[i,j,k]                             = abs(self.react_guess_score_metrics.react_guess_decisions('react')[i,j]/self.num_task_trials*100 - 
+                                                                        temp_predicted_perc_reaction_decisions[i,j,k])
+                    temp_predicted_perc_gamble_decisions[i,j,k]   = np.count_nonzero(self.raw_data.agent_task_leave_time[i,j,:]>t)/self.num_task_trials*100
+                    gamble_loss[i,j,k]                            = abs(self.react_guess_score_metrics.react_guess_decisions('react')[i,j]/self.num_task_trials*100
+                                                                        - temp_predicted_perc_gamble_decisions[i,j,k])
+                    
+                player_stopping_times_index[i,j]       = np.argmin(react_loss[i,j,:]+gamble_loss[i,j,:])
+                # self.predicted_perc_reaction_decisions[i,j] = temp_predicted_perc_reaction_decisions[i,j,int(self.player_stopping_times_index[i,j])]
+                # self.predicted_perc_gamble_decisions[i,j]   = temp_predicted_perc_gamble_decisions[i,j,int(self.player_stopping_times_index[i,j])]
         
+        return player_stopping_times_index + np.min(timesteps)
+        
+    def predicted_guess_or_react_decisions(self,react_or_guess, perc=True):    
+        '''
+        This is based on the predicted stopping times
+        '''   
+        for j in range(self.exp_info.num_task_blocks):
+            for k,t in enumerate(timesteps):
+                # Get the perc reaction decisions at every possible stopping time k
+                if react_or_guess == 'react':
+                    temp_predicted_decisions[j,k] = np.count_nonzero(self.raw_data.agent_task_leave_time[j,:]<=t)/self.num_task_trials*100
+                elif react_or_guess == 'guess':
+                    temp_predicted_decisions[j,k] = np.count_nonzero(self.raw_data.agent_task_leave_time[j,:]>t)/self.num_task_trials*100
+                else:
+                    raise ValueError('react_or_guess must be \'react\' or \'guess\'')
+            # ans = temp_predicted_decisions[j] = temp_predicted_decisions[j, int(self.player_st)]
+        # return temp_predicted_decisions
+
 if __name__ == '__main__':
     group = rdf.generate_subject_object_v3('Exp1')
     
