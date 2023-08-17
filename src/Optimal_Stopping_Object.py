@@ -181,8 +181,8 @@ class ModelInputs:
             self.movement_sd = kwargs.get("movement_sd")
             self.timing_sd = kwargs.get("timing_sd")
             self.gamble_switch_sd = kwargs.get("gamble_switch_sd")
-            self.electromechanical_sd = kwargs.get("electromechanical_sd")
-            self.gamble_sd = np.sqrt(self.gamble_switch_sd**2 + self.electromechanical_sd**2 + self.timing_sd**2)
+            self.electromechanical_sd = kwargs.get("electromechanical_sd") #! 8/17/23 Decided I don't need this, timing_sd takes care of this bc there's implicitly electromechanical sd involved
+            self.gamble_sd = np.sqrt(self.gamble_switch_sd**2 + self.timing_sd**2)
 
             # Ability
             self.reaction_time = kwargs.get("reaction_time")
@@ -571,27 +571,30 @@ class ModelConstructor:
     """
 
     def __init__(self, **kwargs):
-        self.kwargs          = kwargs
-        self.data_leave_times = kwargs.get('data_leave_times')
-        self.inputs          = ModelInputs(**kwargs)
-        self.agent_behavior  = AgentBehavior(self.inputs)
-        self.player_behavior = PlayerBehavior(self.inputs, self.agent_behavior)
-        self.score_metrics   = ScoreMetrics(self.inputs, self.player_behavior, self.agent_behavior)
-        self.expected_reward = ExpectedReward(self.inputs, self.score_metrics)
-        self.results         = Results(self.inputs, self.expected_reward)
+        self.kwargs = kwargs
+        self.run_model(**kwargs)
         
-    def fit_model(self, metric, target):
+    def run_model(self, **kwargs):
+        '''
+        Run model through 
+        '''
+        self.data_leave_times = kwargs.get('data_leave_times')
+        self.inputs           = ModelInputs(**kwargs)
+        self.agent_behavior   = AgentBehavior(self.inputs)
+        self.player_behavior  = PlayerBehavior(self.inputs, self.agent_behavior)
+        self.score_metrics    = ScoreMetrics(self.inputs, self.player_behavior, self.agent_behavior)
+        self.expected_reward  = ExpectedReward(self.inputs, self.score_metrics)
+        self.results          = Results(self.inputs, self.expected_reward)
+        
+    def fit_model(self, metric, target) -> None:
         '''
         Fitting the model with no free parameters
         - Just pick the decision time that minimizes the difference between model predicted movement onset
         and the data movement onset
         '''
-        decision_index = np.array([500]*6)
-        loss = np.zeros_like(self.inputs.timesteps)
-        loss = abs(metric - target[:, np.newaxis])
-        decision_index = np.argmin(loss, axis=1) + np.min(self.inputs.timesteps)
-        self.results.set_fit_decision_index(decision_index.astype(int))
-
+        loss = abs(metric - target[np.newaxis,:, np.newaxis]) # Get the vectorized loss between metric (2,6,1800) and target (6,)
+        decision_index = np.argmin(loss, axis=2)  # Across timesteps (axis=2) return the indices that minimize difference between metric and target
+        self.results.set_fit_decision_index(decision_index.astype(int)) # Set the decision_index
 
 class ModelFitting:
     '''
