@@ -159,8 +159,17 @@ def multiple_models_boxplot_v2(ax,data,model_data_list,labels,show_boxplot=True,
     dv.legend(ax,legend_labels,legend_colors,ls = legend_linestyles,loc=legend_loc,fontsize=9)
 
 def multiple_models_boxplot(ax,data,show_boxplot=True,
-                            true_player=None,expected_player=None, 
-                            true_optimal = None,expected_optimal=None,**kwargs):
+                            known_player=None,unknown_player=None, 
+                            known_optimal = None,unknown_optimal=None,
+                            no_switch=None,
+                            **kwargs):
+    '''
+    unknown_player := The decision times are fit to the player, but they don't know about the gamble delay
+    known_player    := The decision times are fit to the player, but they do know about the gamble delay
+    unknown_optimal := The decision times are the OPTIMAL, but the optimizer does not know that there is a delay associated 
+                        with switching to a guess decision
+    known_optimal   := The decision times are the optimal, and the optimaizer has knowledge of the delay associated with switching to a guess decision
+    '''
     bw            = kwargs.get('box_width',0.75)
     box_color     = kwargs.get('colors',wheel.seth_blue)
     xlocs         = kwargs.get('xlocs')
@@ -168,53 +177,49 @@ def multiple_models_boxplot(ax,data,show_boxplot=True,
     include_means = kwargs.get('include_means')
     jitter        = kwargs.get('jitter',True)
     labels        = kwargs.get('labels')
-    remove_parentheses_from_labels = kwargs.get('remove_parentheses_from_labels',False)
     linestyles = kwargs.get('linestyles')
+    line_colors = kwargs.get('line_colors')
+    markerstyles   = kwargs.get('markerstyles')
+    #* Dictionary keys
+    dict_keys = ['known_player','unknown_player','known_optimal','unknown_optimal','no_switch']
+    #* Get value lists
+    model_values = [known_player,unknown_player,known_optimal,unknown_optimal,no_switch]
+    label_values = [f'Model Prediction of Group\n(Account for Guessing)',
+                  f'Model Prediction of Group\n(Not Account for Guessing)',
+                  f'Theoretical Optimal\n(Account for Guessing)',
+                  f'Theoretical Optimal\n(Not Accounting for Guessing)',
+                  f'No Switch Delay'
+    ]       
+    if line_colors is None:
+        line_colors = [wheel.rak_red,wheel.yellow,wheel.rak_blue,wheel.light_orange, wheel.white]
+    if linestyles is None:
+        linestyles = ['-']*len(dict_keys)
+    if markerstyles is None:
+        markerstyles = ['o','o','o','o','x']
+        
+    #* Create dictionaries 
+    model_dict = dict(zip(dict_keys,model_values))
+    labels_dict = dict(zip(dict_keys,label_values))
+    line_colors_dict = dict(zip(dict_keys,line_colors))
+    linestyles_dict = dict(zip(dict_keys,linestyles))
+    
+    #* Plot real data boxplot
     if show_boxplot:
         ax,bp = multi_boxplot(ax,data,xlocs,box_width = bw,colors=box_color,include_means=include_means)
         if jitter:
             dv.jitter_array(ax=ax,x_positions=xlocs,data_list=data.T, noise_scale=0.01, include_mean = False, circle_size=30)
     
-    line_colors = kwargs.get('line_colors')
-    if line_colors is None:
-        line_colors = [wheel.rak_red,wheel.yellow,wheel.rak_blue,wheel.light_orange]
-    if remove_parentheses_from_labels is False:
-        labels = [f'Model Prediction of Group',
-                  f'Model Prediction of Group\n(Not Account for Guessing)',
-                  f'Theoretical Optimal',
-                  f'Theoretical Optimal\n(Not Accounting for Guessing)',
-        ]
-           
-    else:
-        labels = ['Model Prediction of Group','Model Prediction of Group',
-                  'Theoretical Optimal','Theoretical Optimal']
-        
-    if linestyles is None:
-        linestyles = ['-','-','-','-']
+    #* Plot models as lines
     legend_colors = []
     legend_labels = []
     legend_linestyles    = []
+    for k in dict_keys:
+        if model_dict[k] is not None:
+            ax.plot(xlocs,model_dict[k],c=line_colors_dict[k],marker='o',zorder=200,ls=linestyles_dict[k])
+            legend_colors.append(line_colors_dict[k])
+            legend_labels.append(labels_dict[k])#\n(Gamble Delay/Uncertainty)')
+            legend_linestyles.append(linestyles_dict[k])
 
-    if true_player is not None:
-        ax.plot(xlocs,true_player,c=line_colors[0],marker='o',zorder=200,ls=linestyles[0])
-        legend_colors.append(line_colors[0])
-        legend_labels.append(labels[0])#\n(Gamble Delay/Uncertainty)')
-        legend_linestyles.append(linestyles[0])
-    if expected_player is not None:
-        ax.plot(xlocs,expected_player,c=line_colors[1],marker='o',zorder=200,ls=linestyles[1])
-        legend_colors.append(line_colors[1])
-        legend_labels.append(labels[1])
-        legend_linestyles.append(linestyles[1])
-    if true_optimal is not None:
-        ax.plot(xlocs,true_optimal,c=line_colors[2],marker='*',markersize=10,zorder=200,ls = linestyles[2])
-        legend_colors.append(line_colors[2])
-        legend_labels.append(labels[2])
-        legend_linestyles.append(linestyles[2])
-    if expected_optimal is not None:
-        ax.plot(xlocs,expected_optimal,c=line_colors[3],marker='*',markersize=10, zorder=200,ls=linestyles[3])
-        legend_colors.append(line_colors[3])
-        legend_labels.append(labels[3])
-        legend_linestyles.append(linestyles[3])
         
-    dv.legend(ax,legend_labels,legend_colors,ls = legend_linestyles,loc=legend_loc,fontsize=9)
+    dv.legend(ax,legend_labels,legend_colors,ls = legend_linestyles,loc=legend_loc,fontsize=6)
     
