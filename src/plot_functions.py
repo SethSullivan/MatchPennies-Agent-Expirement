@@ -128,7 +128,7 @@ def unity_optimal_plot(ax,xdata,ydata,it,**kwargs):
 def multiple_models_boxplot(ax,data,show_boxplot=True,
                             known_player=None,unknown_player=None, 
                             known_optimal = None,unknown_optimal=None,
-                            no_switch=None,
+                            no_switch=None, full_fit=None,
                             **kwargs):
     '''
     unknown_player := The decision times are fit to the player, but they don't know about the gamble delay
@@ -148,21 +148,22 @@ def multiple_models_boxplot(ax,data,show_boxplot=True,
     line_colors = kwargs.get('line_colors')
     markerstyles   = kwargs.get('markerstyles')
     #* Dictionary keys
-    dict_keys = ['known_player','unknown_player','known_optimal','unknown_optimal','no_switch']
+    dict_keys = ['known_player','unknown_player','known_optimal','unknown_optimal','no_switch','full_fit']
     #* Get value lists
-    model_values = [known_player,unknown_player,known_optimal,unknown_optimal,no_switch]
+    model_values = [known_player,unknown_player,known_optimal,unknown_optimal,no_switch, full_fit]
     label_values = [f'Model Prediction of Group\n(Account for Guessing)',
                   f'Model Prediction of Group\n(Not Account for Guessing)',
                   f'Theoretical Optimal\n(Account for Guessing)',
                   f'Theoretical Optimal\n(Not Accounting for Guessing)',
-                  f'No Switch Delay'
+                  f'No Switch Delay',
+                  f'Full Fit Model'
     ]       
     if line_colors is None:
-        line_colors = [wheel.rak_red,wheel.yellow,wheel.rak_blue,wheel.light_orange, wheel.white]
+        line_colors = [wheel.rak_red, wheel.yellow, wheel.rak_blue, wheel.light_orange, wheel.white, wheel.purple]
     if linestyles is None:
         linestyles = ['-']*len(dict_keys)
     if markerstyles is None:
-        markerstyles = ['o','o','o','o','x']
+        markerstyles = ['o','o','o','o','x','x']
         
     #* Create dictionaries 
     model_dict = dict(zip(dict_keys,model_values))
