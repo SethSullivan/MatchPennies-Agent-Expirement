@@ -1,9 +1,9 @@
+
 from pathlib import Path
 import numpy as np
 from Optimal_Stopping_Object import ModelConstructor
 from initializer import InitialThangs
 import read_data_functions as rdf
-
 
 #* SELECT EXPERIMENT
 experiment = "Exp1"
@@ -92,6 +92,22 @@ def test_true_and_expected_models_return_same_optimal_decision_time():
     
     assert np.all(model_expected.results.optimal_decision_time == model_true.results.optimal_decision_time)
 
+# def test_get_moments_equations():
+#     # Fake agent distribution 
+#     values_agent = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9])
+#     probs_agent  = np.array([0.1, 0.2, 0.4, 0.2, 0.1, 0.0, 0.0, 0.0, 0.0])
+#     mean_agent = np.sum(values_agent*probs_agent)
+#     std_agent = np.sqrt((values_agent-mean_agent)**2 * probs_agent) # Timing std of the fuck it time for the agent
+
+#     # Fake player distribution
+#     values_player = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9])
+#     probs_player = np.array([0.0, 0.0, 0.1, 0.2, 0.4, 0.2, 0.1, 0.0, 0.0])
+#     mean_player = np.sum(values_player*probs_player) # Timing mean of the fuck it time for the player
+#     std_player = np.sqrt((values_player-mean_player)**2 * probs_player) # Timing std of the fuck it time for the player
+    
+#     timesteps = np.array((values_player,values_player))
+#     time_means = deepcopy(timesteps[0])
+    
 
 if __name__ == '__main__':
-    print(oso)
+    pass
