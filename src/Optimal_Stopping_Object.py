@@ -148,10 +148,10 @@ class ModelInputs:
             self.num_blocks = kwargs.get("num_blocks")
             self.agent_means = kwargs.get("agent_means")  # If exp2, need to be np.array([1100]*4)
             self.agent_sds = kwargs.get("agent_sds")  # If exp2, need to be np.array([50]*4)
-            self.nsteps = 1
-            self.num_timesteps = kwargs.get("num_timesteps")
-            self.timesteps = kwargs.get("timesteps", np.tile(np.arange(0.0, float(self.num_timesteps), self.nsteps), (2, self.num_blocks, 1)))
-            self.old_timesteps = np.tile(np.arange(0.0, float(self.num_timesteps), self.nsteps), (self.num_blocks, 1))
+            self.nsteps = kwargs.get('nsteps',1)
+            self.num_timesteps = int(kwargs.get("num_timesteps")/self.nsteps)
+            self.timesteps = kwargs.get("timesteps", np.tile(np.arange(0.0, float(self.num_timesteps), self.nsteps), (2, self.num_blocks, 1))) # Has shape starting with (2,)
+            self.old_timesteps = np.tile(np.arange(0.0, float(self.num_timesteps), self.nsteps), (self.num_blocks, 1)) # Doesn't have shape starting with (2,)
             self.tiled_1500 = np.full_like(self.timesteps, 1500.0)
             self.tiled_agent_means = np.tile(self.agent_means, (self.timesteps.shape[-1], 1)).T
             self.tiled_agent_sds = np.tile(self.agent_sds, (self.timesteps.shape[-1], 1)).T
@@ -181,8 +181,13 @@ class ModelInputs:
             self.movement_sd = kwargs.get("movement_sd")
             self.timing_sd = kwargs.get("timing_sd")
             self.guess_switch_sd = kwargs.get("guess_switch_sd")
-            self.electromechanical_sd = kwargs.get("electromechanical_sd") #! 8/17/23 Decided I don't need this, timing_sd takes care of this bc there's implicitly electromechanical sd involved
-            self.guess_sd = np.sqrt(self.guess_switch_sd**2 + self.timing_sd**2)
+            self.guess_sd = kwargs.get("guess_sd") #! OPTION to directly use guess leave time sd
+            
+            # If i don't directly use data, then guess_sd is the combination of timing_sd and guess_switch_sd
+            if self.guess_sd is None:
+                self.guess_sd = np.sqrt(self.guess_switch_sd**2 + self.timing_sd**2)
+            else:
+                self.guess_sd = self.guess_sd[...,np.newaxis]
 
             # Ability
             self.reaction_time = kwargs.get("reaction_time")
@@ -200,10 +205,10 @@ class ModelInputs:
             if self.experiment == "Exp2":
                 # Reward and cost values
                 self.reward_matrix = kwargs.get("reward_matrix", np.array([[1, 0, 0], [1, -1, 0], [1, 0, -1], [1, -1, -1]]))
-                self.condition_one = np.tile(self.reward_matrix[0], (1800, 1))
-                self.condition_two = np.tile(self.reward_matrix[1], (1800, 1))
-                self.condition_three = np.tile(self.reward_matrix[2], (1800, 1))
-                self.condition_four = np.tile(self.reward_matrix[3], (1800, 1))
+                self.condition_one = np.tile(self.reward_matrix[0], (self.num_timesteps, 1))
+                self.condition_two = np.tile(self.reward_matrix[1], (self.num_timesteps, 1))
+                self.condition_three = np.tile(self.reward_matrix[2], (self.num_timesteps, 1))
+                self.condition_four = np.tile(self.reward_matrix[3], (self.num_timesteps, 1))
                 
                 self.win_reward = np.vstack(
                     (self.condition_one[:, 0], self.condition_two[:, 0], self.condition_three[:, 0], self.condition_four[:, 0])
@@ -325,9 +330,12 @@ class PlayerBehavior:
         
         #! NOT SURE IF AGENT BEHAVIOR SHOULD INFLUENCE THIS, (8/16/23 i say it should bc it looks like guess leave time sd changes for 1000 and 1100 conditions btwn 50 and 150)
         # Also, the model predicts high guess switch sd when not accounting for it in order to get the best fit. This doesn't seem reflective of reality
-        self.guess_leave_time_sd = np.sqrt(self.agent_behavior.guess_leave_time_sd**2 
-                                            + np.moveaxis(np.tile(self.inputs.guess_sd, (self.inputs.num_timesteps,1,1)), 0,-1)**2
-                                    )
+        if self.inputs.guess_sd.ndim>2:
+            self.guess_leave_time_sd = self.inputs.guess_sd
+        else:
+            self.guess_leave_time_sd = np.sqrt(self.agent_behavior.guess_leave_time_sd**2 
+                                                + np.moveaxis(np.tile(self.inputs.guess_sd, (self.inputs.num_timesteps,1,1)), 0,-1)**2
+                                        )
         #* If each element in the array is the same, then I passed a constant
         #TODO NEED TO DECIDE WHAT I'M GOING TO SAY THE LEAVE TIME SD IS. RIGHT NOW I PASS COINCIDENCE TIME SD
         # TODO BUT THE guess LEAVE TIME SD IS ALSO DEPENDENT ON THE AGENT'S LEAVE TIME SD
