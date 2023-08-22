@@ -29,18 +29,16 @@ Added in the flexibility to change reward around instead of agent mean and sd
 #####################################################
 ###### Helper Functions to get the Moments ##########
 #####################################################
-@nb.njit(fastmath=True)
+@nb.njit(nb.float32(nb.float64[:]), fastmath=True)
 def nb_sum(x):
     n_sum = 0
-    for i in range(len(x)):
+    for i in nb.prange(len(x)):
         n_sum += x[i]
     return n_sum
 
-
-_ = nb_sum(np.array([2, 2]))
-
-
-@nb.njit(parallel=True, fastmath=True)
+# @nb.njit(nb.types.UniTuple(nb.float64[:,:],6)(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:,:], nb.float64[:,:]),
+#          parallel=True, fastmath=True)
+@nb.njit(parallel=True, fastmath=False)
 def get_moments(timesteps, time_means, time_sds, prob_agent_less_player, agent_pdf):
     shape = (time_sds.shape[0], time_means.shape[-1])
     EX_R, EX2_R, EX3_R = np.zeros((shape)), np.zeros((shape)), np.zeros((shape))
@@ -49,7 +47,7 @@ def get_moments(timesteps, time_means, time_sds, prob_agent_less_player, agent_p
 
     for i in nb.prange(len(time_sds)):
         sig_y = time_sds[i]
-        xpdf = agent_pdf[i, :]
+        xpdf = agent_pdf[i,:]
 
         for j in range(time_means.shape[-1]):  # Need to loop through every possible decision time mean
             #*Commented out is the old way of doing this bc sc.erfc is recognized by numba, but now I know how to use norm.cdf with numba (which is the same as the error function)
@@ -69,23 +67,23 @@ def get_moments(timesteps, time_means, time_sds, prob_agent_less_player, agent_p
             y_inverse_integrated = 1 - y_integrated
 
             if prob_x_less_y != 0:
-                EX_R[i, j] = nb_sum(timesteps*xpdf*y_integrated)*dx / prob_x_less_y
-                EX2_R[i, j] = nb_sum((timesteps - EX_R[i, j]) ** 2*xpdf*y_integrated)*dx / prob_x_less_y  # SECOND CENTRAL MOMENT = VARIANCE
+                EX_R[i,j] = nb_sum(timesteps*xpdf*y_integrated)*dx / prob_x_less_y
+                EX2_R[i,j] = nb_sum((timesteps - EX_R[i,j]) ** 2*xpdf*y_integrated)*dx / prob_x_less_y  # SECOND CENTRAL MOMENT = VARIANCE
                 # EX3_R[i,j] = 0 #np.sum((timesteps-EX_R[i,j])**3*xpdf*y_integrated)*dx/prob_x_less_y # THIRD CENTRAL MOMENT = SKEW
             else:
-                EX_R[i, j] = 0
-                EX2_R[i, j] = 0  # SECOND CENTRAL MOMENT = VARIANCE
+                EX_R[i,j] = 0
+                EX2_R[i,j] = 0  # SECOND CENTRAL MOMENT = VARIANCE
                 # EX3_R[i,j] = 0 # THIRD CENTRAL MOMENT = SKEW
 
             if prob_x_greater_y != 0:
-                EX_G[i, j] = nb_sum(timesteps*xpdf*y_inverse_integrated)*dx / prob_x_greater_y
-                EX2_G[i, j] = (
-                    nb_sum((timesteps - EX_G[i, j]) ** 2*xpdf*y_inverse_integrated)*dx / prob_x_greater_y
+                EX_G[i,j] = nb_sum(timesteps*xpdf*y_inverse_integrated)*dx / prob_x_greater_y
+                EX2_G[i,j] = (
+                    nb_sum((timesteps - EX_G[i,j]) ** 2*xpdf*y_inverse_integrated)*dx / prob_x_greater_y
                 )  # SECOND CENTRAL MOMENT = VARIANCE
                 # EX3_G[i,j] = 0#np.sum((timesteps-EX_G[i,j])**3*xpdf*y_inverse_integrated)*dx/prob_x_greater_y # THIRD CENTRAL MOMENT = SKEW
             else:
-                EX_G[i, j] = 0
-                EX2_G[i, j] = 0  # SECOND CENTRAL MOMENT = VARIANCE
+                EX_G[i,j] = 0
+                EX2_G[i,j] = 0  # SECOND CENTRAL MOMENT = VARIANCE
                 # EX3_G[i,j] = 0 # THIRD CENTRAL MOMENT = SKEW
 
     return EX_R, EX2_R, EX3_R, EX_G, EX2_G, EX3_G
@@ -552,17 +550,17 @@ class Results:
             raise ValueError('metric_type must be \'true\' or \'expected\'')
         
         if metric2 is None: # For non-reaction/guess metrics
-            ans = np.zeros(metric1.shape[1])*np.nan
-            for i in range(metric1.shape[1]):
+            ans = np.zeros(self.inputs.num_blocks)*np.nan
+            for i in range(self.inputs.num_blocks):
                 if metric1.ndim < 3:
                     ans[i] = metric1[i,timing_index[i]]
                 else:
                     ans[i] = metric1[metric_type_index, i, timing_index[i]]
             return ans
         else: # For reaction/guess perc metrics
-            ans1 = np.zeros(metric1.shape[1])*np.nan
-            ans2 = np.zeros(metric2.shape[1])*np.nan
-            for i in range(metric1.shape[1]):
+            ans1 = np.zeros(self.inputs.num_blocks)*np.nan
+            ans2 = np.zeros(self.inputs.num_blocks)*np.nan
+            for i in range(self.inputs.num_blocks):
                 if metric1.ndim < 3:
                     ans1[i] = metric1[i,timing_index[i]]
                     ans2[i] = metric2[i,timing_index[i]]
@@ -806,7 +804,7 @@ class Group_Models():
                 metric = getattr(inner_obj, metric_name)
                 # Loop through blocks to return the metric at that optimal
                 for j in range(self.num_blocks):
-                    ans[i, j] = metric[j, indices[i, j]]
+                    ans[i,j] = metric[j, indices[i,j]]
         else: 
             # Get inner objects
             inner_objs1 = getattr(self, object_name)
@@ -818,8 +816,8 @@ class Group_Models():
                 metric_denom = getattr(inner_obj2, metric_name2)
                 # Loop through blocks to return the metric at that optimal
                 for j in range(self.num_blocks):
-                    num[i, j] = metric_num[j, indices[i, j]]
-                    denom[i, j] = metric_denom[j, indices[i, j]]
+                    num[i,j] = metric_num[j, indices[i,j]]
+                    denom[i,j] = metric_denom[j, indices[i,j]]
             ans = num/denom
         return ans
 
