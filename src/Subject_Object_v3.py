@@ -144,9 +144,9 @@ class RawData():
         '''
         if isinstance(arr,np.ndarray):
             if self.exp_info.select_trials == 'First Half':
-                return arr[:,:self.exp_info.num_task_trials,...]
+                return arr[:,:,:self.exp_info.num_task_trials,...]
             elif self.exp_info.select_trials == 'Second Half':
-                return arr[:,self.exp_info.num_task_trials:,...]
+                return arr[:,:,self.exp_info.num_task_trials:,...]
             elif self.exp_info.select_trials == 'All Trials':
                 return arr
             else:
@@ -661,8 +661,8 @@ class DecisionMetrics:
             for j in range(self.exp_info.num_task_blocks):
                 for k,t in enumerate(timesteps):
                     temp_predicted_perc_reaction_decisions[j,k]   = np.count_nonzero(self.raw_data.agent_task_leave_time[i,j,:]<=t)/self.num_task_trials*100
-                    react_loss[i,j,k]                             = abs(self.react_guess_score_metrics.react_guess_decisions('react')[i,j]/self.num_task_trials*100 - 
-                                                                        temp_predicted_perc_reaction_decisions[i,j,k])
+                    react_loss[i,j,k]                             = abs(self.react_guess_score_metrics.react_guess_decisions('react')[i,j]/self.num_task_trials*100 
+                                                                        - temp_predicted_perc_reaction_decisions[i,j,k])
                     temp_predicted_perc_gamble_decisions[i,j,k]   = np.count_nonzero(self.raw_data.agent_task_leave_time[i,j,:]>t)/self.num_task_trials*100
                     gamble_loss[i,j,k]                            = abs(self.react_guess_score_metrics.react_guess_decisions('react')[i,j]/self.num_task_trials*100
                                                                         - temp_predicted_perc_gamble_decisions[i,j,k])
