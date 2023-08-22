@@ -124,7 +124,42 @@ def unity_optimal_plot(ax,xdata,ydata,it,**kwargs):
         ax1.set_xlim(-0.3,1.2)
         ax1.set_xticks([])
         ax1.spines.bottom.set_visible(False)
+        
+def multiple_models_boxplot_v2(ax,data,model_data_list,labels,show_boxplot=True,
+                            **kwargs):
+    bw            = kwargs.get('box_width',0.75)
+    box_color     = kwargs.get('colors',wheel.seth_blue)
+    xlocs         = kwargs.get('xlocs')
+    legend_loc    = kwargs.get('legend_loc','best')
+    include_means = kwargs.get('include_means')
+    jitter        = kwargs.get('jitter',True)
+    remove_parentheses_from_labels = kwargs.get('remove_parentheses_from_labels',False)
+    linestyles = kwargs.get('linestyles')
+    if show_boxplot:
+        ax,bp = multi_boxplot(ax,data,xlocs,box_width = bw,colors=box_color,include_means=include_means)
+        if jitter:
+            dv.jitter_array(ax=ax,x_positions=xlocs,data_list=data.T, noise_scale=0.01, include_mean = False, circle_size=30)
 
+    line_colors = kwargs.get('line_colors')
+    if line_colors is None:
+        line_colors = [wheel.rak_red,wheel.yellow,wheel.rak_blue,wheel.light_orange]
+
+    if linestyles is None:
+        linestyles = ['-','-','-','-']
+    legend_colors = []
+    legend_labels = []
+    legend_linestyles    = []
+
+    for i in range(len(model_data_list)):
+        ax.plot(xlocs,model_data_list[i],c=line_colors[i],marker='*',markersize=10, zorder=200,ls=linestyles[i])
+        legend_colors.append(line_colors[i])
+        legend_labels.append(labels[i])
+        legend_linestyles.append(linestyles[i])
+
+    dv.legend(ax,legend_labels,legend_colors,ls = legend_linestyles,loc=legend_loc,fontsize=9)
+
+#! Legacy for Optimal_Stopping_Model_With_Data_Group
+#! v2 is a much more concices implementation and is better
 def multiple_models_boxplot(ax,data,show_boxplot=True,
                             known_player=None,unknown_player=None, 
                             known_optimal = None,unknown_optimal=None,
