@@ -139,7 +139,7 @@ def generate_subject_objects(experiment):
     return subject_objects
 
 
-def generate_subject_object_v3(experiment):
+def generate_subject_object_v3(experiment, select_trials='All Trials'):
     #* Experiment specific Constants
     if True:
         experiment = experiment
@@ -240,7 +240,7 @@ def generate_subject_object_v3(experiment):
         data_path = 'Subjects_Analyzed\\'        
         subject_object = SubjectBuilder(
             subjects= figures_pull_list,experiment = experiment, num_task_trials_initial = TASK_TRIALS, num_task_blocks = TASK_BLOCKS, 
-            num_reaction_blocks = REACTION_BLOCKS, num_reaction_trials = REACTION_TRIALS,num_timing_trials = TIMING_TRIALS, select_trials='All Trials',
+            num_reaction_blocks = REACTION_BLOCKS, num_reaction_trials = REACTION_TRIALS,num_timing_trials = TIMING_TRIALS, select_trials=select_trials,
             
             reaction_trial_start = reaction_trial_start, reaction_xypos_data = reaction_xypos_data,
             reaction_dist_data = reaction_dist_data, reaction_xyvelocity_data = reaction_xyvelocity_data,
