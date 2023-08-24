@@ -736,8 +736,13 @@ class ModelFitting:
         
         #* Change the keyword arguments that are being modified
         for k,v in free_param_dict.items():
-            self.model.kwargs[k][0] = v #! Always changing the TRUE value, the expected value should always be set as of 8/15/23
+            # Try is for if I'm fitting the switch delay (which is an array of 2, so we assign to 0, which is true)
+            # Except is for if I'm fitting the rewards associated with the scoring 
+            try:
+                self.model.kwargs[k][0] = v #! Always changing the TRUE value, the expected value should always be set as of 8/15/23
         
+            except TypeError:
+                self.model.kwargs[k] = v
         #* Pass new set of kwargs to the inputs, then run through model constructor sequence again
         self.model.inputs = ModelInputs(**self.model.kwargs) 
         
