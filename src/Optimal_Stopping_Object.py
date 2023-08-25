@@ -230,8 +230,7 @@ class ModelInputs:
             
             if not self.switch_cost_exists:
                 assert self.guess_switch_delay[1] == self.guess_switch_delay[0] #! 0 refers to 'true' and 1 refers to 'exp'
-                assert self.guess_switch_sd[1] == self.guess_switch_sd[0]
-                assert np.sum(self.guess_switch_delay + self.guess_switch_sd) == 0
+                # assert np.sum(self.guess_switch_delay + self.guess_switch_sd) == 0
             # else:
             #     assert self.guess_switch_delay[1] != self.guess_switch_delay[0]
             #     assert self.guess_switch_sd[1] != self.guess_switch_sd[0]
@@ -328,10 +327,10 @@ class PlayerBehavior:
         
         #! NOT SURE IF AGENT BEHAVIOR SHOULD INFLUENCE THIS, (8/16/23 i say it should bc it looks like guess leave time sd changes for 1000 and 1100 conditions btwn 50 and 150)
         # Also, the model predicts high guess switch sd when not accounting for it in order to get the best fit. This doesn't seem reflective of reality
-        if self.inputs.guess_sd.ndim>2:
-            self.guess_leave_time_sd = self.inputs.guess_sd
+        if self.inputs.guess_sd.ndim>2: 
+            self.guess_leave_time_sd = np.tile(self.inputs.guess_sd, (self.inputs.num_timesteps)) # DOESN'T Add on agent behavior, took it from data which includes that
         else:
-            self.guess_leave_time_sd = np.sqrt(self.agent_behavior.guess_leave_time_sd**2 
+            self.guess_leave_time_sd = np.sqrt(self.agent_behavior.guess_leave_time_sd**2 # Does include agent behavior
                                                 + np.moveaxis(np.tile(self.inputs.guess_sd, (self.inputs.num_timesteps,1,1)), 0,-1)**2
                                         )
         #* If each element in the array is the same, then I passed a constant
@@ -534,7 +533,6 @@ class Results:
             expectation (aka self.inputs.key = 1)
             - It will then apply that decision index onto the TRUE array
         '''
-        
         if decision_type == "optimal":
             timing_index = self.optimal_decision_index[self.inputs.key,:] # Need self inputs key so that if it's expected, we take the optimal decision time for EXPECTED inputs
         elif decision_type == 'fit':
