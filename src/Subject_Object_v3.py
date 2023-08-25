@@ -6,6 +6,7 @@ import warnings
 from functools import cached_property, lru_cache
 from copy import deepcopy
 import read_data_functions as rdf
+import time
 
 SCORE_METRIC_NAMES = ('wins','incorrects','indecisions')
 
@@ -197,7 +198,9 @@ class MovementMetrics:
         enter_left_target_id[enter_left_target_id == 0] = self.big_num
         
         return enter_right_target_id, enter_left_target_id
-            
+    
+    
+    
     def target_reach_times(self,task):
         '''
         Calculate when the participants hand position enters the right or left target
@@ -226,7 +229,13 @@ class MovementMetrics:
         ans[reach_times == self.big_num] = 0 # Player never left start and thus failed to select a target
         
         return ans
-        
+    
+    def left_right_decisions(self,left_right):
+        if left_right == 'left':
+            return np.count_nonzero(self.task_decision_array==-1,axis=2)
+        if left_right == 'right':
+            return np.count_nonzero(self.task_decision_array==1, axis=2)
+    
     def movement_onset_times(self, task, replace_zeros_with_nan = True):
         if task == 'reaction':
             if self.metric_type == 'position':
@@ -325,7 +334,7 @@ class MovementMetrics:
     
     def exp2_react_gamble_repeats_or_alternates(self, react_or_guess, repeats_or_alternates):
         raise NotImplementedError('Still need to implement this')
-
+    
     @property
     def both_reached_mask(self):
         ans = np.logical_and(self.task_decision_array!=0, self.raw_data.agent_task_decision_array!=0)
@@ -340,7 +349,7 @@ class MovementMetrics:
         
         1 is right, -1 is left
         '''
-        time_for_init_reach_direction = self.movement_onset_times('task') + 30
+        time_for_init_reach_direction = self.movement_onset_times('task') + 50
         xpos = self.raw_data.task_xypos_data[...,0]
         xpos_at_init_reach_direction = np.zeros(time_for_init_reach_direction.shape)*np.nan
         ans = np.zeros_like(xpos_at_init_reach_direction)*np.nan
@@ -358,32 +367,46 @@ class MovementMetrics:
                     else:
                         ans[i,j,k] = -1
         return ans
+    
+    def left_right_initial_selection(self,left_right):
+        if left_right == 'left':
+            return np.count_nonzero(self.inital_decision_direction==-1,axis=2)
+        if left_right == 'right':
+            return np.count_nonzero(self.inital_decision_direction==1, axis=2)
 
     @property
     def correct_initial_decisions(self):
-        initial_decision_direction = self.inital_decision_direction
-        ans = np.count_nonzero(initial_decision_direction == self.raw_data.agent_task_target_selection_array,axis=2)
+        ans = np.count_nonzero(self.initial_decision_direction == self.raw_data.agent_task_target_selection_array,axis=2)
         return ans
     
     @property
     def find_final_target_selection(self):
-        #TODO
+        #TODO Might want to do the velocity vector at 1500, but only if they didn't make it there
         xpos_at_end = self.raw_data.task_xypos_data[...,1500,0]
         xdist_to_right_target = abs(xpos_at_end - self.exp_info.target1x)
-        xdist_to_left_target = abs(xpos_at_end - self.exp_info.target2x)
+        xdist_to_left_target  = abs(xpos_at_end - self.exp_info.target2x)
         closer_to_right = xdist_to_right_target < xdist_to_left_target
         ans = np.zeros_like(xpos_at_end)
         ans[closer_to_right] = 1
         ans[~closer_to_right] = -1
         
-        print(ans)        
         return ans
+    
+    def left_right_final_target_selection(self,left_right):
+        if left_right == 'left':
+            return np.count_nonzero(self.find_final_target_selection==-1,axis=2)
+        if left_right == 'right':
+            return np.count_nonzero(self.find_final_target_selection==1,axis=2)
     
     @property
     def check_change_of_mind(self):
-        return np.where(self.find_final_target_selection!=self.inital_decision_direction)
+        return np.count_nonzero(self.find_final_target_selection!=self.inital_decision_direction,axis=2)    
     
-        
+    @property
+    def change_of_mind_trials(self):
+        return np.where(self.find_final_target_selection!=self.inital_decision_direction)    
+
+    
 class ScoreMetrics:
     def __init__(self, exp_info: ExperimentInfo, raw_data: RawData, movement_metrics: MovementMetrics):
         self.exp_info = exp_info
@@ -458,6 +481,11 @@ class ScoreMetrics:
         else:
             return np.count_nonzero(incorrect_and_both_reached_mask,axis=2)
         
+        
+    def correct_decisions(self, perc=True):
+        raise NotImplementedError('Correct decisions are not implemented')    
+    
+
     def correct_decisions(self, perc=True):
         raise NotImplementedError('Correct decisions are not implemented')    
     
@@ -578,13 +606,13 @@ class ReactGuessMovementMetrics:
     
     def agent_movement_onset_times(self, react_or_guess):
         return mask_array(self.raw_data.agent_task_leave_time, self.react_guess_mask[react_or_guess])
-
+        
 class DecisionMetrics:
     def __init__(self, exp_info: ExperimentInfo, raw_data: RawData, movement_metrics: MovementMetrics,
                  react_guess_score_metrics: ReactGuessScoreMetrics):
         self.exp_info = exp_info
         self.raw_data = raw_data
-        self.react_guess_score_metrics = react_guess_score_metrics\
+        self.react_guess_score_metrics = react_guess_score_metrics
         # THese two are filled in in the predict_stopping_times() function 
         self.predicted_perc_reaction_decisions = np.zeros((self.exp_info.num_subjects, self.exp_info.num_task_blocks)) 
         self.predicted_perc_gamble_decisions   = np.zeros((self.exp_info.num_subjects, self.exp_info.num_task_blocks))
@@ -593,6 +621,8 @@ class DecisionMetrics:
     def predict_stopping_times(self):
         '''
         Using the percentage reactions and gambles to predict the stopping time
+        
+        Returns stopping times, as well as creates predicted perc reaction and gamble decisions 
         '''
         timesteps = np.arange(500,1800,1)
         player_stopping_times_index            = np.zeros((self.exp_info.num_subjects, self.exp_info.num_task_blocks))
@@ -616,23 +646,38 @@ class DecisionMetrics:
                 self.predicted_perc_gamble_decisions[i,j]   = temp_predicted_perc_gamble_decisions[i,j,int(player_stopping_times_index[i,j])]
         
         return player_stopping_times_index + np.min(timesteps)
+    
+    def correct_init_decisions(self, perc=True):
+        xpos = self.raw_data.task_xypos_data[...,0] 
+        nan_mask = np.isnan(self.movement_metrics.movement_onset_times('task'))
+        time_for_init_reach_direction = self.movement_metrics.movement_onset_times('task') + 30 # Look 30 milliseconds later
+        time_for_init_reach_direction[nan_mask] = 0
+        idx = time_for_init_reach_direction
+        xpos_init_reach = np.zeros_like(idx)
+        for i in range(self.exp_info.num_subjects):
+            for j in range(self.exp_info.num_task_blocks):
+                for k in range(self.exp_info.num_task_trials):
+                    xpos_init_reach[i,j,k] = xpos[i,j,k,int(idx[i,j,k])]
+        right_mask = xpos_init_reach > self.exp_info.startx
+        left_mask  = xpos_init_reach < self.exp_info.startx
         
-    def predicted_guess_react_decisions(self,react_or_guess):    
-        '''
-        This is based on the predicted stopping times
-        '''   
-        for j in range(self.exp_info.num_task_blocks):
-            for k,t in enumerate(timesteps):
-                # Get the perc reaction decisions at every possible stopping time k
-                if react_or_guess == 'react':
-                    temp_predicted_decisions[j,k] = np.count_nonzero(self.raw_data.agent_task_leave_time[j,:]<=t)/self.exp_info.num_task_trials*100
-                elif react_or_guess == 'guess':
-                    temp_predicted_decisions[j,k] = np.count_nonzero(self.raw_data.agent_task_leave_time[j,:]>t)/self.exp_info.num_task_trials*100
-                else:
-                    raise ValueError('react_or_guess must be \'react\' or \'guess\'')
-            # ans = temp_predicted_decisions[j] = temp_predicted_decisions[j, int(self.player_st)]
-        # return temp_predicted_decisions
+        correct_right = right_mask*self.raw_data.agent_task_target_selection_array
+        correct_left = left_mask*self.raw_data.agent_task_target_selection_array
+
+        init_reach_direction = np.zeros((self.exp_info.num_subjects,self.exp_info.num_task_blocks,self.exp_info.num_task_trials))
+        init_reach_direction[right_mask] = 1
+        init_reach_direction[left_mask] = -1
         
+        correct_init_decision_mask = init_reach_direction == self.raw_data.agent_task_target_selection_array
+        
+        correct_init_decisions = np.count_nonzero(correct_init_decision_mask,axis=2)
+        
+        if perc:
+            return correct_init_decisions/self.exp_info.num_task_trials*100
+        else:
+            return correct_init_decisions
+
+
 class SubjectBuilder:
     def __init__(self,subjects,experiment,num_task_blocks,num_task_trials_initial,num_reaction_blocks,
                  num_reaction_trials,num_timing_trials, select_trials,
@@ -661,6 +706,7 @@ class SubjectBuilder:
             task_xyvelocity_data=task_xyvelocity_data, task_speed_data=task_speed_data, 
             agent_task_target_selection_array=agent_task_target_selection_array, agent_task_leave_time=agent_task_leave_time,
         )
+        
         movement_metrics_type = kwargs.get('movement_metrics_type','velocity')
         self.movement_metrics = MovementMetrics(
             exp_info=self.exp_info, 
