@@ -1,7 +1,6 @@
 import pandas as pd
 from matplotlib import pyplot as plt
 import numpy as np
-import os
 import warnings
 from functools import cached_property, lru_cache
 from copy import deepcopy
@@ -75,9 +74,6 @@ class ExperimentInfo:
         # Make sure I don't have the wrong experiment in there
         if self.experiment == 'Exp2':
             assert self.num_task_blocks == 4 
-                
-    def __repr__(self) -> str:
-        return f'Subject: {self.subject}, Experiment: {self.experiment} {self.__class__.__name__} Object'
 
 class RawData():
     def __init__(self, exp_info: ExperimentInfo, 
@@ -95,8 +91,6 @@ class RawData():
             self.reaction_dist_data             = reaction_dist_data
             self.reaction_xyvelocity_data       = reaction_xyvelocity_data
             self.reaction_speed_data            = reaction_speed_data
-            # self.reaction_xyforce_data          = reaction_xyforce_data
-            # self.reaction_force_data            = reaction_force_data
             self.reaction_trial_type_array      = reaction_trial_type_array
             self.reaction_trial_start           = reaction_trial_start
             self.agent_reaction_decision_array  = agent_reaction_decision_array
@@ -115,29 +109,12 @@ class RawData():
             self.task_dist_data                 = self.slice_array(task_dist_data)
             self.task_xyvelocity_data           = self.slice_array(task_xyvelocity_data)
             self.task_speed_data                = self.slice_array(task_speed_data)
-            # self.task_xyforce_data              = self.slice_array(task_xyforce_data)
-            # self.task_force_data                = self.slice_array(task_force_data)
             self.agent_task_target_selection_array      = self.slice_array(agent_task_target_selection_array)
             self.agent_task_leave_time          = self.slice_array(agent_task_leave_time)
             self.agent_task_reach_time          = self.agent_task_leave_time + 150
             
             self.agent_task_decision_array = deepcopy(self.agent_task_target_selection_array)
             self.agent_task_decision_array[self.agent_task_reach_time>1500] = 0
-                    
-        # self.player_task_leave_time                = self.slice_array(kwargs.get('player_task_leave_time'))
-        # self.player_yforce_task_leave_time         = self.slice_array(kwargs.get('player_yforce_task_leave_time'))
-        # self.player_task_movement_time             = self.slice_array(kwargs.get('player_task_movement_time'))
-        # self.player_yforce_task_movement_time      = self.slice_array(kwargs.get('player_yforce_task_movement_time'))
-        # self.player_task_reach_time                = self.slice_array(kwargs.get('player_task_reach_time'))
-        # self.agent_task_leave_time                 = self.slice_array(kwargs.get('agent_task_leave_time'))
-        # self.agent_task_movement_time              = self.slice_array(kwargs.get('agent_task_movement_time'))
-        # self.agent_task_reach_time                 = self.slice_array(kwargs.get('agent_task_reach_time'))
-        # self.player_minus_agent_task_leave_time = self.player_task_leave_time - self.agent_task_leave_time
-        # self.player_yforce_minus_agent_task_leave_time = self.player_yforce_task_leave_time - self.agent_task_leave_time
-        
-        
-        # self.reaction_time_700_mask = self.reaction_time < 700
-        # self.reaction_time = self.mask_array(self.reaction_time,self.reaction_time_700_mask)
         
     def slice_array(self,arr):
         '''
@@ -198,8 +175,6 @@ class MovementMetrics:
         enter_left_target_id[enter_left_target_id == 0] = self.big_num
         
         return enter_right_target_id, enter_left_target_id
-    
-    
     
     def target_reach_times(self,task):
         '''
@@ -341,7 +316,7 @@ class MovementMetrics:
         return ans
     
     @cached_property
-    def inital_decision_direction(self):
+    def initial_decision_direction(self):
         '''
         This gets the hand position of the participant, 30ms after their movement onset
         
