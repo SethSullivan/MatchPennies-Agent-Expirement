@@ -367,6 +367,11 @@ class MovementMetrics:
         
         return ans
     
+    @property 
+    def correct_final_decisions(self):
+        ans = np.count_nonzero(self.find_final_target_selection == self.raw_data.agent_task_target_selection_array,axis=2)
+        return ans
+    
     def left_right_final_target_selection(self,left_right):
         if left_right == 'left':
             return np.count_nonzero(self.find_final_target_selection==-1,axis=2)
