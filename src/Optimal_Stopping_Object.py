@@ -29,16 +29,16 @@ Added in the flexibility to change reward around instead of agent mean and sd
 #####################################################
 ###### Helper Functions to get the Moments ##########
 #####################################################
-@nb.njit(nb.float32(nb.float64[:]), fastmath=True)
+@nb.njit(nb.float64(nb.float64[:]), parallel=True, fastmath=False)
 def nb_sum(x):
     n_sum = 0
     for i in nb.prange(len(x)):
         n_sum += x[i]
     return n_sum
 
-# @nb.njit(nb.types.UniTuple(nb.float64[:,:],6)(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:,:], nb.float64[:,:]),
-#          parallel=True, fastmath=True)
-@nb.njit(parallel=True, fastmath=False)
+@nb.njit(nb.types.UniTuple(nb.float64[:,:],6)(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:,:], nb.float64[:,:]),
+         parallel=True, fastmath=True)
+# @nb.njit(parallel=True, fastmath=False)
 def get_moments(timesteps, time_means, time_sds, prob_agent_less_player, agent_pdf):
     shape = (time_sds.shape[0], time_means.shape[-1])
     EX_R, EX2_R, EX3_R = np.zeros((shape)), np.zeros((shape)), np.zeros((shape))
@@ -161,14 +161,15 @@ class ModelInputs:
 
         #*Player Parameters and Rewards
         if True:
+            #* Expected sets the key that determines which array will be used when calculating the optimal. 
+            #* This decision time is then applied onto the true array
+            # ! To modulate which values aren't and are accounted for, need to make [0,...] == [1,...]
             self.expected = kwargs.get("expected")
             if self.expected:
                 self.key = 1 # 1 refers to 'exp' row
             else:
                 self.key = 0 # 0 refers to 'true' row
-    
-            self.switch_cost_exists = kwargs.get('switch_cost_exists')
-    
+        
             #  HOW MUCH PEOPLE WEIGH WINS VERSUS CORRECTNESS IS THE BETA TERM
             self.prob_win_when_both_reach = kwargs.get("perc_wins_when_both_reach") / 100
             # self.BETA_ON                   = kwargs.get('BETA_ON')
@@ -178,10 +179,10 @@ class ModelInputs:
             self.reaction_sd = kwargs.get("reaction_sd")
             self.movement_sd = kwargs.get("movement_sd")
             self.timing_sd = kwargs.get("timing_sd")
-            self.guess_switch_sd = kwargs.get("guess_switch_sd")
+            self.guess_switch_sd = kwargs.get("guess_switch_sd") # This would include an electromechanical sd in it 
             self.guess_sd = kwargs.get("guess_sd") #! OPTION to directly use guess leave time sd
             
-            # If i don't directly use data, then guess_sd is the combination of timing_sd and guess_switch_sd
+            # If i don't directly use data, then guess_sd is the combination of timing_sd (includes electromechanical sd probably) and guess_switch_sd
             if self.guess_sd is None:
                 self.guess_sd = np.sqrt(self.guess_switch_sd**2 + self.timing_sd**2)
             else:
@@ -224,12 +225,6 @@ class ModelInputs:
             # Prob of selecting the correct target
             self.prob_selecting_correct_target_reaction = kwargs.get("prob_selecting_correct_target_reaction", 1.0)
             self.prob_selecting_correct_target_guess = kwargs.get("prob_selecting_correct_target_guess", 0.5)
-
-            # Ensure that if the switch cost doesn't exist, that the exp and true are the same
-            assert self.switch_cost_exists is not None
-            
-            if not self.switch_cost_exists:
-                assert self.guess_switch_delay[1] == self.guess_switch_delay[0] #! 0 refers to 'true' and 1 refers to 'exp'
                 # assert np.sum(self.guess_switch_delay + self.guess_switch_sd) == 0
             # else:
             #     assert self.guess_switch_delay[1] != self.guess_switch_delay[0]
@@ -481,6 +476,8 @@ class ExpectedReward:
             + score_metrics.prob_incorrect*self.inputs.incorrect_cost
             + score_metrics.prob_indecision*self.inputs.indecision_cost
         )
+        
+        # self.suboptimal_wtd_exp_reward = self.inputs.alpha*self.exp_reward + (1 - self.inputs.alpha)*self. 
 
 
 class Results:
@@ -495,7 +492,9 @@ class Results:
         self.inputs = inputs
         self.er = er
         self.fit_decision_index = None
-
+        self.max_exp_reward = np.nanmax(self.er.exp_reward,axis=2)
+        
+        
     @property
     def optimal_decision_index(self):
         return np.nanargmax(self.er.exp_reward, axis=2).astype(int)*self.inputs.nsteps
@@ -533,6 +532,9 @@ class Results:
             expectation (aka self.inputs.key = 1)
             - It will then apply that decision index onto the TRUE array
         '''
+        
+        #! METRIC TYPE SHOULD BE TRUE ALMOST ALWAYS
+        #    - BC we want to use the optimal decision times from the EXPECTED arrays and apply those onto the TRUE arrays for unknown case
         if decision_type == "optimal":
             timing_index = self.optimal_decision_index[self.inputs.key,:] # Need self inputs key so that if it's expected, we take the optimal decision time for EXPECTED inputs
         elif decision_type == 'fit':
