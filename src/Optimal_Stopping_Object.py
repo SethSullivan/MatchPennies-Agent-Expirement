@@ -1,3 +1,4 @@
+from _pytest.junitxml import timing
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import stats
@@ -29,16 +30,16 @@ Added in the flexibility to change reward around instead of agent mean and sd
 #####################################################
 ###### Helper Functions to get the Moments ##########
 #####################################################
-@nb.njit(nb.float64(nb.float64[:]), parallel=True, fastmath=False)
+@nb.njit(fastmath=True)
 def nb_sum(x):
     n_sum = 0
     for i in nb.prange(len(x)):
         n_sum += x[i]
     return n_sum
 
-@nb.njit(nb.types.UniTuple(nb.float64[:,:],6)(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:,:], nb.float64[:,:]),
-         parallel=True, fastmath=True)
-# @nb.njit(parallel=True, fastmath=False)
+# @nb.njit(nb.types.UniTuple(nb.float64[:,:],6)(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:,:], nb.float64[:,:]),
+        #  parallel=True, fastmath=True)
+@nb.njit(parallel=True, fastmath=False)
 def get_moments(timesteps, time_means, time_sds, prob_agent_less_player, agent_pdf):
     shape = (time_sds.shape[0], time_means.shape[-1])
     EX_R, EX2_R, EX3_R = np.zeros((shape)), np.zeros((shape)), np.zeros((shape))
@@ -453,12 +454,22 @@ class ScoreMetrics:
         )
 
         assert np.allclose(self.prob_win + self.prob_incorrect + self.prob_indecision, 1.0)
+        
+        # self.suboptimal_wtd_exp_reward = self.inputs.alpha*self.exp_reward + (1 - self.inputs.alpha)*self. 
 
+class Results:
+    """
+    This class contains
+    1. Find optimal function that uses the optimal index on the metrics calculated at every time step (From ScoreMetrics)
+    2. Gets guess/reaction calculations w/ first input being the guess or reaction and second being the value that divides it
+        - So we can get perc_reaction_wins which is (prob_win_reaction/prob_win)*100
+    """
 
-class ExpectedReward:
-    def __init__(self, model_inputs: ModelInputs, score_metrics: ScoreMetrics):
-        self.inputs = model_inputs
-
+    def __init__(self, inputs: ModelInputs,score_metrics: ScoreMetrics):
+        self.inputs = inputs
+        self.score_metrics = score_metrics
+        # self.max_exp_reward = np.nanmax(np.round(self.results.exp_reward,3),axis=2)[:,:,np.newaxis]
+        # self.last_max_index = np.argwhere(np.round(self.results.exp_reward,3) - self.max_exp_reward == 0)[-1]
         self.exp_reward_reaction = (
             score_metrics.prob_win_reaction*self.inputs.win_reward
             + score_metrics.prob_incorrect_reaction*self.inputs.incorrect_cost
@@ -471,41 +482,36 @@ class ExpectedReward:
             + score_metrics.prob_indecision_guess*self.inputs.indecision_cost
         )
 
-        self.exp_reward = (
+        self.round_num = 20
+        self.exp_reward = np.round(
             score_metrics.prob_win*self.inputs.win_reward
             + score_metrics.prob_incorrect*self.inputs.incorrect_cost
-            + score_metrics.prob_indecision*self.inputs.indecision_cost
+            + score_metrics.prob_indecision*self.inputs.indecision_cost,
+            self.round_num
         )
-        
-        # self.suboptimal_wtd_exp_reward = self.inputs.alpha*self.exp_reward + (1 - self.inputs.alpha)*self. 
-
-
-class Results:
-    """
-    This class contains
-    1. Find optimal function that uses the optimal index on the metrics calculated at every time step (From ScoreMetrics)
-    2. Gets guess/reaction calculations w/ first input being the guess or reaction and second being the value that divides it
-        - So we can get perc_reaction_wins which is (prob_win_reaction/prob_win)*100
-    """
-
-    def __init__(self, inputs: ModelInputs, er: ExpectedReward):
-        self.inputs = inputs
-        self.er = er
         self.fit_decision_index = None
-        self.max_exp_reward = np.nanmax(self.er.exp_reward,axis=2)
-        
-        
     @property
     def optimal_decision_index(self):
-        return np.nanargmax(self.er.exp_reward, axis=2).astype(int)*self.inputs.nsteps
+        #* Not rounded, forward argmax
+        # return np.nanargmax(self.exp_reward, axis=2).astype(int)*self.inputs.nsteps
+        #* Rounded, forward
+        # return np.nanargmax(np.round(self.exp_reward,self.round_num), axis=2).astype(int)*self.inputs.nsteps
+        #* Rounded, backward
+        a = np.round(self.exp_reward,self.round_num)
+        return a.shape[2] - 1 - np.argmax(np.flip(a, axis=2), axis=2)
 
     @property
     def optimal_decision_time(self):
-        return np.nanargmax(self.er.exp_reward, axis=2)*self.inputs.nsteps + np.min(self.inputs.timesteps)
+        # return np.nanargmax(self.exp_reward, axis=2)*self.inputs.nsteps + np.min(self.inputs.timesteps)
+        return self.optimal_decision_index*self.inputs.nsteps + np.min(self.inputs.timesteps)
 
     @property
     def optimal_exp_reward(self):
-        return np.nanmax(self.er.exp_reward, axis=2)
+        # return np.nanmax(self.exp_reward, axis=2)
+        # return np.nanmax(np.round(self.exp_reward,self.round_num), axis=2)
+        #* Rounded, backward
+        a = np.round(self.exp_reward,self.round_num)
+        return np.max(a,axis=2)
 
     @property
     def fit_decision_time(self):
@@ -514,8 +520,9 @@ class Results:
     @property
     def fit_exp_reward(self):
         ans = np.zeros(self.inputs.num_blocks)
+        rounded_exp_reward = np.round(self.exp_reward,self.round_num)
         for i in range(self.inputs.num_blocks):
-            ans[i] = self.er.exp_reward[i, self.fit_decision_index[i]]
+            ans[i] = rounded_exp_reward[i, self.fit_decision_index[i]]
         return ans
 
     def set_fit_decision_index(self, index):
@@ -589,8 +596,7 @@ class ModelConstructor:
         self.agent_behavior   = AgentBehavior(self.inputs)
         self.player_behavior  = PlayerBehavior(self.inputs, self.agent_behavior)
         self.score_metrics    = ScoreMetrics(self.inputs, self.player_behavior, self.agent_behavior)
-        self.expected_reward  = ExpectedReward(self.inputs, self.score_metrics)
-        self.results          = Results(self.inputs, self.expected_reward)
+        self.results          = Results(self.inputs,self.score_metrics)
         
     def fit_model(self, metric, target) -> None:
         '''
@@ -601,7 +607,48 @@ class ModelConstructor:
         loss = abs(metric - target[np.newaxis,:, np.newaxis]) # Get the vectorized loss between metric (2,6,1800) and target (6,)
         decision_index = np.argmin(loss, axis=2)  # Across timesteps (axis=2) return the indices that minimize difference between metric and target
         self.results.set_fit_decision_index(decision_index.astype(int)) # Set the decision_index
+        
+    def plot_optimals(self, metric_names=['exp_reward'],optimal_fit='optimal', **kwargs):
+        figsize = kwargs.get('figsize',(20,10))
+        dpi     = kwargs.get('dpi',125)
+        xlocs   = kwargs.get('xlocs',np.arange(0,self.inputs.num_timesteps))
+        ylocs   = kwargs.get('ylocs',np.arange(0,1.1,0.25))
+        xlabel  = kwargs.get('xlabel', 'Time (ms)')
+        ylabel  = kwargs.get('ylabel', 'Probability')
+        suptitle   = kwargs.get('suptitle', None)
+        titles  = kwargs.get('titles', None)
+        show_optimals = kwargs.get('show_optimals',True)
+        
+        if optimal_fit == 'optimal':
+            decision_time = self.results.optimal_decision_time
+            decision_index = self.results.optimal_decision_index
+        elif optimal_fit == 'fit':
+            decision_time = self.results.fit_decision_time
+            decision_index = self.results.fit_decision_index
+        fig,axs = plt.subplots(2,3,figsize=figsize, dpi=125)
+        for metric in metric_names:
+            if metric in dir(self.results):
+                y = getattr(self.results,metric)
+            elif metric in dir(self.score_metrics):
+                y = getattr(self.score_metrics,metric)
+            elif metric in dir(self.player_behavior,metric):
+                y = getattr(self.player_behavior,metric)
+            for i,ax in enumerate(axs.T.flatten()):
+                ax.plot(xlocs,y[self.inputs.key,i,:])
+                if show_optimals:
+                    ax.plot((decision_time[self.inputs.key,i],decision_time[self.inputs.key,i]),
+                            (min(ylocs),self.results.exp_reward[self.inputs.key,i,decision_index[self.inputs.key,i]]),c='w')
+                    ax.text(decision_time[self.inputs.key,i],self.results.exp_reward[self.inputs.key, i,decision_index[self.inputs.key,i]]+0.03,
+                            f'Optimal Decision Time = {decision_time[self.inputs.key,i]}',ha = 'center')
 
+                # ax.set_xticks(xlocs)
+                ax.set_yticks(ylocs)
+                ax.set_xlabel(xlabel)
+                ax.set_ylabel(ylabel)
+                ax.set_title(titles[i])
+        fig.suptitle(suptitle)
+        plt.tight_layout()
+        
 class ModelFitting:
     '''
     Pass ModelConstructor to fit free parameters
@@ -753,8 +800,7 @@ class ModelFitting:
             
         self.model.player_behavior = PlayerBehavior(self.model.inputs, self.model.agent_behavior)
         self.model.score_metrics   = ScoreMetrics(self.model.inputs, self.model.player_behavior, self.model.agent_behavior)
-        self.model.expected_reward = ExpectedReward(self.model.inputs, self.model.score_metrics)
-        self.model.results         = Results(self.model.inputs, self.model.expected_reward)
+        self.model.results         = Results(self.model.inputs, self.model.score_metrics)
         
         #* Get new fit decision time (as of 6/26/23 I'm no longer fitting these decision times)
         # self.fit_model(self.player_behavior.wtd_leave_time,self.data_leave_times)
@@ -824,8 +870,7 @@ class Group_Models():
                     num[i,j] = metric_num[j, indices[i,j]]
                     denom[i,j] = metric_denom[j, indices[i,j]]
             ans = num/denom
-        return ans
-
+        return ans        
 #################################################################################################
 #################################################################################################
 #################################################################################################
