@@ -256,12 +256,12 @@ class AgentBehavior:
     @cached_property
     def prob_not_making(self):
         ans = 1 - stats.norm.cdf(1500,self.inputs.agent_means + 150,self.inputs.agent_sds)
-        return ans[np.newaxis,:]
+        return ans
     
     @cached_property
     def prob_making(self):
         ans = stats.norm.cdf(1500,self.inputs.agent_means + 150,self.inputs.agent_sds)
-        return ans[np.newaxis,:]
+        return ans
     
     @property
     def agent_moments(self):
@@ -280,8 +280,21 @@ class AgentBehavior:
         prob_agent_less_player = stats.norm.cdf(
             0, self.inputs.agent_means - inf_timesteps, np.sqrt(self.inputs.agent_sds**2 + (tiled_timing_sd) ** 2)
         )
+        true_moments = get_moments(inf_timesteps.squeeze(), time_means.squeeze(), 
+                                       self.inputs.timing_sd[self.inputs.key,:], 
+                                       prob_agent_less_player[0,], 
+                                       agent_pdf[0,])
+        
+        expected_moments = get_moments(inf_timesteps.squeeze(), time_means.squeeze(), 
+                                       self.inputs.timing_sd[self.inputs.key,:], 
+                                       prob_agent_less_player[1,], 
+                                       agent_pdf[1,])
+        return_vals = []
+        for a,b in zip(true_moments,expected_moments):
+            return_vals.append(np.stack((a,b)))
+        return return_vals
         # Call get moments equation
-        return get_moments(inf_timesteps.squeeze(), time_means.squeeze(), self.inputs.timing_sd[self.inputs.key,:], prob_agent_less_player, agent_pdf)
+        # return get_moments(inf_timesteps.squeeze(), time_means.squeeze(), self.inputs.timing_sd[self.inputs.key,:], prob_agent_less_player, agent_pdf)
 
     def cutoff_agent_behavior(self):
         # Get the First Three moments for the left and right distributions (if X<Y and if X>Y respectively)
@@ -482,7 +495,7 @@ class Results:
             + score_metrics.prob_indecision_guess*self.inputs.indecision_cost
         )
 
-        self.round_num = 20
+        self.round_num = 3
         self.exp_reward = np.round(
             score_metrics.prob_win*self.inputs.win_reward
             + score_metrics.prob_incorrect*self.inputs.incorrect_cost
@@ -563,7 +576,7 @@ class Results:
                     ans[i] = metric1[i,timing_index[i]]
                 else:
                     ans[i] = metric1[metric_type_index, i, timing_index[i]]
-            return ans
+            return np.round(ans,self.round_num)
         else: # For reaction/guess perc metrics
             ans1 = np.zeros(self.inputs.num_blocks)*np.nan
             ans2 = np.zeros(self.inputs.num_blocks)*np.nan
@@ -574,7 +587,8 @@ class Results:
                 else:
                     ans1[i] = metric1[metric_type_index, i, timing_index[i]]
                     ans2[i] = metric2[metric_type_index, i, timing_index[i]]
-            return np.divide(ans1, ans2, out=np.zeros_like(ans2), where=ans2 > 1e-10)
+            return np.divide(np.round(ans1,self.round_num), np.round(ans2,self.round_num), 
+                              out=np.zeros_like(ans2), where=ans2 > 1e-10)
 
 
 class ModelConstructor:
