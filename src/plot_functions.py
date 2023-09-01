@@ -4,6 +4,26 @@ import data_visualization as dv
 from scipy import stats
 wheel = dv.ColorWheel()
 
+class PlottingKwargs:
+    def __init__(self,**kwargs):
+        self.bw            = kwargs.get('box_width',0.75)
+        self.box_color     = kwargs.get('colors',wheel.seth_blue)
+        self.xlocs         = kwargs.get('xlocs')
+        self.ylocs         = kwargs.get('ylocs')
+        self.legend_loc    = kwargs.get('legend_loc','best')
+        self.include_means = kwargs.get('include_means')
+        self.jitter        = kwargs.get('jitter',True)
+        self.line_colors   = kwargs.get('line_colors')
+        self.linestyles    = kwargs.get('linestyles')
+        self.xticklabels   = kwargs.get('xticklabels')
+        self.xlabel        = kwargs.get('xlabel')
+        self.ylabel        = kwargs.get('ylabel')
+        self.title         = kwargs.get('title')
+        self.legend_fontsize = kwargs.get('legend_fontsize',6)
+        self.box_lw       = kwargs.get("box_lw", 1.2)
+        self.box_width    = kwargs.get("box_width", .75)
+        self.whisker_lw   = kwargs.get("whisker_lw", 2.0)
+
 def make_figure_panel(figsize, inset_size, dpi = 100):
     fig,axmain = plt.subplots(dpi = dpi, figsize = figsize)
     
@@ -88,87 +108,80 @@ def scatter_with_correlation(ax,xdata,ydata,**kwargs):
             
     return ax,spear_r
 
-def unity_optimal_plot(ax,xdata,ydata,it,**kwargs):
-    figsize = kwargs.get('figsize',(10,5))
-    num_blocks = kwargs.get('num_blocks',6)
-    for i in range(num_blocks):
-        fig, (ax0, ax1) = plt.subplots(1, 2, gridspec_kw={'width_ratios': [2.5, 1]},figsize = (10,5),dpi=125)   
-        ax0.scatter(xdata[:,i], ydata[:,i])
-        ax0.plot(xlocs,ylocs, color = wheel.dark_grey)
-        ax0.set_xlim(xlocs[0],xlocs[-1])
-        ax0.set_ylim(ylocs[0],ylocs[-1])
-        ax0.set_xlabel('Optimal Mean Decision Time (ms)')
-        ax0.set_ylabel('Participant Mean Decision Time (ms)')
-        ax0.set_title(f'Optimal Simulation vs. Participant Mean Decision Time\nCondition: {it.trial_block_titles[i]}')
+# def unity_optimal_plot(axs,xdata,ydata,it,**kwargs):
+#     pk = PlottingKwargs(**kwargs)
+#     ax0,ax1 = axs
+#     for i in range(pk.xlocs):
+#         ax0.scatter(xdata[:,i], ydata[:,i])
+#         ax0.plot(pk.xlocs,pk.ylocs, color = wheel.dark_grey)
+#         ax0.set_xlim(pk.xlocs[0],pk.xlocs[-1])
+#         ax0.set_ylim(pk.ylocs[0],pk.ylocs[-1])
+#         ax0.set_xlabel('Optimal Mean Decision Time (ms)')
+#         ax0.set_ylabel('Participant Mean Decision Time (ms)')
+#         ax0.set_title(f'Optimal Simulation vs. Participant Mean Decision Time\nCondition: {it.trial_block_titles[i]}')
 
 
-        diff = data_metric[:,i] - all_subjects_sim_results_dict[metric][:,i] 
-        ax1.scatter(ax1_xlocs,diff)
-        ax1.axhline(zorder=0,linestyle='--')
-        max_diff = np.max(abs(diff))
+#         diff = data_metric[:,i] - all_subjects_sim_results_dict[metric][:,i] 
+#         ax1.scatter(ax1_xlocs,diff)
+#         ax1.axhline(zorder=0,linestyle='--')
+#         max_diff = np.max(abs(diff))
 
-        arrow_length = max_diff 
-        head_length = 0.2*arrow_length
-        arrow_x_init = -0.25
-        arrow_y_init = max_diff/10
+#         arrow_length = max_diff 
+#         head_length = 0.2*arrow_length
+#         arrow_x_init = -0.25
+#         arrow_y_init = max_diff/10
         
-        text_y1 = arrow_length/2 + arrow_y_init
-        text_y2 = -arrow_length/2 - arrow_y_init
+#         text_y1 = arrow_length/2 + arrow_y_init
+#         text_y2 = -arrow_length/2 - arrow_y_init
         
-        ax1.arrow(arrow_x_init,arrow_y_init,0, arrow_length, width = 0.05, length_includes_head = False, head_length = head_length,head_width=0.15,shape = 'left',color=wheel.grey)
-        ax1.text(arrow_x_init/2,text_y1,'Greater Mean\nDecision Time',rotation = 90, fontweight='bold',ha='center',va='center',fontsize=9)
-        ax1.arrow(arrow_x_init,-arrow_y_init,0,-arrow_length, width = 0.05, length_includes_head = False, head_length = head_length,head_width=0.15,shape = 'right',color=wheel.grey)
-        ax1.text(arrow_x_init/2,text_y2,'Lesser Mean\nDecision Time',rotation = 90, fontweight='bold',ha='center',va='center',fontsize = 9)
+#         ax1.arrow(arrow_x_init,arrow_y_init,0, arrow_length, width = 0.05, length_includes_head = False, head_length = head_length,head_width=0.15,shape = 'left',color=wheel.grey)
+#         ax1.text(arrow_x_init/2,text_y1,'Greater Mean\nDecision Time',rotation = 90, fontweight='bold',ha='center',va='center',fontsize=9)
+#         ax1.arrow(arrow_x_init,-arrow_y_init,0,-arrow_length, width = 0.05, length_includes_head = False, head_length = head_length,head_width=0.15,shape = 'right',color=wheel.grey)
+#         ax1.text(arrow_x_init/2,text_y2,'Lesser Mean\nDecision Time',rotation = 90, fontweight='bold',ha='center',va='center',fontsize = 9)
         
-        ax1.set_ylim(-max_diff-(1/2)*max_diff,max_diff+(1/2)*max_diff)
-        ax1.set_xlim(-0.3,1.2)
-        ax1.set_xticks([])
-        ax1.spines.bottom.set_visible(False)
+#         ax1.set_ylim(-max_diff-(1/2)*max_diff,max_diff+(1/2)*max_diff)
+#         ax1.set_xlim(-0.3,1.2)
+#         ax1.set_xticks([])
+#         ax1.spines.bottom.set_visible(False)
         
 def multiple_models_boxplot_v2(ax,data,model_data_list,labels,show_boxplot=True,
                                **kwargs):
-    bw            = kwargs.get('box_width',0.75)
-    box_color     = kwargs.get('colors',wheel.seth_blue)
-    xlocs         = kwargs.get('xlocs')
-    ylocs         = kwargs.get('ylocs')
-    legend_loc    = kwargs.get('legend_loc','best')
-    include_means = kwargs.get('include_means')
-    jitter        = kwargs.get('jitter',True)
-    line_colors   = kwargs.get('line_colors')
-    linestyles    = kwargs.get('linestyles')
-    xticklabels   = kwargs.get('xticklabels')
-    xlabel        = kwargs.get('xlabel')
-    ylabel        = kwargs.get('ylabel')
-    title         = kwargs.get('title')
+    pk = PlottingKwargs(**kwargs)
     if show_boxplot:
-        ax,bp = multi_boxplot(ax,data,xlocs,box_width = bw,colors=box_color,include_means=include_means)
-        if jitter:
-            dv.jitter_array(ax=ax,x_positions=xlocs,data_list=data.T, noise_scale=0.01, include_mean = False, circle_size=30)
+        ax,bp = multi_boxplot(ax,data,pk.xlocs,box_width = pk.bw,colors=pk.box_color,include_means=pk.include_means)
+        if pk.jitter:
+            dv.jitter_array(ax=ax,x_positions=pk.xlocs,data_list=data.T, noise_scale=0.01, include_mean = False, circle_size=30)
 
-    if line_colors is None:
-        line_colors = [wheel.rak_red,wheel.yellow,wheel.rak_blue,wheel.light_orange,
+    if pk.line_colors is None:
+        pk.line_colors = [wheel.rak_red,wheel.yellow,wheel.rak_blue,wheel.light_orange,
                        wheel.lighten_color(wheel.rak_red,0.5),wheel.lighten_color(wheel.yellow,0.5),
                        wheel.lighten_color(wheel.rak_blue,0.5),wheel.lighten_color(wheel.light_orange,0.5)]
 
-    if linestyles is None:
-        linestyles = ['-','-','-','-','--','--','--','--']
+    if pk.linestyles is None:
+        pk.linestyles = ['-','-','-','-','--','--','--','--']
     
     legend_colors = []
     legend_labels = []
     legend_linestyles = []
+    offset = np.linspace(-pk.bw/5,pk.bw/5,len(model_data_list))
     for i in range(len(model_data_list)):
-        ax.plot(xlocs,model_data_list[i],c=line_colors[i],marker='*',markersize=10, zorder=200,ls=linestyles[i])
-        legend_colors.append(line_colors[i])
+        ax.plot(pk.xlocs+offset[i],model_data_list[i],c=pk.line_colors[i],marker='*',markersize=10, zorder=200,ls=pk.linestyles[i])
+        legend_colors.append(pk.line_colors[i])
         legend_labels.append(labels[i])
-        legend_linestyles.append(linestyles[i])
-    ax.set_xticks(xlocs)
-    ax.set_yticks(ylocs)
-    ax.set_xticklabels(xticklabels)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    ax.set_title(title)
-    dv.legend(ax,legend_labels,legend_colors,ls = legend_linestyles,loc=legend_loc,fontsize=6, ncol=2)
-
+        legend_linestyles.append(pk.linestyles[i])
+    ax.set_xticks(pk.xlocs)
+    ax.set_yticks(pk.ylocs)
+    ax.set_xticklabels(pk.xticklabels)
+    ax.set_xlabel(pk.xlabel)
+    ax.set_ylabel(pk.ylabel)
+    ax.set_title(pk.title)
+    if len(labels)>3:
+        ncol = 2
+    else:
+        ncol=1
+    dv.legend(ax,legend_labels,legend_colors,ls = legend_linestyles,loc=pk.legend_loc,
+              fontsize=pk.legend_fontsize, ncol=ncol, columnspacing=1)
+    
 #! Legacy for Optimal_Stopping_Model_With_Data_Group
 #! v2 is a much more concise implementation and is better
 def multiple_models_boxplot(ax,data,show_boxplot=True,
@@ -190,8 +203,8 @@ def multiple_models_boxplot(ax,data,show_boxplot=True,
     include_means = kwargs.get('include_means')
     jitter        = kwargs.get('jitter',True)
     labels        = kwargs.get('labels')
-    linestyles = kwargs.get('linestyles')
-    line_colors = kwargs.get('line_colors')
+    linestyles    = kwargs.get('linestyles')
+    line_colors   = kwargs.get('line_colors')
     markerstyles   = kwargs.get('markerstyles')
     #* Dictionary keys
     dict_keys = ['known_player','unknown_player','known_optimal','unknown_optimal','no_switch','full_fit']
