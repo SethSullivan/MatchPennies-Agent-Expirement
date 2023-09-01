@@ -6,6 +6,7 @@ from functools import cached_property, lru_cache
 from copy import deepcopy
 import read_data_functions as rdf
 import time
+from scipy.ndimage import median_filter
 
 SCORE_METRIC_NAMES = ('wins','incorrects','indecisions')
 
@@ -385,8 +386,14 @@ class MovementMetrics:
     @property
     def change_of_mind_trials(self):
         return np.where(self.find_final_target_selection!=self.inital_decision_direction)    
-
     
+    def running_movement_sd(self, window_size = 15):
+        raise NotImplementedError('Not done, don\'t think this is helpful')
+        running_medians = median_filter(self.movement_onset_times('task'),size=10,mode='nearest')
+        normalized_movement_onset = []
+        for median in running_medians:
+            normalized_movement_onset.append()
+        
 class ScoreMetrics:
     def __init__(self, exp_info: ExperimentInfo, raw_data: RawData, movement_metrics: MovementMetrics):
         self.exp_info = exp_info
