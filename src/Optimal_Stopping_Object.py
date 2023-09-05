@@ -173,15 +173,13 @@ class ModelInputs:
         
             #  HOW MUCH PEOPLE WEIGH WINS VERSUS CORRECTNESS IS THE BETA TERM
             self.prob_win_when_both_reach = kwargs.get("perc_wins_when_both_reach") / 100
-            # self.BETA_ON                   = kwargs.get('BETA_ON')
-            # self.BETA = self.find_beta_term()
 
             # Uncertainty
-            self.reaction_sd = kwargs.get("reaction_sd")
-            self.movement_sd = kwargs.get("movement_sd")
-            self.timing_sd = kwargs.get("timing_sd")
+            self.reaction_sd     = kwargs.get("reaction_sd")
+            self.movement_sd     = kwargs.get("movement_sd")
+            self.timing_sd       = kwargs.get("timing_sd")
             self.guess_switch_sd = kwargs.get("guess_switch_sd") # This would include an electromechanical sd in it 
-            self.guess_sd = kwargs.get("guess_sd") #! OPTION to directly use guess leave time sd
+            self.guess_sd        = kwargs.get("guess_sd") #! OPTION to directly use guess leave time sd
             
             # If i don't directly use data, then guess_sd is the combination of timing_sd (includes electromechanical sd probably) and guess_switch_sd
             if self.guess_sd is None:
@@ -190,13 +188,13 @@ class ModelInputs:
                 self.guess_sd = self.guess_sd[...,np.newaxis]
 
             # Ability
-            self.reaction_time = kwargs.get("reaction_time")
-            self.movement_time = kwargs.get("movement_time")
+            self.reaction_time               = kwargs.get("reaction_time")
+            self.movement_time               = kwargs.get("movement_time")
             self.reaction_plus_movement_time = self.reaction_time + self.movement_time
             
-            self.guess_switch_delay = kwargs.get("guess_switch_delay")
-            self.electromechanical_delay = kwargs.get('electromechanical_delay')
-            self.guess_delay = self.guess_switch_delay + self.electromechanical_delay
+            self.guess_switch_delay       = kwargs.get("guess_switch_delay")
+            self.electromechanical_delay  = kwargs.get('electromechanical_delay')
+            self.guess_delay              = self.guess_switch_delay + self.electromechanical_delay
             self.guess_plus_movement_time = self.timesteps + self.movement_time[:,np.newaxis,np.newaxis] + self.guess_delay[...,np.newaxis]
 
             assert self.electromechanical_delay[0] == self.electromechanical_delay[0]
@@ -495,7 +493,7 @@ class Results:
             + score_metrics.prob_indecision_guess*self.inputs.indecision_cost
         )
 
-        self.round_num = 3
+        self.round_num = 20
         self.exp_reward = np.round(
             score_metrics.prob_win*self.inputs.win_reward
             + score_metrics.prob_incorrect*self.inputs.incorrect_cost
