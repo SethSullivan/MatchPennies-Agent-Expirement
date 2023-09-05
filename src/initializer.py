@@ -7,7 +7,7 @@ class InitialThangs:
         self.experiment = experiment
         os.chdir(f'D:\OneDrive - University of Delaware - o365\Subject_Data\MatchPennies_Agent_{experiment}')
         self.PATH = Path(os.getcwd())
-        self.SAVE_PATH = f'C:\\Users\\Seth Sullivan\\OneDrive - University of Delaware - o365\\Desktop\\MatchPennies-Agent-Expirement\\Group_Figures\\{experiment}\\'
+        self.SAVE_PATH = Path(f'C:\\Users\\Seth Sullivan\\OneDrive - University of Delaware - o365\\Desktop\\MatchPennies-Agent-Expirement\\Group_Figures\\{experiment}\\')
         if not os.path.exists(self.SAVE_PATH):
             os.makedirs(self.SAVE_PATH)
 
@@ -31,13 +31,12 @@ class InitialThangs:
             self.xlabel = 'Agent Mean [SD] Movement Onset Time (ms)'
             self.num_blocks = len(self.trial_block_titles)
             self.num_trials = 80
-            self.num_rows,num_cols = 2,3
+            self.num_rows,self.num_cols = 2,3
             self.condition_nums = ['0','1','2','3','4','5']
             self.f1_xlabel = 'Agent Mean Movement Onset Time (ms)'
             self.f2_xlabel = 'Agent SD Movement Onset Time (ms)'
             self.f1_collapse_xticklabs = ['1000','1100','1200']
             self.f2_collapse_xticklabs = ['50','150']
-            self.num_rows,self.num_cols = 2,3
             
         if experiment == 'Exp2':
             self.tp3_title = "Win = 1\nIncorrect = 0\nIndecision = 0"
