@@ -5,6 +5,10 @@ def ape_loss(pred: np.ndarray, targets: np.ndarray, drop_condition_num: int):
     Absolute Percent Error
     
     '''
+    if isinstance(pred, list):
+        pred = np.array(pred)
+    if isinstance(targets, list):
+        targets = np.array(targets)
     assert pred.shape == targets.shape, "Predictions and Targets must be same shape"
     pred = pred.squeeze()
     targets = targets.squeeze()
