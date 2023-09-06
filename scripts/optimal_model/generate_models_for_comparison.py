@@ -1,14 +1,11 @@
 import numpy as np
 import dill
-import matplotlib.pyplot as plt
-import data_visualization as dv
 from copy import deepcopy
-import time
 from pathlib import Path
 import pandas as pd
+from datetime import datetime
 
 import read_data_functions as rdf
-import plot_functions as pf
 from Optimal_Stopping_Object import ModelConstructor
 from initializer import InitialThangs
 import loss_functions as lf
@@ -17,6 +14,11 @@ import loss_functions as lf
 
 #* Select experiment you'd like to run
 EXPERIMENT = "Exp1"
+
+#* GET THE MODEL TRACKER TABLE
+models_path = Path(r'D:\OneDrive - University of Delaware - o365\Desktop\MatchPennies-Agent-Expirement\results\exp1\models')
+with open(models_path / 'exp1_model_table.pkl', 'rb') as file:
+    MODEL_TABLE = dill.load(file)
 
 #* Initial Thangs
 # Get path and save path 
@@ -30,11 +32,11 @@ if 'group' not in locals():
     
 #* Set inputs for models
 if True:
-    if experiment == "Exp1":
+    if EXPERIMENT == "Exp1":
         rt    = np.nanmedian(np.nanmedian(group.movement_metrics.reaction_times, axis=1)) - 25
         rt_sd = np.nanmedian(np.nanstd(group.movement_metrics.reaction_times, axis=1))
 
-    elif experiment == "Exp2":
+    elif EXPERIMENT == "Exp2":
         rt    = np.nanmedian(np.nanmedian(group.movement_metrics.exp2_react_guess_reaction_time_split('react','only'), axis=1)) - 25
         rt_sd = np.nanmedian(np.nanstd(group.movement_metrics.reaction_times, axis=2))
 
@@ -94,6 +96,8 @@ targets = np.array(
 metric_keys = ['wtd_leave_time','prob_win','prob_incorrect','prob_indecision']
 
 #* Loop through all the changing parameters
+c=0
+list_of_input_rows = []
 for i,(agent_sd_change, rt_sd_change, mt_sd_change, timing_sd_change) in enumerate(change_sd_list):
     for j, (guess_switch_delay_true, guess_switch_delay_expected) in enumerate(zip(guess_switch_delay_true_list,guess_switch_delay_expected_list)):
         for k, (guess_switch_sd_true, guess_switch_sd_expected) in enumerate(zip(guess_switch_sd_true_list,guess_switch_sd_expected_list)):
@@ -119,12 +123,25 @@ for i,(agent_sd_change, rt_sd_change, mt_sd_change, timing_sd_change) in enumera
                     incorrect_cost=incorrect_cost,
                     indecision_cost=indecision_cost,
                 )
-                inputs_row = vars(model.inputs)
+                input_row_dict = vars(model.inputs)
                 model_metrics = [model.player_behavior.wtd_leave_time, model.score_metrics.prob_win,
                                  model.score_metrics.prob_incorrect,model.score_metrics.prob_indecision ]
                 predictions = [model.results.get_metric(metric,decision_type='optimal',metric_type='true') for metric in model_metrics]
                 loss = lf.ape_loss(predictions, targets, drop_condition_num=None) 
-                
-                
-    # known_switch_delay_no_altered_reward_dict.update({model_dict_keys_sd[i]:model})
+                input_row_dict.update({'loss':loss})
+                model_name = f'model{c}_{datetime.now():%Y_%m_%d_%H_%M_%S}'
+                input_row_dict.update({'model_name':model_name})
+                list_of_input_rows.append(input_row_dict)
+                c+=1
 
+df = pd.DataFrame(list_of_input_rows)
+
+NEW_MODEL_TABLE = pd.concat((MODEL_TABLE, df))
+
+#* Save the old model table to a new file before re-writing
+with open(models_path / f'exp1_model_table_{datetime.now():%Y_%m_%d_%H_%M_%S}','wb') as f:
+    dill.dump(MODEL_TABLE, f)
+
+#* Update the exp1_model_table to the newest
+with open(models_path / 'exp1_model_table.pkl', 'wb') as f: 
+    dill.dump(NEW_MODEL_TABLE, f)
