@@ -6,6 +6,7 @@ import pandas as pd
 import sys
 import itertools
 from pathlib import Path
+from copy import deepcopy
 
 sys.path.insert(0,r'D:\OneDrive - University of Delaware - o365\Desktop\MatchPennies-Agent-Expirement')
 from Subject_Object_v3 import SubjectBuilder
@@ -257,7 +258,17 @@ def generate_subject_object_v3(experiment, select_trials='All Trials'):
     return subject_object
 
 
-def save_models(model:object, model_dict: dict, model_name: str):
+def create_model_df(model: object, model_name: str) -> pd.DataFrame:
+    inputs_row = deepcopy(vars(model.inputs))
+    for k,v in inputs_row.items():
+            if isinstance(v, np.ndarray):
+                if np.isclose(v,v[0]).all():
+                    inputs_row[k] = v[0]
+                inputs_row[k] = inputs_row[k].tolist()      
+    inputs_row.pop('timesteps')
+
+
+def save_models(model: object, model_dict: dict, model_name: str):
     '''
     This function creates a folder for that model if it doesn't exist,
     pickles the model itself, saves the json of inputs, and saves any associated figures
