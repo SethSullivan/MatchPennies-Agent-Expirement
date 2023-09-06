@@ -5,6 +5,8 @@ import importlib
 import pandas as pd
 import sys
 import itertools
+from pathlib import Path
+
 sys.path.insert(0,r'D:\OneDrive - University of Delaware - o365\Desktop\MatchPennies-Agent-Expirement')
 from Subject_Object_v3 import SubjectBuilder
 import Subject_Object_v2
@@ -253,3 +255,28 @@ def generate_subject_object_v3(experiment, select_trials='All Trials'):
                                     )
     assert TRIAL_TIME == 2000    
     return subject_object
+
+
+def save_models(model:object, model_dict: dict, model_name: str):
+    '''
+    This function creates a folder for that model if it doesn't exist,
+    pickles the model itself, saves the json of inputs, and saves any associated figures
+    
+    '''
+    os.chdir('D:\\OneDrive - University of Delaware - o365\\Desktop\\MatchPennies-Agent-Expirement\\results\\models')
+    SAVE_PATH = Path(model_name)
+    
+    # Create folder for model if it doesn't exist yet
+    if not SAVE_PATH.is_dir():
+        SAVE_PATH.mkdir()
+    # Pickle Model object
+    
+    # Pickle json of the model inputs
+    JSON_PATH = SAVE_PATH / 't'
+    model_inputs_dict = vars(model.inputs)
+    for k,v in model_inputs_dict.items():
+        if isinstance(v, np.ndarray):
+            if np.isclose(v == v[0]).all():
+                model_inputs_dict[k] = v[0]
+    with open():
+        pass
