@@ -20,6 +20,7 @@ class PlottingKwargs:
         self.ylabel        = kwargs.get('ylabel')
         self.title         = kwargs.get('title')
         self.legend_fontsize = kwargs.get('legend_fontsize',6)
+        self.title_fontsize = kwargs.get('title_fontsize',20)
         self.box_lw       = kwargs.get("box_lw", 1.2)
         self.box_width    = kwargs.get("box_width", .75)
         self.whisker_lw   = kwargs.get("whisker_lw", 2.0)
@@ -144,13 +145,14 @@ def scatter_with_correlation(ax,xdata,ydata,**kwargs):
 #         ax1.set_xticks([])
 #         ax1.spines.bottom.set_visible(False)
         
-def multiple_models_boxplot_v2(ax,data,model_data_list,labels,show_boxplot=True,
+def multiple_models_boxplot_v2(ax,data,model_data,labels,show_boxplot=True,
                                **kwargs):
     pk = PlottingKwargs(**kwargs)
+    
     if show_boxplot:
         ax,bp = multi_boxplot(ax,data,pk.xlocs,box_width = pk.bw,colors=pk.box_color,include_means=pk.include_means)
         if pk.jitter:
-            dv.jitter_array(ax=ax,x_positions=pk.xlocs,data_list=data.T, noise_scale=0.01, include_mean = False, circle_size=30)
+            dv.jitter_array(ax=ax,x_positions=pk.xlocs,data=data.T, noise_scale=0.01, include_mean = False, circle_size=30)
 
     if pk.line_colors is None:
         pk.line_colors = [wheel.rak_red,wheel.yellow,wheel.rak_blue,wheel.light_orange,
@@ -163,18 +165,19 @@ def multiple_models_boxplot_v2(ax,data,model_data_list,labels,show_boxplot=True,
     legend_colors = []
     legend_labels = []
     legend_linestyles = []
-    offset = np.linspace(-pk.bw/5,pk.bw/5,len(model_data_list))
-    for i in range(len(model_data_list)):
-        ax.plot(pk.xlocs+offset[i],model_data_list[i],c=pk.line_colors[i],marker='*',markersize=10, zorder=200,ls=pk.linestyles[i])
+    offset = np.linspace(-pk.bw/5,pk.bw/5,len(model_data))
+    for i in range(len(model_data)):
+        ax.plot(pk.xlocs+offset[i],model_data[i],c=pk.line_colors[i],marker='*',markersize=10, zorder=200,ls=pk.linestyles[i])
         legend_colors.append(pk.line_colors[i])
         legend_labels.append(labels[i])
         legend_linestyles.append(pk.linestyles[i])
-    ax.set_xticks(pk.xlocs)
+        
+    ax.set_xticks(np.linspace(data.shape[1]))
     ax.set_yticks(pk.ylocs)
     ax.set_xticklabels(pk.xticklabels)
     ax.set_xlabel(pk.xlabel)
     ax.set_ylabel(pk.ylabel)
-    ax.set_title(pk.title)
+    ax.set_title(pk.title, fontsize = pk.title_fontsize)
     if len(labels)>3:
         ncol = 2
     else:
@@ -234,7 +237,7 @@ def multiple_models_boxplot(ax,data,show_boxplot=True,
     if show_boxplot:
         ax,bp = multi_boxplot(ax,data,xlocs,box_width = bw,colors=box_color,include_means=include_means)
         if jitter:
-            dv.jitter_array(ax=ax,x_positions=xlocs,data_list=data.T, noise_scale=0.01, include_mean = False, circle_size=30)
+            dv.jitter_array(ax=ax,x_positions=xlocs,data=data.T, noise_scale=0.01, include_mean = False, circle_size=30)
     
     #* Plot models as lines
     legend_colors = []
