@@ -2,7 +2,7 @@ Group_Figures/
 Individual_Figures/
 Modeling Figures/
 Model Objects/
-results/
+figures/
 __pycache__/
 src.egg-info/
 *.png
