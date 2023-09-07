@@ -4,6 +4,8 @@ from copy import deepcopy
 from pathlib import Path
 import pandas as pd
 from datetime import datetime
+import itertools
+from tqdm import tqdm
 
 import read_data_functions as rdf
 from Optimal_Stopping_Object import ModelConstructor
@@ -48,39 +50,53 @@ if True:
 
 #* Set the parameters that change with each model
 if True:
-    AGENT_SD_CHANGE  = 150
-    RT_SD_CHANGE     = rt_sd/2
-    MT_SD_CHANGE     = mt_sd/2
-    TIMING_SD_CHANGE = time_sd[0]/2 # Array of 6, just want one
-    GUESS_SWITCH_DELAY = 65
-    GUESS_SWITCH_SD    = 30
     # Create keys of what's being changed
     model_dict_keys_sd = ['agent_sd', 'rt_sd', 'mt_sd', 'timing_sd']
 
     # (*LOOP 1*) List for altering each uncertainty
-    change_sd_list = [(AGENT_SD_CHANGE,0,0,0), (0,RT_SD_CHANGE,0,0), (0,0,MT_SD_CHANGE,0), (0,0,0,TIMING_SD_CHANGE)]
+    agent_sd_change = [rt_sd/2, 0] # Cut it in half or keep it the same
+    rt_sd_change   = [rt_sd/2, 0]
+    mt_sd_change   = [mt_sd/2, 0]
+    timing_sd_change = [time_sd[0]/2,0]
+
     # (*LOOP 2*) Create guess switch delay true and expected, where every other is equal
+    GUESS_SWITCH_DELAY = 65
     guess_switch_delay_true_list = [GUESS_SWITCH_DELAY]*2
     guess_switch_delay_expected_list = [GUESS_SWITCH_DELAY,0]
 
     # (*LOOP 3*) Create guess switch sd true and expected, where every other is equal
+    GUESS_SWITCH_SD    = 30
     guess_switch_sd_true_list = [GUESS_SWITCH_SD]*2
     guess_switch_sd_expected_list = [GUESS_SWITCH_SD,0]
 
     # (*LOOP 4*)
+    INCORRECT_CHANGE = -0.2
     if EXPERIMENT == 'Exp1':  
-        BASE_WIN_REWARD = 1.0
-        BASE_INCORRECT_COST = 0.0
-        BASE_INDECISION_COST = 0.0
-        score_rewards_list = np.array([[1.0, 0.0, 0.0], [1.0, -0.2, 0.0]])
-        reward_matrix_list = [np.array([[1, 0, 0], [1, -1, 0], [1, 0, -1], [1, -1, -1]])] #! Not used in exp1, so just one element in loop
+        score_rewards_list = [[1.0, 0.0, 0.0], [1.0, INCORRECT_CHANGE, 0.0]]
+    elif EXPERIMENT == 'Exp2':  
+        score_rewards_list = np.array([[1.0, 0.0, 0.0], [1.0, INCORRECT_CHANGE, 0.0]])
 
-    if EXPERIMENT == 'Exp2':  
-        score_rewards_list = np.array([[1.0, 0.0, 0.0], [1.0, -0.2, 0.0]])
 
-        reward_matrix_list = [np.array([[1, 0, 0], [1, -1, 0], [1, 0, -1], [1, -1, -1]]),
-                              np.array([[1, -0.2, 0], [1, -1.2, 0], [1, -0.2, -1], [1, -1.2, -1]])]
 
+    params_dict = {
+        'agent_sd_change': [150, 0],
+        'rt_sd_change':[rt_sd/2,0],
+        'mt_sd_change':[mt_sd/2,0],
+        'timing_sd_change':[time_sd[0]/2,0],
+        'guess_switch_delay_true':[GUESS_SWITCH_DELAY,0],
+        'guess_switch_delay_expected':[GUESS_SWITCH_DELAY,0],
+        'guess_switch_sd_true':[GUESS_SWITCH_SD,0],
+        'guess_switch_sd_expected':[GUESS_SWITCH_SD,0],
+        'score_rewards_list':score_rewards_list,
+    }
+    
+    # Option to remove parameters we don't care about
+    PARAMS_TO_REMOVE = []
+    if len(PARAMS_TO_REMOVE)!=0:
+        for param in PARAMS_TO_REMOVE:
+            params_dict.pop(param)
+    all_param_combos = itertools.product(*params_dict.values()) # The * unpacks into the product function 
+    
     ## Set numbers to change means by
     # agent_mean_change = 50
     # RT_SD_CHANGE     = 20
@@ -131,53 +147,51 @@ def map_reward_change(score:float, comparison_num:float) -> str:
 c=0
 list_of_input_parameters = []
 list_of_descriptive_parameters    = [] # Used for saying what changed, as opposed to the actual parameter values
+param_keys = params_dict.keys()
 print('Starting Models...')
-for i,(agent_sd_change, rt_sd_change, mt_sd_change, timing_sd_change) in enumerate(change_sd_list):
-    for j, (guess_switch_delay_true, guess_switch_delay_expected) in enumerate(zip(guess_switch_delay_true_list,guess_switch_delay_expected_list)):
-        for k, (guess_switch_sd_true, guess_switch_sd_expected) in enumerate(zip(guess_switch_sd_true_list,guess_switch_sd_expected_list)):
-            for m, (win_reward,incorrect_cost,indecision_cost) in enumerate(score_rewards_list):
-                for n, (reward_matrix) in enumerate(reward_matrix_list):
-                    model  = ModelConstructor(
-                        experiment=EXPERIMENT,
-                        num_blocks=it.num_blocks,
-                        num_timesteps=1800,
-                        agent_means=np.array([agent_means,agent_means])[:,:,np.newaxis],
-                        agent_sds=np.array([agent_sds,agent_sds + agent_sd_change])[:,:,np.newaxis], #!
-                        reaction_time=np.array([rt, rt])[:,np.newaxis,np.newaxis],
-                        movement_time=np.array([mt, mt])[:,np.newaxis,np.newaxis],
-                        reaction_sd=np.array([rt_sd, rt_sd - rt_sd_change])[:,np.newaxis,np.newaxis], #! Reducing these, aka the particiapnt thinks they are more certain than they are
-                        movement_sd=np.array([mt_sd, mt_sd - mt_sd_change])[:,np.newaxis,np.newaxis],
-                        timing_sd=np.array([time_sd, time_sd - timing_sd_change])[:,:,np.newaxis],
-                        guess_switch_delay=np.array([guess_switch_delay_true, guess_switch_delay_expected])[:,np.newaxis,np.newaxis], # Designed like this for broadcasting reasons
-                        guess_switch_sd=np.array([guess_switch_sd_expected,guess_switch_sd_expected])[:,np.newaxis,np.newaxis], # This includes electromechanical delay sd and timing sd bc it's straight from data
-                        electromechanical_delay=np.array([50, 50])[:,np.newaxis,np.newaxis],
-                        switch_cost_exists=True,
-                        expected=True, #! Should always be True... if the parameter is ground truth, then the two values should be the same
-                        win_reward=win_reward,
-                        incorrect_cost=incorrect_cost, #! These are applied onto the base reward matrix in Optimal Model object
-                        indecision_cost=indecision_cost,
-                    )
-                    model_name = f'model{c}_{datetime.now():%Y_%m_%d_%H_%M_%S}'
+for param_tuple in tqdm(all_param_combos):
+    params = dict(zip(param_keys,param_tuple))
+    model  = ModelConstructor(
+        experiment=EXPERIMENT,
+        num_blocks=it.num_blocks,
+        num_timesteps=1800,
+        agent_means=np.array([agent_means,agent_means])[:,:,np.newaxis],
+        agent_sds=np.array([agent_sds,agent_sds + params['agent_sd_change']])[:,:,np.newaxis], #!
+        reaction_time=np.array([rt, rt])[:,np.newaxis,np.newaxis],
+        movement_time=np.array([mt, mt])[:,np.newaxis,np.newaxis],
+        reaction_sd=np.array([rt_sd, rt_sd - params['rt_sd_change']])[:,np.newaxis,np.newaxis], #! Reducing these, aka the particiapnt thinks they are more certain than they are
+        movement_sd=np.array([mt_sd, mt_sd - params['mt_sd_change']])[:,np.newaxis,np.newaxis],
+        timing_sd=np.array([time_sd, time_sd - params['timing_sd_change']])[:,:,np.newaxis],
+        guess_switch_delay=np.array([params['guess_switch_delay_true'], params['guess_switch_delay_expected']])[:,np.newaxis,np.newaxis], # Designed like this for broadcasting reasons
+        guess_switch_sd=np.array([params['guess_switch_sd_expected'],params['guess_switch_sd_expected']])[:,np.newaxis,np.newaxis], # This includes electromechanical delay sd and timing sd bc it's straight from data
+        electromechanical_delay=np.array([50, 50])[:,np.newaxis,np.newaxis],
+        switch_cost_exists=True,
+        expected=True, #! Should always be True... if the parameter is ground truth, then the two values should be the same
+        win_reward=params['score_rewards_list'][0],
+        incorrect_cost=params['score_rewards_list'][1], #! These are applied onto the base reward matrix in Optimal Model object
+        indecision_cost=params['score_rewards_list'][2],
+    )
+    model_name = f'model{c}_{datetime.now():%Y_%m_%d_%H_%M_%S}'
 
-                    loss = get_loss(model, targets,)
-                    input_row_dict = create_input_row_dict(model, loss, model_name)
-                    list_of_input_parameters.append(input_row_dict)  
-                                       
-                    descriptive_parameter_row = {
-                        'Model':model_name,
-                        'Loss':loss,
-                        'Known Switch Delay':guess_switch_delay_expected == guess_switch_delay_true,
-                        'Known Switch SD':guess_switch_sd_expected == guess_switch_sd_true,
-                        'Known Agent SD':agent_sd_change==0,
-                        'Known RT SD':rt_sd_change==0,
-                        'Known MT SD':mt_sd_change==0,
-                        'Known Timing SD':timing_sd_change==0,
-                        'Win Reward':map_reward_change(win_reward,comparison_num=1.0),
-                        'Incorrect Cost':map_reward_change(incorrect_cost,comparison_num=0.0),
-                        'Indecision Cost':map_reward_change(indecision_cost,comparison_num=0.0),
-                    }
-                    list_of_descriptive_parameters.append(descriptive_parameter_row)
-                    c+=1
+    loss = get_loss(model, targets,)
+    input_row_dict = create_input_row_dict(model, loss, model_name)
+    list_of_input_parameters.append(input_row_dict)  
+                        
+    descriptive_parameter_row = {
+        'Model':model_name,
+        'Loss':loss,
+        'Known Switch Delay':np.all(model.inputs.guess_switch_delay[0] == model.inputs.guess_switch_delay[1]),
+        'Known Switch SD':np.all(model.inputs.guess_switch_sd[0] == model.inputs.guess_switch_sd[1]),
+        'Known Agent SD':params['agent_sd_change']==0,
+        'Known RT SD':params['rt_sd_change']==0,
+        'Known MT SD':params['mt_sd_change']==0,
+        'Known Timing SD':params['timing_sd_change']==0,
+        'Win Reward':map_reward_change(params['score_rewards_list'][0],comparison_num=1.0),
+        'Incorrect Cost':map_reward_change(params['score_rewards_list'][1],comparison_num=0.0),
+        'Indecision Cost':map_reward_change(params['score_rewards_list'][2],comparison_num=0.0),
+    }
+    list_of_descriptive_parameters.append(descriptive_parameter_row)
+    c+=1
 
 df_inputs = pd.DataFrame(list_of_input_parameters)
 df_descriptions = pd.DataFrame(list_of_descriptive_parameters)
