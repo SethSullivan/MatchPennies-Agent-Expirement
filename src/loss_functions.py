@@ -1,6 +1,6 @@
 import numpy as np
 
-def ape_loss(pred: np.ndarray, targets: np.ndarray, drop_condition_num: int):
+def ape_loss(pred: np.ndarray, targets: np.ndarray, drop_condition_num=None):
     '''
     Absolute Percent Error
     
