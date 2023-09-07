@@ -38,7 +38,7 @@ if True:
 
     mt                   = np.min(np.nanmedian(np.nanmedian(group.movement_metrics.movement_times('task'), axis=2), axis=0)) # Get movement time for the condition where they tried the hardest
     mt_sd                = np.nanmedian(np.nanstd(group.movement_metrics.movement_times('task'), axis=1))
-    time_sd              = np.array([np.nanmedian(np.nanstd(group.movement_metrics.coincidence_reach_time, axis=1))] * it.num_blocks)
+    time_sd              = np.array([np.nanmedian(np.nanstd(group.movement_metrics.coincidence_reach_time, axis=1))] * it.num_blocks) 
     perc_wins_both_reach = np.nanmean(group.score_metrics.wins_when_both_reach(perc=True), axis=0)
     guess_sd             = np.nanmedian(np.nanstd(group.react_guess_movement_metrics.movement_onset_times('guess'), axis=2), axis=0)
     agent_sds            = np.nanmean(np.nanstd(group.raw_data.agent_task_leave_time, axis=2), axis=0)
@@ -51,7 +51,7 @@ if True:
     AGENT_SD_CHANGE  = 150
     RT_SD_CHANGE     = rt_sd/2
     MT_SD_CHANGE     = mt_sd/2
-    TIMING_SD_CHANGE = time_sd/2
+    TIMING_SD_CHANGE = time_sd[0]/2 # Array of 6, just want one
     GUESS_SWITCH_DELAY = 65
     GUESS_SWITCH_SD    = 30
     # Create keys of what's being changed
@@ -59,7 +59,6 @@ if True:
 
     # (*LOOP 1*) List for altering each uncertainty
     change_sd_list = [(AGENT_SD_CHANGE,0,0,0), (0,RT_SD_CHANGE,0,0), (0,0,MT_SD_CHANGE,0), (0,0,0,TIMING_SD_CHANGE)]
-    change_sd_name_dict = [(True,False,False,False),(False,True,False,False),(False,False,True,False),(False,False,False,True)]
     # (*LOOP 2*) Create guess switch delay true and expected, where every other is equal
     guess_switch_delay_true_list = [GUESS_SWITCH_DELAY]*2
     guess_switch_delay_expected_list = [GUESS_SWITCH_DELAY,0]
@@ -99,7 +98,7 @@ targets = np.array(
     np.nanmedian(group.score_metrics.score_metric('indecisions'),axis=0)/100,
     ]
 )
-metric_keys = ['wtd_leave_time','prob_win','prob_incorrect','prob_indecision']
+# metric_keys = ['wtd_leave_time','prob_win','prob_incorrect','prob_indecision']
 
 
 #* Functions
@@ -111,13 +110,12 @@ def get_loss(model, targets, drop_condition_num=None):
     
     return loss
 
-def create_input_row_dict(model, loss,):
-    input_row_dict = vars(model.inputs)
-    model_name = f'model{c}_{datetime.now():%Y_%m_%d_%H_%M_%S}'
-    
+def create_input_row_dict(model, loss, model_name,):
+    input_row_dict = ({'Model Name':model_name,
+                       'Loss':loss})
+    input_row_dict.update(vars(model.inputs))
     input_row_dict.pop('timesteps')
-    input_row_dict.update({'loss':loss})
-    input_row_dict.update({'model_name':model_name})
+    
     return input_row_dict
 
 def map_reward_change(score:float, comparison_num:float) -> str:
@@ -133,14 +131,12 @@ def map_reward_change(score:float, comparison_num:float) -> str:
 c=0
 list_of_input_parameters = []
 list_of_descriptive_parameters    = [] # Used for saying what changed, as opposed to the actual parameter values
+print('Starting Models...')
 for i,(agent_sd_change, rt_sd_change, mt_sd_change, timing_sd_change) in enumerate(change_sd_list):
     for j, (guess_switch_delay_true, guess_switch_delay_expected) in enumerate(zip(guess_switch_delay_true_list,guess_switch_delay_expected_list)):
         for k, (guess_switch_sd_true, guess_switch_sd_expected) in enumerate(zip(guess_switch_sd_true_list,guess_switch_sd_expected_list)):
             for m, (win_reward,incorrect_cost,indecision_cost) in enumerate(score_rewards_list):
                 for n, (reward_matrix) in enumerate(reward_matrix_list):
-                    # TODO Figure out how to easily tell what is and ISN'T In the model
-                    # TODO SOME SORT of if statement, where the 0 and 1 of the parameters aren't equal should then say what's messed up
-                    
                     model  = ModelConstructor(
                         experiment=EXPERIMENT,
                         num_blocks=it.num_blocks,
@@ -158,21 +154,24 @@ for i,(agent_sd_change, rt_sd_change, mt_sd_change, timing_sd_change) in enumera
                         switch_cost_exists=True,
                         expected=True, #! Should always be True... if the parameter is ground truth, then the two values should be the same
                         win_reward=win_reward,
-                        incorrect_cost=incorrect_cost,
+                        incorrect_cost=incorrect_cost, #! These are applied onto the base reward matrix in Optimal Model object
                         indecision_cost=indecision_cost,
-                        reward_matrix = np.array([[1, 0, 0], [1, -1, 0], [1, 0, -1], [1, -1, -1]]) #! THis kwarg doesn't trigger anything for Exp1, so safe to keep regardless
                     )
+                    model_name = f'model{c}_{datetime.now():%Y_%m_%d_%H_%M_%S}'
+
                     loss = get_loss(model, targets,)
-                    input_row_dict = create_input_row_dict(model, loss)
+                    input_row_dict = create_input_row_dict(model, loss, model_name)
                     list_of_input_parameters.append(input_row_dict)  
                                        
                     descriptive_parameter_row = {
+                        'Model':model_name,
+                        'Loss':loss,
                         'Known Switch Delay':guess_switch_delay_expected == guess_switch_delay_true,
                         'Known Switch SD':guess_switch_sd_expected == guess_switch_sd_true,
-                        'Known Agent SD':agent_sd_change!=0,
-                        'Known RT SD':rt_sd_change!=0,
-                        'Known MT SD':mt_sd_change!=0,
-                        'Known Timing SD':timing_sd_change!=0,
+                        'Known Agent SD':agent_sd_change==0,
+                        'Known RT SD':rt_sd_change==0,
+                        'Known MT SD':mt_sd_change==0,
+                        'Known Timing SD':timing_sd_change==0,
                         'Win Reward':map_reward_change(win_reward,comparison_num=1.0),
                         'Incorrect Cost':map_reward_change(incorrect_cost,comparison_num=0.0),
                         'Indecision Cost':map_reward_change(indecision_cost,comparison_num=0.0),
@@ -181,12 +180,14 @@ for i,(agent_sd_change, rt_sd_change, mt_sd_change, timing_sd_change) in enumera
                     c+=1
 
 df_inputs = pd.DataFrame(list_of_input_parameters)
-df_descriptions = pd.DataFrame(list_of_input_parameters)
+df_descriptions = pd.DataFrame(list_of_descriptive_parameters)
 
 save_date = datetime.now()
 #* Save the old model table to a new file
-with open(MODELS_PATH / f'{EXPERIMENT}_model_parameters_{save_date:%Y_%m_%d_%H_%M_%S}','wb') as f:
+with open(MODELS_PATH / f'{EXPERIMENT}_model_parameters_{save_date:%Y_%m_%d_%H_%M_%S}.pkl','wb') as f:
     dill.dump(df_inputs, f)
 
-with open(MODELS_PATH / f'{EXPERIMENT}_model_descriptions_{save_date:%Y_%m_%d_%H_%M_%S}','wb') as f:
+with open(MODELS_PATH / f'{EXPERIMENT}_model_descriptions_{save_date:%Y_%m_%d_%H_%M_%S}.pkl','wb') as f:
     dill.dump(df_descriptions, f)
+
+print(f'Model generation for {EXPERIMENT} completed')
