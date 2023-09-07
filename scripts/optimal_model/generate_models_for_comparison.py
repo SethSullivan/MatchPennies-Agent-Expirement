@@ -9,16 +9,12 @@ import read_data_functions as rdf
 from Optimal_Stopping_Object import ModelConstructor
 from initializer import InitialThangs
 import loss_functions as lf
-%load_ext autoreload
-%autoreload 2
 
 #* Select experiment you'd like to run
 EXPERIMENT = "Exp1"
 
 #* GET THE MODEL TRACKER TABLE
-models_path = Path(r'D:\OneDrive - University of Delaware - o365\Desktop\MatchPennies-Agent-Expirement\results\exp1\models')
-with open(models_path / 'exp1_model_table.pkl', 'rb') as file:
-    MODEL_TABLE = dill.load(file)
+MODELS_PATH = Path(r'D:\OneDrive - University of Delaware - o365\Desktop\MatchPennies-Agent-Expirement\results\exp1\models')
 
 #* Initial Thangs
 # Get path and save path 
@@ -45,13 +41,13 @@ if True:
     time_sd              = np.array([np.nanmedian(np.nanstd(group.movement_metrics.coincidence_reach_time, axis=1))] * it.num_blocks)
     perc_wins_both_reach = np.nanmean(group.score_metrics.wins_when_both_reach(perc=True), axis=0)
     guess_sd             = np.nanmedian(np.nanstd(group.react_guess_movement_metrics.movement_onset_times('guess'), axis=2), axis=0)
-    agent_sds            = np.nanmean(np.nanstd(group.raw_data.agent_task_leave_time, axis=2), axis=0)[:,np.newaxis]
-    agent_means          = np.nanmean(np.nanmean(group.raw_data.agent_task_leave_time, axis=2), axis=0)[:,np.newaxis]
+    agent_sds            = np.nanmean(np.nanstd(group.raw_data.agent_task_leave_time, axis=2), axis=0)
+    agent_means          = np.nanmean(np.nanmean(group.raw_data.agent_task_leave_time, axis=2), axis=0)
     guess_leave_time_sd  = np.nanmedian(np.nanstd(group.react_guess_movement_metrics.movement_onset_times('guess'),axis=2),axis=0)
 
 
 #* Set the parameters that change with each model
-if True: 
+if True:
     AGENT_SD_CHANGE  = 150
     RT_SD_CHANGE     = rt_sd/2
     MT_SD_CHANGE     = mt_sd/2
@@ -63,7 +59,7 @@ if True:
 
     # (*LOOP 1*) List for altering each uncertainty
     change_sd_list = [(AGENT_SD_CHANGE,0,0,0), (0,RT_SD_CHANGE,0,0), (0,0,MT_SD_CHANGE,0), (0,0,0,TIMING_SD_CHANGE)]
-
+    change_sd_name_dict = [(True,False,False,False),(False,True,False,False),(False,False,True,False),(False,False,False,True)]
     # (*LOOP 2*) Create guess switch delay true and expected, where every other is equal
     guess_switch_delay_true_list = [GUESS_SWITCH_DELAY]*2
     guess_switch_delay_expected_list = [GUESS_SWITCH_DELAY,0]
@@ -73,7 +69,18 @@ if True:
     guess_switch_sd_expected_list = [GUESS_SWITCH_SD,0]
 
     # (*LOOP 4*)
-    score_rewards_list = [(1.0, 0.0, 0.0), (1.0, -0.2, 0.0)]
+    if EXPERIMENT == 'Exp1':  
+        BASE_WIN_REWARD = 1.0
+        BASE_INCORRECT_COST = 0.0
+        BASE_INDECISION_COST = 0.0
+        score_rewards_list = np.array([[1.0, 0.0, 0.0], [1.0, -0.2, 0.0]])
+        reward_matrix_list = [np.array([[1, 0, 0], [1, -1, 0], [1, 0, -1], [1, -1, -1]])] #! Not used in exp1, so just one element in loop
+
+    if EXPERIMENT == 'Exp2':  
+        score_rewards_list = np.array([[1.0, 0.0, 0.0], [1.0, -0.2, 0.0]])
+
+        reward_matrix_list = [np.array([[1, 0, 0], [1, -1, 0], [1, 0, -1], [1, -1, -1]]),
+                              np.array([[1, -0.2, 0], [1, -1.2, 0], [1, -0.2, -1], [1, -1.2, -1]])]
 
     ## Set numbers to change means by
     # agent_mean_change = 50
@@ -83,7 +90,6 @@ if True:
     # change_sd_list = [(AGENT_SD_CHANGE,0,0,0), (0,RT_SD_CHANGE,0,0), (0,0,MT_SD_CHANGE,0), (0,0,0,TIMING_SD_CHANGE)]
     # model_dict_keys_sd = ['agent_sd', 'rt_sd', 'mt_sd', 'timing_sd']
     # assert guess_switch_delay_expected_list[::2] == guess_switch_delay_true_list[::2]
-    
     
 #* Get targets for model comparisons
 targets = np.array(
@@ -95,53 +101,92 @@ targets = np.array(
 )
 metric_keys = ['wtd_leave_time','prob_win','prob_incorrect','prob_indecision']
 
+
+#* Functions
+def get_loss(model, targets, drop_condition_num=None):
+    model_metrics = [model.player_behavior.wtd_leave_time, model.score_metrics.prob_win,
+                    model.score_metrics.prob_incorrect,model.score_metrics.prob_indecision]
+    predictions = [model.results.get_metric(metric,decision_type='optimal',metric_type='true') for metric in model_metrics]
+    loss = lf.ape_loss(predictions, targets, drop_condition_num=drop_condition_num) 
+    
+    return loss
+
+def create_input_row_dict(model, loss,):
+    input_row_dict = vars(model.inputs)
+    model_name = f'model{c}_{datetime.now():%Y_%m_%d_%H_%M_%S}'
+    
+    input_row_dict.pop('timesteps')
+    input_row_dict.update({'loss':loss})
+    input_row_dict.update({'model_name':model_name})
+    return input_row_dict
+
+def map_reward_change(score:float, comparison_num:float) -> str:
+    if score>comparison_num:
+        score_change = 'Greater'
+    elif score<comparison_num:
+        score_change = 'Less'
+    else:
+        score_change = 'Normal'
+    return score_change
+
 #* Loop through all the changing parameters
 c=0
-list_of_input_rows = []
+list_of_input_parameters = []
+list_of_descriptive_parameters    = [] # Used for saying what changed, as opposed to the actual parameter values
 for i,(agent_sd_change, rt_sd_change, mt_sd_change, timing_sd_change) in enumerate(change_sd_list):
     for j, (guess_switch_delay_true, guess_switch_delay_expected) in enumerate(zip(guess_switch_delay_true_list,guess_switch_delay_expected_list)):
         for k, (guess_switch_sd_true, guess_switch_sd_expected) in enumerate(zip(guess_switch_sd_true_list,guess_switch_sd_expected_list)):
             for m, (win_reward,incorrect_cost,indecision_cost) in enumerate(score_rewards_list):
-                model  = ModelConstructor(
-                    experiment=EXPERIMENT,
-                    num_blocks=it.num_blocks,
-                    num_timesteps=1800,
-                    agent_means= np.array([agent_means,agent_means]),
-                    agent_sds= np.array([agent_sds,agent_sds + agent_sd_change]), #!
-                    reaction_time=np.array([rt, rt]),
-                    movement_time=np.array([mt, mt]),
-                    reaction_sd  =np.array([rt_sd, rt_sd - rt_sd_change]), #! Reducing these, aka the particiapnt thinks they are more certain than they are
-                    movement_sd  =np.array([mt_sd, mt_sd - mt_sd_change]),
-                    timing_sd    =np.array([time_sd, time_sd - timing_sd_change]),
-                    perc_wins_when_both_reach=perc_wins_both_reach,
-                    guess_switch_delay=np.array([[guess_switch_delay_true, guess_switch_delay_expected]]).T, # Designed like this for broadcasting reasons
-                    guess_sd     = np.array([guess_switch_sd_true,guess_switch_sd_expected]), # This includes electromechanical delay sd and timing sd bc it's straight from data
-                    electromechanical_delay=np.array([[50, 50]]).T,
-                    switch_cost_exists=True,
-                    expected=True,
-                    win_reward=win_reward,
-                    incorrect_cost=incorrect_cost,
-                    indecision_cost=indecision_cost,
-                )
-                input_row_dict = vars(model.inputs)
-                model_metrics = [model.player_behavior.wtd_leave_time, model.score_metrics.prob_win,
-                                 model.score_metrics.prob_incorrect,model.score_metrics.prob_indecision ]
-                predictions = [model.results.get_metric(metric,decision_type='optimal',metric_type='true') for metric in model_metrics]
-                loss = lf.ape_loss(predictions, targets, drop_condition_num=None) 
-                input_row_dict.update({'loss':loss})
-                model_name = f'model{c}_{datetime.now():%Y_%m_%d_%H_%M_%S}'
-                input_row_dict.update({'model_name':model_name})
-                list_of_input_rows.append(input_row_dict)
-                c+=1
+                for n, (reward_matrix) in enumerate(reward_matrix_list):
+                    # TODO Figure out how to easily tell what is and ISN'T In the model
+                    # TODO SOME SORT of if statement, where the 0 and 1 of the parameters aren't equal should then say what's messed up
+                    
+                    model  = ModelConstructor(
+                        experiment=EXPERIMENT,
+                        num_blocks=it.num_blocks,
+                        num_timesteps=1800,
+                        agent_means=np.array([agent_means,agent_means])[:,:,np.newaxis],
+                        agent_sds=np.array([agent_sds,agent_sds + agent_sd_change])[:,:,np.newaxis], #!
+                        reaction_time=np.array([rt, rt])[:,np.newaxis,np.newaxis],
+                        movement_time=np.array([mt, mt])[:,np.newaxis,np.newaxis],
+                        reaction_sd=np.array([rt_sd, rt_sd - rt_sd_change])[:,np.newaxis,np.newaxis], #! Reducing these, aka the particiapnt thinks they are more certain than they are
+                        movement_sd=np.array([mt_sd, mt_sd - mt_sd_change])[:,np.newaxis,np.newaxis],
+                        timing_sd=np.array([time_sd, time_sd - timing_sd_change])[:,:,np.newaxis],
+                        guess_switch_delay=np.array([guess_switch_delay_true, guess_switch_delay_expected])[:,np.newaxis,np.newaxis], # Designed like this for broadcasting reasons
+                        guess_switch_sd=np.array([guess_switch_sd_expected,guess_switch_sd_expected])[:,np.newaxis,np.newaxis], # This includes electromechanical delay sd and timing sd bc it's straight from data
+                        electromechanical_delay=np.array([50, 50])[:,np.newaxis,np.newaxis],
+                        switch_cost_exists=True,
+                        expected=True, #! Should always be True... if the parameter is ground truth, then the two values should be the same
+                        win_reward=win_reward,
+                        incorrect_cost=incorrect_cost,
+                        indecision_cost=indecision_cost,
+                        reward_matrix = np.array([[1, 0, 0], [1, -1, 0], [1, 0, -1], [1, -1, -1]]) #! THis kwarg doesn't trigger anything for Exp1, so safe to keep regardless
+                    )
+                    loss = get_loss(model, targets,)
+                    input_row_dict = create_input_row_dict(model, loss)
+                    list_of_input_parameters.append(input_row_dict)  
+                                       
+                    descriptive_parameter_row = {
+                        'Known Switch Delay':guess_switch_delay_expected == guess_switch_delay_true,
+                        'Known Switch SD':guess_switch_sd_expected == guess_switch_sd_true,
+                        'Known Agent SD':agent_sd_change!=0,
+                        'Known RT SD':rt_sd_change!=0,
+                        'Known MT SD':mt_sd_change!=0,
+                        'Known Timing SD':timing_sd_change!=0,
+                        'Win Reward':map_reward_change(win_reward,comparison_num=1.0),
+                        'Incorrect Cost':map_reward_change(incorrect_cost,comparison_num=0.0),
+                        'Indecision Cost':map_reward_change(indecision_cost,comparison_num=0.0),
+                    }
+                    list_of_descriptive_parameters.append(descriptive_parameter_row)
+                    c+=1
 
-df = pd.DataFrame(list_of_input_rows)
+df_inputs = pd.DataFrame(list_of_input_parameters)
+df_descriptions = pd.DataFrame(list_of_input_parameters)
 
-NEW_MODEL_TABLE = pd.concat((MODEL_TABLE, df))
+save_date = datetime.now()
+#* Save the old model table to a new file
+with open(MODELS_PATH / f'{EXPERIMENT}_model_parameters_{save_date:%Y_%m_%d_%H_%M_%S}','wb') as f:
+    dill.dump(df_inputs, f)
 
-#* Save the old model table to a new file before re-writing
-with open(models_path / f'exp1_model_table_{datetime.now():%Y_%m_%d_%H_%M_%S}','wb') as f:
-    dill.dump(MODEL_TABLE, f)
-
-#* Update the exp1_model_table to the newest
-with open(models_path / 'exp1_model_table.pkl', 'wb') as f: 
-    dill.dump(NEW_MODEL_TABLE, f)
+with open(MODELS_PATH / f'{EXPERIMENT}_model_descriptions_{save_date:%Y_%m_%d_%H_%M_%S}','wb') as f:
+    dill.dump(df_descriptions, f)
