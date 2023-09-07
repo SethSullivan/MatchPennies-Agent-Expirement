@@ -146,19 +146,10 @@ class ModelInputs:
             self.experiment = kwargs.get("experiment")
             self.num_blocks = kwargs.get("num_blocks")
             self.agent_means = kwargs.get("agent_means")  # If exp2, need to be np.array([1100]*4)
-            self.agent_sds = kwargs.get("agent_sds")  # If exp2, need to be np.array([50]*4)
+            self.agent_sds = kwargs.get("agent_sds") # If exp2, need to be np.array([50]*4)
             self.nsteps = kwargs.get('nsteps',1)
             self.num_timesteps = int(kwargs.get("num_timesteps")/self.nsteps)
             self.timesteps = kwargs.get("timesteps", np.tile(np.arange(0.0, float(self.num_timesteps), self.nsteps), (2, self.num_blocks, 1))) # Has shape starting with (2,)
-            self.old_timesteps = np.tile(np.arange(0.0, float(self.num_timesteps), self.nsteps), (self.num_blocks, 1)) # Doesn't have shape starting with (2,)
-            self.tiled_1500 = np.full_like(self.timesteps, 1500.0)
-            self.tiled_agent_means = np.tile(self.agent_means, (self.timesteps.shape[-1], 1)).T
-            self.tiled_agent_sds = np.tile(self.agent_sds, (self.timesteps.shape[-1], 1)).T
-
-            self.neg_inf_cut_off_value = -100000
-            # check = np.tile(np.arange(900.0, 1100.0, self.nsteps), (self.num_blocks, 1))
-            # assert np.isclose(numba_cdf(check,np.array([5]*self.num_blocks), np.array([2]*self.num_blocks)),
-            #                   stats.norm.cdf(check,np.array([5]),np.array([2]))).all()
 
         #*Player Parameters and Rewards
         if True:
@@ -170,9 +161,6 @@ class ModelInputs:
                 self.key = 1 # 1 refers to 'exp' row
             else:
                 self.key = 0 # 0 refers to 'true' row
-        
-            #  HOW MUCH PEOPLE WEIGH WINS VERSUS CORRECTNESS IS THE BETA TERM
-            self.prob_win_when_both_reach = kwargs.get("perc_wins_when_both_reach") / 100
 
             # Uncertainty
             self.reaction_sd     = kwargs.get("reaction_sd")
@@ -185,37 +173,35 @@ class ModelInputs:
             if self.guess_sd is None:
                 self.guess_sd = np.sqrt(self.guess_switch_sd**2 + self.timing_sd**2)
             else:
-                self.guess_sd = self.guess_sd[...,np.newaxis]
+                self.guess_sd = self.guess_sd
 
             # Ability
             self.reaction_time               = kwargs.get("reaction_time")
             self.movement_time               = kwargs.get("movement_time")
-            self.reaction_plus_movement_time = self.reaction_time + self.movement_time
             
             self.guess_switch_delay       = kwargs.get("guess_switch_delay")
             self.electromechanical_delay  = kwargs.get('electromechanical_delay')
             self.guess_delay              = self.guess_switch_delay + self.electromechanical_delay
-            self.guess_plus_movement_time = self.timesteps + self.movement_time[:,np.newaxis,np.newaxis] + self.guess_delay[...,np.newaxis]
 
             assert self.electromechanical_delay[0] == self.electromechanical_delay[0]
 
             # Get reward matrix for Exp2
             if self.experiment == "Exp2":
                 # Reward and cost values
-                self.reward_matrix = kwargs.get("reward_matrix", np.array([[1, 0, 0], [1, -1, 0], [1, 0, -1], [1, -1, -1]]))
-                self.condition_one = np.tile(self.reward_matrix[0], (self.num_timesteps, 1))
-                self.condition_two = np.tile(self.reward_matrix[1], (self.num_timesteps, 1))
-                self.condition_three = np.tile(self.reward_matrix[2], (self.num_timesteps, 1))
-                self.condition_four = np.tile(self.reward_matrix[3], (self.num_timesteps, 1))
+                reward_matrix = kwargs.get("reward_matrix", np.array([[1, 0, 0], [1, -1, 0], [1, 0, -1], [1, -1, -1]]))
+                condition_one = np.tile(reward_matrix[0], (self.num_timesteps, 1))
+                condition_two = np.tile(reward_matrix[1], (self.num_timesteps, 1))
+                condition_three = np.tile(reward_matrix[2], (self.num_timesteps, 1))
+                condition_four = np.tile(reward_matrix[3], (self.num_timesteps, 1))
                 
                 self.win_reward = np.vstack(
-                    (self.condition_one[:, 0], self.condition_two[:, 0], self.condition_three[:, 0], self.condition_four[:, 0])
+                    (condition_one[:, 0], condition_two[:, 0], condition_three[:, 0], condition_four[:, 0])
                 )
                 self.incorrect_cost = np.vstack(
-                    (self.condition_one[:, 1], self.condition_two[:, 1], self.condition_three[:, 1], self.condition_four[:, 1])
+                    (condition_one[:, 1], condition_two[:, 1], condition_three[:, 1], condition_four[:, 1])
                 )
                 self.indecision_cost = np.vstack(
-                    (self.condition_one[:, 2], self.condition_two[:, 2], self.condition_three[:, 2], self.condition_four[:, 2])
+                    (condition_one[:, 2], condition_two[:, 2], condition_three[:, 2], condition_four[:, 2])
                 )
             else:
                 self.win_reward = kwargs.get("win_reward", 1)
@@ -224,10 +210,6 @@ class ModelInputs:
             # Prob of selecting the correct target
             self.prob_selecting_correct_target_reaction = kwargs.get("prob_selecting_correct_target_reaction", 1.0)
             self.prob_selecting_correct_target_guess = kwargs.get("prob_selecting_correct_target_guess", 0.5)
-                # assert np.sum(self.guess_switch_delay + self.guess_switch_sd) == 0
-            # else:
-            #     assert self.guess_switch_delay[1] != self.guess_switch_delay[0]
-            #     assert self.guess_switch_sd[1] != self.guess_switch_sd[0]
             
 class AgentBehavior:
     def __init__(self, model_inputs: ModelInputs):
@@ -248,7 +230,8 @@ class AgentBehavior:
     @cached_property
     def prob_agent_has_gone(self):
         # temp = numba_cdf(self.inputs.timesteps,self.inputs.agent_means,self.inputs.agent_sds)
-        temp = stats.norm.cdf(self.inputs.old_timesteps, self.inputs.agent_means[:,np.newaxis], self.inputs.agent_sds[:,np.newaxis])
+        temp = stats.norm.cdf(self.inputs.timesteps[0], self.inputs.agent_means, self.inputs.agent_sds)
+        
         return temp
 
     @cached_property
@@ -266,27 +249,31 @@ class AgentBehavior:
         """
         Get first three central moments (EX2 is normalized for mean,
         EX3 is normalized for mean and sd) of the new distribution based on timing uncertainty
-        
-        IF I EVER USE TIMING_SD as something that could be not accounted for I'll have to fix this
         """
         #* Steps done outside for loop in get_moments to make it faster
-        # Creates a 1,2000 inf timesteps, that can broadcast to 6,2000
-        inf_timesteps = np.arange(0.0, 2000.0, self.inputs.nsteps)[np.newaxis,:]  # Going to 2000 is a good approximation, doesn't get better by going higher
-        tiled_timing_sd = np.tile(self.inputs.timing_sd[self.inputs.key], (inf_timesteps.shape[-1], 1)).T  # Tile timing sd
+        # Creates a 1,1,2000 inf timesteps, that can broadcast to 2,6,1
+        inf_timesteps = np.arange(0.0, 2000.0, self.inputs.nsteps)[np.newaxis,np.newaxis,:] # Going to 2000 is a good approximation, doesn't get better by going higher
         time_means = deepcopy(self.inputs.timesteps[0,0,:]) # Get the timing means that player can select as their stopping time
         agent_pdf = stats.norm.pdf(inf_timesteps, self.inputs.agent_means, self.inputs.agent_sds)  # Find agent pdf tiled 2000
         prob_agent_less_player = stats.norm.cdf(
-            0, self.inputs.agent_means - inf_timesteps, np.sqrt(self.inputs.agent_sds**2 + (tiled_timing_sd) ** 2)
+            0, self.inputs.agent_means - inf_timesteps, 
+            np.sqrt(self.inputs.agent_sds**2 + (self.inputs.timing_sd) ** 2)
         )
-        true_moments = get_moments(inf_timesteps.squeeze(), time_means.squeeze(), 
-                                       self.inputs.timing_sd[self.inputs.key,:], 
-                                       prob_agent_less_player[0,], 
-                                       agent_pdf[0,])
+        true_moments = get_moments(
+            inf_timesteps.squeeze(), 
+            time_means.squeeze(), 
+            self.inputs.timing_sd[0,:,:].squeeze(), # Squeezing for numba
+            prob_agent_less_player[0,:,:].squeeze(), 
+            agent_pdf[0,:,:].squeeze()
+        )
+        expected_moments = get_moments(
+            inf_timesteps.squeeze(), 
+            time_means.squeeze(), 
+            self.inputs.timing_sd[1,:,:].squeeze(), 
+            prob_agent_less_player[1,:,:].squeeze(), 
+            agent_pdf[1,:,:].squeeze()
+        )
         
-        expected_moments = get_moments(inf_timesteps.squeeze(), time_means.squeeze(), 
-                                       self.inputs.timing_sd[self.inputs.key,:], 
-                                       prob_agent_less_player[1,], 
-                                       agent_pdf[1,])
         return_vals = []
         for a,b in zip(true_moments,expected_moments):
             return_vals.append(np.stack((a,b)))
@@ -321,16 +308,16 @@ class PlayerBehavior:
 
         assert np.allclose(self.prob_selecting_reaction + self.prob_selecting_guess, 1.0)
         #*Leave times
-        self.reaction_leave_time   = self.agent_behavior.reaction_leave_time + self.inputs.reaction_time[self.inputs.key]
-        self.guess_leave_time     = self.inputs.timesteps + self.inputs.guess_delay[:,np.newaxis]
+        self.reaction_leave_time   = self.agent_behavior.reaction_leave_time + self.inputs.reaction_time
+        self.guess_leave_time     = self.inputs.timesteps + self.inputs.guess_delay
         self.wtd_leave_time = self.prob_selecting_reaction*self.reaction_leave_time + self.prob_selecting_guess*self.guess_leave_time
         #*Reach Times
-        self.reaction_reach_time   = self.agent_behavior.reaction_leave_time + self.inputs.reaction_plus_movement_time[self.inputs.key]
-        self.guess_reach_time     = self.inputs.timesteps + self.inputs.guess_delay[:,np.newaxis] + self.inputs.movement_time[self.inputs.key]
+        self.reaction_reach_time   = self.agent_behavior.reaction_leave_time + self.inputs.reaction_time + self.inputs.movement_time
+        self.guess_reach_time     = self.inputs.timesteps + self.inputs.guess_delay + self.inputs.movement_time
         self.wtd_reach_time = self.prob_selecting_reaction*self.reaction_reach_time + self.prob_selecting_guess*self.guess_reach_time
         #*Leave Time SD
         self.reaction_leave_time_sd = np.sqrt(self.agent_behavior.reaction_leave_time_sd**2 
-                                              + self.inputs.reaction_sd[self.inputs.key] ** 2)
+                                              + self.inputs.reaction_sd ** 2)
         
         #! NOT SURE IF AGENT BEHAVIOR SHOULD INFLUENCE THIS, (8/16/23 i say it should bc it looks like guess leave time sd changes for 1000 and 1100 conditions btwn 50 and 150)
         # Also, the model predicts high guess switch sd when not accounting for it in order to get the best fit. This doesn't seem reflective of reality
@@ -363,8 +350,8 @@ class PlayerBehavior:
             (self.wtd_leave_time - 0.675*self.wtd_leave_time_sd)
         )
         #*Reach Time SD
-        self.reaction_reach_time_sd = np.sqrt(self.reaction_leave_time_sd**2 + self.inputs.movement_sd[self.inputs.key] ** 2)
-        self.guess_reach_time_sd   = np.sqrt(self.guess_leave_time_sd**2 + self.inputs.movement_sd[:,np.newaxis,np.newaxis]** 2) # NEed to put these nweaxis in so that it's added on the first axis (aka expected veruss true axis) 
+        self.reaction_reach_time_sd = np.sqrt(self.reaction_leave_time_sd**2 + self.inputs.movement_sd ** 2)
+        self.guess_reach_time_sd   = np.sqrt(self.guess_leave_time_sd**2 + self.inputs.movement_sd** 2) # NEed to put these nweaxis in so that it's added on the first axis (aka expected veruss true axis) 
         self.wtd_reach_time_sd = (
             self.prob_selecting_reaction*self.reaction_reach_time_sd + self.prob_selecting_guess*self.guess_reach_time_sd
         )
@@ -382,7 +369,7 @@ class PlayerBehavior:
     def prob_selecting_reaction(self):
         # Prob of SELECTING only includes timing uncertainty and agent uncertainty
         combined_sd = np.sqrt(
-            self.inputs.timing_sd[...,np.newaxis]**2 + self.inputs.agent_sds**2
+            self.inputs.timing_sd**2 + self.inputs.agent_sds**2
         )
         diff = self.inputs.timesteps - self.inputs.agent_means
         ans = 1 - stats.norm.cdf(0, diff, combined_sd)
@@ -479,7 +466,7 @@ class Results:
     def __init__(self, inputs: ModelInputs,score_metrics: ScoreMetrics):
         self.inputs = inputs
         self.score_metrics = score_metrics
-        # self.max_exp_reward = np.nanmax(np.round(self.results.exp_reward,3),axis=2)[:,:,np.newaxis]
+        # self.max_exp_reward = np.nanmax(np.round(self.results.exp_reward,3),axis=2)
         # self.last_max_index = np.argwhere(np.round(self.results.exp_reward,3) - self.max_exp_reward == 0)[-1]
         self.exp_reward_reaction = (
             score_metrics.prob_win_reaction*self.inputs.win_reward
@@ -501,6 +488,7 @@ class Results:
             self.round_num
         )
         self.fit_decision_index = None
+        
     @property
     def optimal_decision_index(self):
         #* Not rounded, forward argmax
@@ -648,6 +636,7 @@ class ModelConstructor:
             for i,ax in enumerate(axs.T.flatten()):
                 ax.plot(xlocs,y[self.inputs.key,i,:])
                 if show_optimals:
+                    print('Warning:Make sure that self.inputs.key is giving what you want')
                     ax.plot((decision_time[self.inputs.key,i],decision_time[self.inputs.key,i]),
                             (min(ylocs),self.results.exp_reward[self.inputs.key,i,decision_index[self.inputs.key,i]]),c='w')
                     ax.text(decision_time[self.inputs.key,i],self.results.exp_reward[self.inputs.key, i,decision_index[self.inputs.key,i]]+0.03,
