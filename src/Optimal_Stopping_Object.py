@@ -188,21 +188,33 @@ class ModelInputs:
             # Get reward matrix for Exp2
             if self.experiment == "Exp2":
                 # Reward and cost values
-                reward_matrix = kwargs.get("reward_matrix", np.array([[1, 0, 0], [1, -1, 0], [1, 0, -1], [1, -1, -1]]))
+                # This uses the base reward matrix and if incorrect or indecision are altered, it's added on to the base
+                reward_matrix = np.array([[1, 0, 0], [1, -1, 0], [1, 0, -1], [1, -1, -1]])
+                input_win_reward = kwargs.get("win_reward", 1)
+                input_incorrect_cost = kwargs.get("incorrect_cost", 0)
+                input_indecision_cost = kwargs.get("indecision_cost", 0)
+                reward_change_arr = np.array([input_win_reward, input_incorrect_cost, input_indecision_cost])
                 condition_one = np.tile(reward_matrix[0], (self.num_timesteps, 1))
                 condition_two = np.tile(reward_matrix[1], (self.num_timesteps, 1))
                 condition_three = np.tile(reward_matrix[2], (self.num_timesteps, 1))
                 condition_four = np.tile(reward_matrix[3], (self.num_timesteps, 1))
                 
-                self.win_reward = np.vstack(
+                win_reward_temp = np.vstack(
                     (condition_one[:, 0], condition_two[:, 0], condition_three[:, 0], condition_four[:, 0])
                 )
-                self.incorrect_cost = np.vstack(
+                incorrect_cost_temp = np.vstack(
                     (condition_one[:, 1], condition_two[:, 1], condition_three[:, 1], condition_four[:, 1])
                 )
-                self.indecision_cost = np.vstack(
+                indecision_cost_temp = np.vstack(
                     (condition_one[:, 2], condition_two[:, 2], condition_three[:, 2], condition_four[:, 2])
                 )
+                
+                self.win_reward = win_reward_temp # Don't want to change this, generally
+                self.incorrect_cost = incorrect_cost_temp + input_incorrect_cost
+                self.indecision_cost = indecision_cost_temp + input_indecision_cost
+                
+                assert np.all(self.win_reward>=1)
+                
             else:
                 self.win_reward = kwargs.get("win_reward", 1)
                 self.incorrect_cost = kwargs.get("incorrect_cost", 0)
@@ -254,7 +266,7 @@ class AgentBehavior:
         # Creates a 1,1,2000 inf timesteps, that can broadcast to 2,6,1
         inf_timesteps = np.arange(0.0, 2000.0, self.inputs.nsteps)[np.newaxis,np.newaxis,:] # Going to 2000 is a good approximation, doesn't get better by going higher
         time_means = deepcopy(self.inputs.timesteps[0,0,:]) # Get the timing means that player can select as their stopping time
-        agent_pdf = stats.norm.pdf(inf_timesteps, self.inputs.agent_means, self.inputs.agent_sds)  # Find agent pdf tiled 2000
+        agent_pdf = stats.norm.pdf(inf_timesteps, self.inputs.agent_means, self.inputs.agent_sds)  # Find agent pdf
         prob_agent_less_player = stats.norm.cdf(
             0, self.inputs.agent_means - inf_timesteps, 
             np.sqrt(self.inputs.agent_sds**2 + (self.inputs.timing_sd) ** 2)
