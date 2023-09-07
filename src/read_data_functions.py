@@ -256,38 +256,3 @@ def generate_subject_object_v3(experiment, select_trials='All Trials'):
                                     )
     assert TRIAL_TIME == 2000    
     return subject_object
-
-
-def create_model_df(model: object, model_name: str) -> pd.DataFrame:
-    inputs_row = deepcopy(vars(model.inputs))
-    for k,v in inputs_row.items():
-            if isinstance(v, np.ndarray):
-                if np.isclose(v,v[0]).all():
-                    inputs_row[k] = v[0]
-                inputs_row[k] = inputs_row[k].tolist()      
-    inputs_row.pop('timesteps')
-
-
-def save_models(model: object, model_dict: dict, model_name: str):
-    '''
-    This function creates a folder for that model if it doesn't exist,
-    pickles the model itself, saves the json of inputs, and saves any associated figures
-    
-    '''
-    os.chdir('D:\\OneDrive - University of Delaware - o365\\Desktop\\MatchPennies-Agent-Expirement\\results\\models')
-    SAVE_PATH = Path(model_name)
-    
-    # Create folder for model if it doesn't exist yet
-    if not SAVE_PATH.is_dir():
-        SAVE_PATH.mkdir()
-    # Pickle Model object
-    
-    # Pickle json of the model inputs
-    JSON_PATH = SAVE_PATH / 't'
-    model_inputs_dict = vars(model.inputs)
-    for k,v in model_inputs_dict.items():
-        if isinstance(v, np.ndarray):
-            if np.isclose(v == v[0]).all():
-                model_inputs_dict[k] = v[0]
-    with open():
-        pass
