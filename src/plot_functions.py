@@ -9,6 +9,7 @@ class PlottingKwargs:
         self.bw            = kwargs.get('box_width',0.75)
         self.box_color     = kwargs.get('colors',wheel.seth_blue)
         self.xlocs         = kwargs.get('xlocs')
+        self.xtick_locs    = kwargs.get('xtick_locs', self.xlocs)
         self.ylocs         = kwargs.get('ylocs')
         self.legend_loc    = kwargs.get('legend_loc','best')
         self.include_means = kwargs.get('include_means')
@@ -148,19 +149,18 @@ def scatter_with_correlation(ax,xdata,ydata,**kwargs):
 def multiple_models_boxplot_v2(ax,data,model_data,labels,show_boxplot=True,
                                **kwargs):
     pk = PlottingKwargs(**kwargs)
-    
+    w, h = plt.gcf().get_size_inches()
     if show_boxplot:
         ax,bp = multi_boxplot(ax,data,pk.xlocs,box_width = pk.bw,colors=pk.box_color,include_means=pk.include_means)
         if pk.jitter:
             dv.jitter_array(ax=ax,x_positions=pk.xlocs,data=data.T, noise_scale=0.01, include_mean = False, circle_size=30)
 
     if pk.line_colors is None:
-        pk.line_colors = [wheel.rak_red,wheel.yellow,wheel.rak_blue,wheel.light_orange,
-                       wheel.lighten_color(wheel.rak_red,0.5),wheel.lighten_color(wheel.yellow,0.5),
-                       wheel.lighten_color(wheel.rak_blue,0.5),wheel.lighten_color(wheel.light_orange,0.5)]
+        np.random.seed(0)
+        pk.line_colors = dv.ColorWheel().get_random_color(n=len(model_data))
 
     if pk.linestyles is None:
-        pk.linestyles = ['-','-','-','-','--','--','--','--']
+        pk.linestyles = ['-']*len(model_data)
     
     legend_colors = []
     legend_labels = []
@@ -171,8 +171,8 @@ def multiple_models_boxplot_v2(ax,data,model_data,labels,show_boxplot=True,
         legend_colors.append(pk.line_colors[i])
         legend_labels.append(labels[i])
         legend_linestyles.append(pk.linestyles[i])
-        
-    ax.set_xticks(np.linspace(data.shape[1]))
+
+    ax.set_xticks(pk.xtick_locs)
     ax.set_yticks(pk.ylocs)
     ax.set_xticklabels(pk.xticklabels)
     ax.set_xlabel(pk.xlabel)
