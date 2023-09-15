@@ -150,6 +150,7 @@ class ModelInputs:
             self.nsteps = kwargs.get('nsteps',1)
             self.num_timesteps = int(kwargs.get("num_timesteps")/self.nsteps)
             self.timesteps = kwargs.get("timesteps", np.tile(np.arange(0.0, float(self.num_timesteps), self.nsteps), (2, self.num_blocks, 1))) # Has shape starting with (2,)
+            self.round_num = kwargs.get('round_num',20)
 
         #*Player Parameters and Rewards
         if True:
@@ -171,8 +172,10 @@ class ModelInputs:
             
             # If i don't directly use data, then guess_sd is the combination of timing_sd (includes electromechanical sd probably) and guess_switch_sd
             if self.guess_sd is None:
+                self.guess_sd_from_data = False
                 self.guess_sd = np.sqrt(self.guess_switch_sd**2 + self.timing_sd**2)
             else:
+                self.guess_sd_from_data = True
                 self.guess_sd = self.guess_sd
 
             # Ability
@@ -333,11 +336,11 @@ class PlayerBehavior:
         
         #! NOT SURE IF AGENT BEHAVIOR SHOULD INFLUENCE THIS, (8/16/23 i say it should bc it looks like guess leave time sd changes for 1000 and 1100 conditions btwn 50 and 150)
         # Also, the model predicts high guess switch sd when not accounting for it in order to get the best fit. This doesn't seem reflective of reality
-        if self.inputs.guess_sd.ndim>2: 
-            self.guess_leave_time_sd = np.tile(self.inputs.guess_sd, (self.inputs.num_timesteps)) # DOESN'T Add on agent behavior, took it from data which includes that
+        if self.inputs.guess_sd_from_data: 
+            self.guess_leave_time_sd = self.inputs.guess_sd # DOESN'T Add on agent behavior, took it from data which includes that
         else:
-            self.guess_leave_time_sd = np.sqrt(self.agent_behavior.guess_leave_time_sd**2 # Does include agent behavior
-                                                + np.moveaxis(np.tile(self.inputs.guess_sd, (self.inputs.num_timesteps,1,1)), 0,-1)**2
+            self.guess_leave_time_sd = np.sqrt(self.agent_behavior.guess_leave_time_sd**2 + # Does include agent behavior, guess_sd includes timing from inputs
+                                                self.inputs.guess_sd**2
                                         )
         #* If each element in the array is the same, then I passed a constant
         #TODO NEED TO DECIDE WHAT I'M GOING TO SAY THE LEAVE TIME SD IS. RIGHT NOW I PASS COINCIDENCE TIME SD
@@ -492,12 +495,11 @@ class Results:
             + score_metrics.prob_indecision_guess*self.inputs.indecision_cost
         )
 
-        self.round_num = 20
         self.exp_reward = np.round(
             score_metrics.prob_win*self.inputs.win_reward
             + score_metrics.prob_incorrect*self.inputs.incorrect_cost
             + score_metrics.prob_indecision*self.inputs.indecision_cost,
-            self.round_num
+            self.inputs.round_num
         )
         self.fit_decision_index = None
         
@@ -506,9 +508,9 @@ class Results:
         #* Not rounded, forward argmax
         # return np.nanargmax(self.exp_reward, axis=2).astype(int)*self.inputs.nsteps
         #* Rounded, forward
-        # return np.nanargmax(np.round(self.exp_reward,self.round_num), axis=2).astype(int)*self.inputs.nsteps
+        # return np.nanargmax(np.round(self.exp_reward,self.inputs.round_num), axis=2).astype(int)*self.inputs.nsteps
         #* Rounded, backward
-        a = np.round(self.exp_reward,self.round_num)
+        a = np.round(self.exp_reward,self.inputs.round_num)
         return a.shape[2] - 1 - np.argmax(np.flip(a, axis=2), axis=2)
 
     @property
@@ -519,9 +521,9 @@ class Results:
     @property
     def optimal_exp_reward(self):
         # return np.nanmax(self.exp_reward, axis=2)
-        # return np.nanmax(np.round(self.exp_reward,self.round_num), axis=2)
+        # return np.nanmax(np.round(self.exp_reward,self.inputs.round_num), axis=2)
         #* Rounded, backward
-        a = np.round(self.exp_reward,self.round_num)
+        a = np.round(self.exp_reward,self.inputs.round_num)
         return np.max(a,axis=2)
 
     @property
@@ -531,7 +533,7 @@ class Results:
     @property
     def fit_exp_reward(self):
         ans = np.zeros(self.inputs.num_blocks)
-        rounded_exp_reward = np.round(self.exp_reward,self.round_num)
+        rounded_exp_reward = np.round(self.exp_reward,self.inputs.round_num)
         for i in range(self.inputs.num_blocks):
             ans[i] = rounded_exp_reward[i, self.fit_decision_index[i]]
         return ans
@@ -574,7 +576,7 @@ class Results:
                     ans[i] = metric1[i,timing_index[i]]
                 else:
                     ans[i] = metric1[metric_type_index, i, timing_index[i]]
-            return np.round(ans,self.round_num)
+            return np.round(ans,self.inputs.round_num)
         else: # For reaction/guess perc metrics
             ans1 = np.zeros(self.inputs.num_blocks)*np.nan
             ans2 = np.zeros(self.inputs.num_blocks)*np.nan
@@ -585,7 +587,7 @@ class Results:
                 else:
                     ans1[i] = metric1[metric_type_index, i, timing_index[i]]
                     ans2[i] = metric2[metric_type_index, i, timing_index[i]]
-            return np.divide(np.round(ans1,self.round_num), np.round(ans2,self.round_num), 
+            return np.divide(np.round(ans1,self.inputs.round_num), np.round(ans2,self.inputs.round_num), 
                               out=np.zeros_like(ans2), where=ans2 > 1e-10)
 
 
