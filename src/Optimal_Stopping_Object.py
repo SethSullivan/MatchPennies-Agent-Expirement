@@ -192,29 +192,34 @@ class ModelInputs:
             if self.experiment == "Exp2":
                 # Reward and cost values
                 # This uses the base reward matrix and if incorrect or indecision are altered, it's added on to the base
-                reward_matrix = np.array([[1, 0, 0], [1, -1, 0], [1, 0, -1], [1, -1, -1]])
                 input_win_reward = kwargs.get("win_reward", 1)
                 input_incorrect_cost = kwargs.get("incorrect_cost", 0)
                 input_indecision_cost = kwargs.get("indecision_cost", 0)
-                reward_change_arr = np.array([input_win_reward, input_incorrect_cost, input_indecision_cost])
-                condition_one = np.tile(reward_matrix[0], (self.num_timesteps, 1))
-                condition_two = np.tile(reward_matrix[1], (self.num_timesteps, 1))
-                condition_three = np.tile(reward_matrix[2], (self.num_timesteps, 1))
-                condition_four = np.tile(reward_matrix[3], (self.num_timesteps, 1))
-                
-                win_reward_temp = np.vstack(
-                    (condition_one[:, 0], condition_two[:, 0], condition_three[:, 0], condition_four[:, 0])
-                )
-                incorrect_cost_temp = np.vstack(
-                    (condition_one[:, 1], condition_two[:, 1], condition_three[:, 1], condition_four[:, 1])
-                )
-                indecision_cost_temp = np.vstack(
-                    (condition_one[:, 2], condition_two[:, 2], condition_three[:, 2], condition_four[:, 2])
-                )
-                
-                self.win_reward = win_reward_temp # Don't want to change this, generally
-                self.incorrect_cost = incorrect_cost_temp + input_incorrect_cost
-                self.indecision_cost = indecision_cost_temp + input_indecision_cost
+                if isinstance(input_win_reward, np.ndarray):
+                    self.win_reward = input_win_reward
+                    self.incorrect_cost = input_incorrect_cost
+                    self.indecision_cost = input_indecision_cost
+                else:
+                    reward_matrix = np.array([[1, 0, 0], [1, -1, 0], [1, 0, -1], [1, -1, -1]])
+                    reward_change_arr = np.array([input_win_reward, input_incorrect_cost, input_indecision_cost])
+                    condition_one = np.tile(reward_matrix[0], (self.num_timesteps, 1))
+                    condition_two = np.tile(reward_matrix[1], (self.num_timesteps, 1))
+                    condition_three = np.tile(reward_matrix[2], (self.num_timesteps, 1))
+                    condition_four = np.tile(reward_matrix[3], (self.num_timesteps, 1))
+                    
+                    win_reward_temp = np.vstack(
+                        (condition_one[:, 0], condition_two[:, 0], condition_three[:, 0], condition_four[:, 0])
+                    )
+                    incorrect_cost_temp = np.vstack(
+                        (condition_one[:, 1], condition_two[:, 1], condition_three[:, 1], condition_four[:, 1])
+                    )
+                    indecision_cost_temp = np.vstack(
+                        (condition_one[:, 2], condition_two[:, 2], condition_three[:, 2], condition_four[:, 2])
+                    )
+                    
+                    self.win_reward = win_reward_temp # Don't want to change this, generally
+                    self.incorrect_cost = incorrect_cost_temp + input_incorrect_cost
+                    self.indecision_cost = indecision_cost_temp + input_indecision_cost
                 
                 assert np.all(self.win_reward>=1)
                 
@@ -339,11 +344,12 @@ class PlayerBehavior:
         if self.inputs.guess_sd_from_data: 
             self.guess_leave_time_sd = self.inputs.guess_sd # DOESN'T Add on agent behavior, took it from data which includes that
         else:
-            self.guess_leave_time_sd = np.sqrt(self.agent_behavior.guess_leave_time_sd**2 + # Does include agent behavior, guess_sd includes timing from inputs
+            self.guess_leave_time_sd = np.sqrt(self.agent_behavior.guess_leave_time_sd**2 + # Does include agent behavior bc it might effect , guess_sd includes timing from inputs
                                                 self.inputs.guess_sd**2
                                         )
+            # self.guess_leave_time_sd = self.inputs.guess_sd
         #* If each element in the array is the same, then I passed a constant
-        #TODO NEED TO DECIDE WHAT I'M GOING TO SAY THE LEAVE TIME SD IS. RIGHT NOW I PASS COINCIDENCE TIME SD
+        # TODO NEED TO DECIDE WHAT I'M GOING TO SAY THE LEAVE TIME SD IS. RIGHT NOW I PASS COINCIDENCE TIME SD
         # TODO BUT THE guess LEAVE TIME SD IS ALSO DEPENDENT ON THE AGENT'S LEAVE TIME SD
         # TODO (OR IS IT? DOES guess LEAVE TIME SD CHANGE ACROSS CONDITIONS?)
         
