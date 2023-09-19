@@ -146,7 +146,7 @@ def scatter_with_correlation(ax,xdata,ydata,**kwargs):
 #         ax1.set_xticks([])
 #         ax1.spines.bottom.set_visible(False)
         
-def multiple_models_boxplot_v2(ax,data,model_data,labels,show_boxplot=True,
+def multiple_models_boxplot_v2(ax,data,model_data,labels,show_boxplot=True,show_models=True,
                                **kwargs):
     pk = PlottingKwargs(**kwargs)
     w, h = plt.gcf().get_size_inches()
@@ -156,7 +156,7 @@ def multiple_models_boxplot_v2(ax,data,model_data,labels,show_boxplot=True,
             dv.jitter_array(ax=ax,x_positions=pk.xlocs,data=data.T, noise_scale=0.01, include_mean = False, circle_size=30)
 
     if pk.line_colors is None:
-        np.random.seed(0)
+        np.random.seed(1)
         pk.line_colors = dv.ColorWheel().get_random_color(n=len(model_data))
 
     if pk.linestyles is None:
@@ -165,12 +165,16 @@ def multiple_models_boxplot_v2(ax,data,model_data,labels,show_boxplot=True,
     legend_colors = []
     legend_labels = []
     legend_linestyles = []
-    offset = np.linspace(-pk.bw/5,pk.bw/5,len(model_data))
-    for i in range(len(model_data)):
-        ax.plot(pk.xlocs+offset[i],model_data[i],c=pk.line_colors[i],marker='*',markersize=10, zorder=200,ls=pk.linestyles[i])
-        legend_colors.append(pk.line_colors[i])
-        legend_labels.append(labels[i])
-        legend_linestyles.append(pk.linestyles[i])
+    if show_models:
+        if len(model_data)==1:
+            offset = np.zeros(len(model_data))
+        else:
+            offset = np.linspace(-pk.bw/5,pk.bw/5,len(model_data))
+        for i in range(len(model_data)):
+            ax.plot(pk.xlocs+offset[i],model_data[i],c=pk.line_colors[i],marker='o',markersize=7.5, zorder=200,ls=pk.linestyles[i])
+            legend_colors.append(pk.line_colors[i])
+            legend_labels.append(labels[i])
+            legend_linestyles.append(pk.linestyles[i])
 
     ax.set_xticks(pk.xtick_locs)
     ax.set_yticks(pk.ylocs)
