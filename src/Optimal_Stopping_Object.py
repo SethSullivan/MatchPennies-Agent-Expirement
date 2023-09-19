@@ -344,10 +344,10 @@ class PlayerBehavior:
         if self.inputs.guess_sd_from_data: 
             self.guess_leave_time_sd = self.inputs.guess_sd # DOESN'T Add on agent behavior, took it from data which includes that
         else:
-            self.guess_leave_time_sd = np.sqrt(self.agent_behavior.guess_leave_time_sd**2 + # Does include agent behavior bc it might effect , guess_sd includes timing from inputs
-                                                self.inputs.guess_sd**2
-                                        )
-            # self.guess_leave_time_sd = self.inputs.guess_sd
+            # self.guess_leave_time_sd = np.sqrt(self.agent_behavior.guess_leave_time_sd**2 + # Does include agent behavior bc it might effect , guess_sd includes timing from inputs
+            #                                     self.inputs.guess_sd**2
+            #                             )
+            self.guess_leave_time_sd = self.inputs.guess_sd
         #* If each element in the array is the same, then I passed a constant
         # TODO NEED TO DECIDE WHAT I'M GOING TO SAY THE LEAVE TIME SD IS. RIGHT NOW I PASS COINCIDENCE TIME SD
         # TODO BUT THE guess LEAVE TIME SD IS ALSO DEPENDENT ON THE AGENT'S LEAVE TIME SD
