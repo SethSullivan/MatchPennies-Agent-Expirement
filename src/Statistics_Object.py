@@ -47,7 +47,9 @@ class Statistics():
         return ans
     
     
-    def run_statistics(self, dv, anova_type='rm_anova', change_m = None,alternative='two-sided',test='mean'):
+    def run_statistics(self, dv, anova_type='rm_anova', change_m = None,
+                       alternative='two-sided',test='mean',no_collapse=False,
+                       **kwargs):
         if change_m is None:
             self.M = copy.deepcopy(self.M_init)
         else:
@@ -68,7 +70,7 @@ class Statistics():
             metric = self.df_to_array(self.df[dv])
         
             #* Don't collapse 
-            if self.anova['p-GG-corr'][2] <0.05:
+            if self.anova['p-GG-corr'][2] <0.05 or no_collapse:
                 print('Significant interaction, doing pairwise bootstraps for each condition...')
                 self.collapse_factor = [None]
                 pval_dict,cles_dict = self.pairwise_bootstrap(metric,alternative=alternative)
@@ -115,27 +117,39 @@ class Statistics():
                 # Only take the even conditions together and the odd conditions together
                 combos_ = ["".join(map(str, comb)) for comb in combinations(condition_nums, 2)] # Creates list of unique combos, order doesn't matter
                 combos = [c for c in combos_ if _check_parity(c)]
+                if alternative == 'variable':
+                    alternative_dict = {'02':'less','04':'greater','24':'less',
+                                    '13':'less','15':'greater','35':'less'}
+                else:
+                    alternative_dict = dict(zip(combos,[alternative]*len(combos)))
+                    
             elif self.experiment == 'Exp2':
                 condition_nums = ['0','1','2','3']
                 combos = ["".join(map(str, comb)) for comb in combinations(condition_nums, 2)] # Creates list of unique combos, order doesn't matter
         else:
             combos = ["".join(map(str, comb)) for comb in combinations(condition_nums, 2)] # Creates list of unique combos, order doesn't matter
+            alternative_dict = dict(zip(combos,[alternative]*len(combos)))
+
+        # if self.experiment == 'Exp1':
+            
 
         c=-1
         pvals = np.empty((len(combos)))
         cles1 = np.empty((len(combos)))
         cles2 = np.empty((len(combos)))
+        
+            
         for combo in combos:
             c+=1
             i = int(combo[0])
             j = int(combo[1])
-            pvals[c] = au.bootstrap(data[:,i],data[:,j],paired=True,M=self.M,alternative=alternative,test=self.test)
+            pvals[c] = au.bootstrap(data[:,i],data[:,j],paired=True,M=self.M,alternative=alternative_dict[combo],test=self.test)
             cles1[c] = au.cles(data[:,i],data[:,j],paired=True) 
             cles2[c] = au.cles(data[:,j],data[:,i],paired=True) 
             
         # Create array and do holm bonferroni
         check,pvals_corrected = pg.multicomp(pvals=pvals,method='holm')
-        pvals_corrected = au.holmbonferroni_correction(pvals)
+        # pvals_corrected = au.holmbonferroni_correction(pvals)
         pval_dict = {}
         pval_dict = dict(zip(combos, pvals_corrected))
 
@@ -167,7 +181,7 @@ class Statistics():
             for combo in combos:
                 a = int(combo[0])
                 b = int(combo[1])
-                c = int(combo[1])
+                c = int(combo[2]) #! Changed from 1 to 2
                 ans.append(np.concatenate((arr[:,a],arr[:,b],arr[:,c])))
         return_ans = np.array(ans).T
         assert return_ans.shape[0]>15 
@@ -180,8 +194,8 @@ class Statistics():
     def plot_all_conditions(self):
         pass
     
-    def plot(self,statistics,metric_name, title, ylab,title_pad = 10,statline_ypos = None,
-                         h=5,num_yticks = None, ylocs=None,lims=True,cut_pvals = False,box_colors = wheel.seth_blue,):
+    def plot (self,statistics,metric_name, title, ylab,title_pad = 10,statline_ypos = None,
+                         h=5,num_yticks = None, ylocs=None,lims=True,cut_pvals = False,box_colors = wheel.grey,):
         #* Set values for the factor that we're collapsing across
         if self.anova['p-GG-corr'][0] >0.05:
             print('!! Factor 1 is not significant !!')
@@ -274,7 +288,7 @@ class Statistics():
                         raise KeyError('select_conditions must be All, even, or odd')
                 
                 _,B = pf.multi_boxplot(ax,metric,xlocs=xlocs_bp,box_width = bw,colors = box_colors,)
-                dv.jitter_array(ax=ax,x_positions=xlocs_bp,data_list=metric.T, noise_scale=0.15, include_mean = True, circle_size=50)
+                dv.jitter_array(ax=ax,x_positions=xlocs_bp,data=metric.T, noise_scale=0.15, include_mean = True, circle_size=50)
                 
                 #* Get condition xlocs and plot stat annotation 
                 if True:
@@ -309,5 +323,4 @@ class Statistics():
                 ax.set_ylabel(ylab)
                 ax.set_title(title, pad=title_pad)
                 axmain.set_axis_off()
-                plt.show()
-                
+                return ax                
