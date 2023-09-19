@@ -64,7 +64,7 @@ for EXPERIMENT in EXPERIMENTS:
         timing_sd_change = [time_sd[0] / 2, 0]
 
         GUESS_SWITCH_DELAY = 65
-        GUESS_SWITCH_SD = 45
+        GUESS_SWITCH_SD = 65
         INCORRECT_CHANGE = -0.2
         
         if EXPERIMENT == "Exp1":
@@ -79,7 +79,7 @@ for EXPERIMENT in EXPERIMENTS:
             "timing_sd_change": [time_sd[0] / 2, 0],
             "guess_switch_delay_true": [GUESS_SWITCH_DELAY], #! Assuming guess switch delay always exists
             "guess_switch_delay_expected": [GUESS_SWITCH_DELAY, 0],
-            "guess_switch_sd_true": [GUESS_SWITCH_SD], # ! Assuming quess switch sd always exists
+            "guess_switch_sd_true": [GUESS_SWITCH_SD], # ! Assuming guess switch sd always exists
             "guess_switch_sd_expected": [GUESS_SWITCH_SD, 0],
             "score_rewards_list": score_rewards_list,
             "guess_sd_true":[guess_leave_time_sd],
