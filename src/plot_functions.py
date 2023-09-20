@@ -147,7 +147,7 @@ def scatter_with_correlation(ax,xdata,ydata,**kwargs):
 #         ax1.set_xticks([])
 #         ax1.spines.bottom.set_visible(False)
         
-def multiple_models_boxplot_v2(ax,data,model_data,labels,show_boxplot=True,show_models=True,
+def multiple_models_boxplot(ax,data,model_data,labels,stats_inputs=None,statistics=None,show_boxplot=True,show_models=True,
                                **kwargs):
     pk = PlottingKwargs(**kwargs)
     w, h = plt.gcf().get_size_inches()
@@ -195,9 +195,15 @@ def multiple_models_boxplot_v2(ax,data,model_data,labels,show_boxplot=True,show_
     dv.legend(ax,legend_labels,legend_colors,ls = legend_linestyles,loc=pk.legend_loc,
               fontsize=pk.legend_fontsize, ncol=ncol, columnspacing=1)
     
+    if stats_inputs is not None:
+        #* Plot stats a certain way
+        pass
+
+    
+    
 #! Legacy for Optimal_Stopping_Model_With_Data_Group
 #! v2 is a much more concise implementation and is better
-def multiple_models_boxplot(ax,data,show_boxplot=True,
+def multiple_models_boxplot_old(ax,data,show_boxplot=True,
                             known_player=None,unknown_player=None, 
                             known_optimal = None,unknown_optimal=None,
                             no_switch=None, full_fit=None,
