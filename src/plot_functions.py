@@ -25,6 +25,7 @@ class PlottingKwargs:
         self.box_lw       = kwargs.get("box_lw", 1.2)
         self.box_width    = kwargs.get("box_width", .75)
         self.whisker_lw   = kwargs.get("whisker_lw", 2.0)
+        self.reorder_xaxis = kwargs.get('reorder_xaxis',False)
 
 def make_figure_panel(figsize, inset_size, dpi = 100):
     fig,axmain = plt.subplots(dpi = dpi, figsize = figsize)
@@ -150,6 +151,11 @@ def multiple_models_boxplot_v2(ax,data,model_data,labels,show_boxplot=True,show_
                                **kwargs):
     pk = PlottingKwargs(**kwargs)
     w, h = plt.gcf().get_size_inches()
+    if pk.reorder_xaxis:
+        data = data[:,[0,2,4,1,3,5]]
+        pk.xticklabels = pk.xticklabels[::2] + pk.xticklabels[1::2]
+        model_data = np.array(model_data)[:,[0,2,4,1,3,5]]
+
     if show_boxplot:
         ax,bp = multi_boxplot(ax,data,pk.xlocs,box_width = pk.bw,colors=pk.box_color,include_means=pk.include_means)
         if pk.jitter:
