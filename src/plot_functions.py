@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import data_visualization as dv
 from scipy import stats
+from copy import deepcopy
 wheel = dv.ColorWheel()
 
 class PlottingKwargs:
@@ -9,7 +10,7 @@ class PlottingKwargs:
         self.bw            = kwargs.get('box_width',0.75)
         self.box_color     = kwargs.get('colors',wheel.seth_blue)
         self.xlocs         = kwargs.get('xlocs')
-        self.xtick_locs    = kwargs.get('xtick_locs', self.xlocs)
+        self.xtick_locs    = kwargs.get('xtick_locs', deepcopy(self.xlocs))
         self.ylocs         = kwargs.get('ylocs')
         self.legend_loc    = kwargs.get('legend_loc','best')
         self.include_means = kwargs.get('include_means')
@@ -20,6 +21,7 @@ class PlottingKwargs:
         self.xlabel        = kwargs.get('xlabel')
         self.ylabel        = kwargs.get('ylabel')
         self.title         = kwargs.get('title')
+        self.title_padding = kwargs.get('title_padding',0)
         self.legend_fontsize = kwargs.get('legend_fontsize',6)
         self.title_fontsize = kwargs.get('title_fontsize',20)
         self.box_lw       = kwargs.get("box_lw", 1.2)
@@ -146,10 +148,12 @@ def scatter_with_correlation(ax,xdata,ydata,**kwargs):
 #         ax1.set_xlim(-0.3,1.2)
 #         ax1.set_xticks([])
 #         ax1.spines.bottom.set_visible(False)
-        
-def multiple_models_boxplot(ax,data,model_data,labels,stats_inputs=None,statistics=None,show_boxplot=True,show_models=True,
-                               **kwargs):
+
+def multiple_models_boxplot(ax,data,model_data,labels,
+                            show_boxplot=True,show_models=True,
+                            **kwargs):
     pk = PlottingKwargs(**kwargs)
+    
     w, h = plt.gcf().get_size_inches()
     if pk.reorder_xaxis:
         data = data[:,[0,2,4,1,3,5]]
@@ -159,7 +163,7 @@ def multiple_models_boxplot(ax,data,model_data,labels,stats_inputs=None,statisti
     if show_boxplot:
         ax,bp = multi_boxplot(ax,data,pk.xlocs,box_width = pk.bw,colors=pk.box_color,include_means=pk.include_means)
         if pk.jitter:
-            dv.jitter_array(ax=ax,x_positions=pk.xlocs,data=data.T, noise_scale=0.01, include_mean = False, circle_size=30)
+            dv.jitter_array(ax=ax,x_positions=pk.xlocs,data=data.T, noise_scale=0.06, include_mean = False, circle_size=100)
 
     if pk.line_colors is None:
         np.random.seed(1)
@@ -177,17 +181,18 @@ def multiple_models_boxplot(ax,data,model_data,labels,stats_inputs=None,statisti
         else:
             offset = np.linspace(-pk.bw/5,pk.bw/5,len(model_data))
         for i in range(len(model_data)):
-            ax.plot(pk.xlocs+offset[i],model_data[i],c=pk.line_colors[i],marker='o',markersize=7.5, zorder=200,ls=pk.linestyles[i])
+            ax.plot(pk.xlocs+offset[i],model_data[i],c=pk.line_colors[i],marker='o',markersize=12, zorder=200,ls=pk.linestyles[i])
             legend_colors.append(pk.line_colors[i])
             legend_labels.append(labels[i])
             legend_linestyles.append(pk.linestyles[i])
 
     ax.set_xticks(pk.xtick_locs)
     ax.set_yticks(pk.ylocs)
-    ax.set_xticklabels(pk.xticklabels)
-    ax.set_xlabel(pk.xlabel)
-    ax.set_ylabel(pk.ylabel)
-    ax.set_title(pk.title, fontsize = pk.title_fontsize)
+    ax.set_xticklabels(pk.xticklabels,fontsize=23)
+    ax.set_yticklabels(pk.ylocs,fontsize=23)
+    ax.set_xlabel(pk.xlabel,labelpad=10,fontsize=30)
+    ax.set_ylabel(pk.ylabel,labelpad=5,fontsize=30)
+    ax.set_title(pk.title, fontsize = pk.title_fontsize, pad=pk.title_padding)
     if len(labels)>3:
         ncol = 2
     else:
@@ -195,10 +200,18 @@ def multiple_models_boxplot(ax,data,model_data,labels,stats_inputs=None,statisti
     dv.legend(ax,legend_labels,legend_colors,ls = legend_linestyles,loc=pk.legend_loc,
               fontsize=pk.legend_fontsize, ncol=ncol, columnspacing=1)
     
-    if stats_inputs is not None:
-        #* Plot stats a certain way
-        pass
-
+    
+def plot_stats(ax, stats_inputs, statistics:list[dict],combos:list[str], 
+               ypos:list[int], xlocs, xloc_index:list[str], **kwargs):
+    stacked = kwargs.get('stacked',False)
+    fontsize = kwargs.get('fontsize',12)
+    
+    for i in range(len(combos)):
+        dv.stat_annotation(ax,xlocs[int(xloc_index[i][0])],xlocs[int(xloc_index[i][1])],y=ypos[i], 
+                           p_val= statistics[0][combos[i]], cles=statistics[1][combos[i]],
+                           fontsize=fontsize, stacked=stacked)
+        
+         
     
     
 #! Legacy for Optimal_Stopping_Model_With_Data_Group
