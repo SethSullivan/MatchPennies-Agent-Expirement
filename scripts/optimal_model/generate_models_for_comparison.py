@@ -74,8 +74,8 @@ for EXPERIMENT in EXPERIMENTS:
 
         params_dict = {
             "agent_sd_change": [150, 0],
-            "rt_sd_change": [rt_sd / 2, 0],
-            "mt_sd_change": [mt_sd / 2, 0],
+            "rt_sd_change": [0],#[rt_sd / 2, 0],
+            "mt_sd_change": [0],#[mt_sd / 2, 0],
             "timing_sd_change": [time_sd[0] / 2, 0],
             "guess_switch_delay_true": [GUESS_SWITCH_DELAY], #! Assuming guess switch delay always exists
             "guess_switch_delay_expected": [GUESS_SWITCH_DELAY, 0],
@@ -83,7 +83,7 @@ for EXPERIMENT in EXPERIMENTS:
             "guess_switch_sd_expected": [GUESS_SWITCH_SD, 0],
             "score_rewards_list": score_rewards_list,
             "guess_sd_true":[guess_leave_time_sd],
-            "guess_sd_expected":[guess_leave_time_sd,guess_leave_time_sd-70],
+            "guess_sd_expected":[guess_leave_time_sd,guess_leave_time_sd/2],
         }
 
         # Option to remove parameters we don't care about
