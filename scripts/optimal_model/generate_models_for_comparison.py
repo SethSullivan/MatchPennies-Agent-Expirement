@@ -75,8 +75,6 @@ for EXPERIMENT in EXPERIMENTS:
 
         params_dict = {
             "agent_sd_change": [150, 0],
-            "rt_sd_change": [0],#[rt_sd / 2, 0],
-            "mt_sd_change": [0],#[mt_sd / 2, 0],
             "timing_sd_change": [time_sd[0] / 2, 0],
             "guess_switch_delay_true": [GUESS_SWITCH_DELAY], #! Assuming guess switch delay always exists
             "guess_switch_delay_expected": [GUESS_SWITCH_DELAY, 1],
@@ -93,15 +91,6 @@ for EXPERIMENT in EXPERIMENTS:
             for param in PARAMS_TO_REMOVE:
                 params_dict.pop(param)
         all_param_combos = itertools.product(*params_dict.values())  # The * unpacks into the product function
-
-        ## Set numbers to change means by
-        # agent_mean_change = 50
-        # RT_SD_CHANGE     = 20
-        # MT_SD_CHANGE     = 20
-        # TIMING_SD_CHANGE = time_sd/2
-        # change_sd_list = [(AGENT_SD_CHANGE,0,0,0), (0,RT_SD_CHANGE,0,0), (0,0,MT_SD_CHANGE,0), (0,0,0,TIMING_SD_CHANGE)]
-        # model_dict_keys_sd = ['agent_sd', 'rt_sd', 'mt_sd', 'timing_sd']
-        # assert guess_switch_delay_expected_list[::2] == guess_switch_delay_true_list[::2]
 
     # * Get targets for model comparisons
     targets = np.array(
@@ -145,8 +134,8 @@ for EXPERIMENT in EXPERIMENTS:
 
     # * Loop through all the changing parameters
     c = 0
-    list_of_input_parameters = []
-    list_of_descriptive_parameters = []  # Used for saying what changed, as opposed to the actual parameter values
+    input_parameters = []
+    descriptive_parameters = []  # Used for saying what changed, as opposed to the actual parameter values
     param_keys = params_dict.keys()
     print("Starting Models...")
     for param_tuple in tqdm(all_param_combos):
@@ -156,20 +145,18 @@ for EXPERIMENT in EXPERIMENTS:
             num_blocks=it.num_blocks,
             num_timesteps=1800,
             agent_means=np.array([agent_means, agent_means])[:, :, np.newaxis],
-            agent_sds=np.array([agent_sds, agent_sds + params["agent_sd_change"]])[:, :, np.newaxis],  #!
+            agent_sds=np.array([agent_sds, agent_sds + params.get("agent_sd_change",0)])[:, :, np.newaxis],  #!
             reaction_time=np.array([rt, rt])[:, np.newaxis, np.newaxis],
             movement_time=np.array([mt, mt])[:, np.newaxis, np.newaxis],
-            reaction_sd=np.array([rt_sd, rt_sd - params["rt_sd_change"]])[
+            reaction_sd=np.array([rt_sd, rt_sd - params.get("rt_sd_change",0)])[
                 :, np.newaxis, np.newaxis
             ],  #! Reducing these, aka the particiapnt thinks they are more certain than they are
-            movement_sd=np.array([mt_sd, mt_sd - params["mt_sd_change"]])[:, np.newaxis, np.newaxis],
+            movement_sd=np.array([mt_sd, mt_sd - params.get("mt_sd_change",0)])[:, np.newaxis, np.newaxis],
             timing_sd=np.array([time_sd, time_sd - params["timing_sd_change"]])[:, :, np.newaxis],
-            guess_switch_delay=np.array([params["guess_switch_delay_true"], params["guess_switch_delay_expected"]])[
-                :, np.newaxis, np.newaxis
-            ],  # Designed like this for broadcasting reasons
-            guess_switch_sd=np.array([params["guess_switch_sd_true"], params["guess_switch_sd_expected"]])[
-                :, np.newaxis, np.newaxis
-            ],  # This includes electromechanical delay sd and timing sd bc it's straight from data
+            guess_switch_delay=np.array([params["guess_switch_delay_true"], 
+                                         params["guess_switch_delay_expected"]])[:, np.newaxis, np.newaxis],  # Designed like this for broadcasting reasons
+            guess_switch_sd=np.array([params["guess_switch_sd_true"], 
+                                      params["guess_switch_sd_expected"]])[:, np.newaxis, np.newaxis],  # This includes electromechanical delay sd and timing sd bc it's straight from data
             # guess_sd =  np.array([params['guess_sd_true'],params['guess_sd_expected']])[:,:,np.newaxis], # This includes electromechanical delay sd
             electromechanical_delay=np.array([50, 50])[:, np.newaxis, np.newaxis],
             switch_cost_exists=True,
@@ -186,7 +173,7 @@ for EXPERIMENT in EXPERIMENTS:
             targets,
         )
         input_row_dict = create_input_row_dict(model, loss, model_name)
-        list_of_input_parameters.append(input_row_dict)
+        input_parameters.append(input_row_dict)
 
         descriptive_parameter_row = {
             "Model": model_name,
@@ -202,11 +189,11 @@ for EXPERIMENT in EXPERIMENTS:
             "Incorrect_Cost": map_reward_change(params["score_rewards_list"][1], comparison_num=0.0),
             "Indecision_Cost": map_reward_change(params["score_rewards_list"][2], comparison_num=0.0),
         }
-        list_of_descriptive_parameters.append(descriptive_parameter_row)
+        descriptive_parameters.append(descriptive_parameter_row)
         c += 1
 
-    df_inputs = pd.DataFrame(list_of_input_parameters)
-    df_descriptions = pd.DataFrame(list_of_descriptive_parameters)
+    df_inputs = pd.DataFrame(input_parameters)
+    df_descriptions = pd.DataFrame(descriptive_parameters)
 
     save_date = datetime.now()
     # * Save the old model table to a new file
