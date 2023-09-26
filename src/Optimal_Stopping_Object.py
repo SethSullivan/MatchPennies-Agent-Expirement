@@ -169,9 +169,9 @@ class ModelInputs:
             self.timing_sd       = kwargs.get("timing_sd")
             self.guess_switch_sd = kwargs.get("guess_switch_sd") # This would include an electromechanical sd in it 
             self.guess_sd        = kwargs.get("guess_sd") #! OPTION to directly use guess leave time sd
-            
+            self.use_true_guess_sd = kwargs.get("use_true_guess_sd",False)
             # If i don't directly use data, then guess_sd is the combination of timing_sd (includes electromechanical sd probably) and guess_switch_sd
-            if self.guess_sd is None:
+            if self.guess_sd is None or not self.use_true_guess_sd:
                 self.guess_sd_from_data = False
                 self.guess_sd = np.sqrt(self.guess_switch_sd**2 + self.timing_sd**2)
             else:
@@ -558,6 +558,9 @@ class Results:
             expectation (aka self.inputs.key = 1)
             - It will then apply that decision index onto the TRUE array
         '''
+        metric1 = metric1.squeeze()
+        if metric2 is not None:
+            metric2 = metric2.squeeze()
         
         #! METRIC TYPE SHOULD BE TRUE ALMOST ALWAYS
         #    - BC we want to use the optimal decision times from the EXPECTED arrays and apply those onto the TRUE arrays for unknown case
@@ -697,7 +700,7 @@ class ModelFitting:
         
     def run_model_fit_procedure(self, free_params_init: dict, metric_keys: list, targets: np.ndarray,
                                 method='Nelder-Mead', bnds=None, tol = 0.0000001, niter=100,
-                                drop_condition_from_loss=None):
+                                drop_condition_from_loss=None, limit_sd=True):
         self.loss_store = []
         self.optimal_decision_time_store = [] 
         self.leave_time_store = []
@@ -705,6 +708,8 @@ class ModelFitting:
         self.guess_leave_time_sd_store = []
         self.initial_guess = np.array(list(free_params_init.values())) # Get the free param values from dict and make an array, scipy will flatten it if it's 2D
         self.drop_condition_from_loss = drop_condition_from_loss
+        self.limit_sd = limit_sd
+        
         num_params = len(self.initial_guess)
         if bnds is None:
             bnds = tuple([[0,500]])*num_params
@@ -754,9 +759,10 @@ class ModelFitting:
         new_parameters_dict = dict(zip(free_params_keys,free_params_values))
         
         # If the standard deviation and mean combo reaches below 0, return a high loss
-        if 'guess_switch_delay' in free_params_keys and 'guess_switch_sd' in free_params_keys:
-            if new_parameters_dict['guess_switch_delay'] - 2*new_parameters_dict['guess_switch_sd']<0:
-                return 1e3
+        if self.limit_sd:
+            if 'guess_switch_delay' in free_params_keys and 'guess_switch_sd' in free_params_keys:
+                if new_parameters_dict['guess_switch_delay'] - 2*new_parameters_dict['guess_switch_sd']<0:
+                    return 1e3
         
         self.parameter_arr.append(free_params_values)
         # Get the new arrays from the optimized free parameter inputs
@@ -789,8 +795,7 @@ class ModelFitting:
                                                                    decision_type=decision_type,metric_type='true'))
         self.leave_time_sd_store.append(self.model.results.get_metric(self.model.player_behavior.wtd_leave_time_sd,
                                                                       decision_type=decision_type,metric_type='true'))
-        self.guess_leave_time_sd_store.append(self.model.results.get_metric(self.model.player_behavior.guess_leave_time_sd,
-                                                                   decision_type=decision_type,metric_type='true'))
+
         return loss
     
     def update_model(self, free_param_dict):
