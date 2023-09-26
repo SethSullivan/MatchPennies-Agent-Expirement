@@ -66,11 +66,12 @@ for EXPERIMENT in EXPERIMENTS:
         GUESS_SWITCH_DELAY = 65
         GUESS_SWITCH_SD = 65
         INCORRECT_CHANGE = -0.2
+        INDECISION_CHANGE = 0
         
         if EXPERIMENT == "Exp1":
-            score_rewards_list = [[1.0, 0.0, 0.0], [1.0, INCORRECT_CHANGE, 0.0]]
+            score_rewards_list = [[1.0, 0.0, 0.0], [1.0, INCORRECT_CHANGE, INDECISION_CHANGE]]
         elif EXPERIMENT == "Exp2":
-            score_rewards_list = np.array([[1.0, 0.0, 0.0], [1.0, INCORRECT_CHANGE, 0.0]])
+            score_rewards_list = np.array([[1.0, 0.0, 0.0], [1.0, INCORRECT_CHANGE, INDECISION_CHANGE]])
 
         params_dict = {
             "agent_sd_change": [150, 0],
@@ -78,12 +79,12 @@ for EXPERIMENT in EXPERIMENTS:
             "mt_sd_change": [0],#[mt_sd / 2, 0],
             "timing_sd_change": [time_sd[0] / 2, 0],
             "guess_switch_delay_true": [GUESS_SWITCH_DELAY], #! Assuming guess switch delay always exists
-            "guess_switch_delay_expected": [GUESS_SWITCH_DELAY, 0],
+            "guess_switch_delay_expected": [GUESS_SWITCH_DELAY, 1],
             "guess_switch_sd_true": [GUESS_SWITCH_SD], # ! Assuming guess switch sd always exists
-            "guess_switch_sd_expected": [GUESS_SWITCH_SD, 0],
+            "guess_switch_sd_expected": [GUESS_SWITCH_SD, 1],
             "score_rewards_list": score_rewards_list,
-            "guess_sd_true":[guess_leave_time_sd],
-            "guess_sd_expected":[guess_leave_time_sd,guess_leave_time_sd/2],
+            # "guess_sd_true":[guess_leave_time_sd],
+            # "guess_sd_expected":[guess_leave_time_sd,guess_leave_time_sd/2],
         }
 
         # Option to remove parameters we don't care about
@@ -169,14 +170,14 @@ for EXPERIMENT in EXPERIMENTS:
             guess_switch_sd=np.array([params["guess_switch_sd_true"], params["guess_switch_sd_expected"]])[
                 :, np.newaxis, np.newaxis
             ],  # This includes electromechanical delay sd and timing sd bc it's straight from data
-            guess_sd =  np.array([params['guess_sd_true'],params['guess_sd_expected']])[:,:,np.newaxis], # This includes electromechanical delay sd
+            # guess_sd =  np.array([params['guess_sd_true'],params['guess_sd_expected']])[:,:,np.newaxis], # This includes electromechanical delay sd
             electromechanical_delay=np.array([50, 50])[:, np.newaxis, np.newaxis],
             switch_cost_exists=True,
             expected=True,  #! Should always be True... if the parameter is ground truth, then the two values of the parameter array should be the same
             win_reward=params["score_rewards_list"][0],
             incorrect_cost=params["score_rewards_list"][1],  #! These are applied onto the base reward matrix in Optimal Model object
             indecision_cost=params["score_rewards_list"][2],
-            round_num = 3,
+            round_num = 20,
         )
         model_name = f"model{c}_{datetime.now():%Y_%m_%d_%H_%M_%S}"
 
@@ -192,7 +193,7 @@ for EXPERIMENT in EXPERIMENTS:
             "Loss": loss,
             "Known_Switch_Delay": np.all(model.inputs.guess_switch_delay[0] == model.inputs.guess_switch_delay[1]),
             "Known_Switch_SD": np.all(model.inputs.guess_switch_sd[0] == model.inputs.guess_switch_sd[1]),
-            "Known_Guess_SD": np.all(model.inputs.guess_sd[0] == model.inputs.guess_sd[1]),
+            # "Known_Guess_SD": np.all(model.inputs.guess_sd[0] == model.inputs.guess_sd[1]),
             "Known_Agent_SD": params["agent_sd_change"] == 0,
             "Known_RT_SD": params["rt_sd_change"] == 0,
             "Known_MT_SD": params["mt_sd_change"] == 0,
