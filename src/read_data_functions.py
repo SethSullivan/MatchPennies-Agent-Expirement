@@ -142,7 +142,7 @@ def generate_subject_objects(experiment):
     return subject_objects
 
 
-def generate_subject_object_v3(experiment, select_trials='All Trials'):
+def generate_subject_object_v3(experiment, select_trials='All Trials',movement_metric_type='velocity'):
     #* Experiment specific Constants
     if True:
         experiment = experiment
@@ -253,6 +253,7 @@ def generate_subject_object_v3(experiment, select_trials='All Trials'):
             task_xypos_data = task_xypos_data, task_dist_data = task_dist_data, task_xyvelocity_data = task_xyvelocity_data, task_speed_data = task_speed_data,
             interval_trial_start = interval_trial_start, interval_reach_time = interval_reach_time, coincidence_trial_start = coincidence_trial_start, coincidence_reach_time = coincidence_reach_time,
             agent_task_leave_time = agent_task_leave_time, agent_task_target_selection_array = agent_task_decision_array,
-                                    )
+            movement_metric_type=movement_metric_type,
+        )
     assert TRIAL_TIME == 2000    
     return subject_object
