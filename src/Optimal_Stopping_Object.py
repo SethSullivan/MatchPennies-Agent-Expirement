@@ -298,8 +298,6 @@ class AgentBehavior:
         for a,b in zip(true_moments,expected_moments):
             return_vals.append(np.stack((a,b)))
         return return_vals
-        # Call get moments equation
-        # return get_moments(inf_timesteps.squeeze(), time_means.squeeze(), self.inputs.timing_sd[self.inputs.key,:], prob_agent_less_player, agent_pdf)
 
     def cutoff_agent_behavior(self):
         # Get the First Three moments for the left and right distributions (if X<Y and if X>Y respectively)
@@ -548,8 +546,12 @@ class Results:
         self.fit_decision_index = index
 
     def get_metric(self, metric1, metric2=None, 
-                   decision_type = 'optimal', metric_type='true'):
+                   decision_type = 'optimal', metric_type='true', key = None):
         '''
+        
+        decision_type = "optimal" or "fit"
+        metric_type   = "true" or "expected"
+        
         The decision index will always choose from the self.inputs.key
           - MEANING that if the model EXPECTS no delays, then it'll use that decision time
           
@@ -562,15 +564,18 @@ class Results:
         if metric2 is not None:
             metric2 = metric2.squeeze()
         
-        #! METRIC TYPE SHOULD BE TRUE ALMOST ALWAYS
+        if key is None:
+            key = self.inputs.key
+        
         #    - BC we want to use the optimal decision times from the EXPECTED arrays and apply those onto the TRUE arrays for unknown case
         if decision_type == "optimal":
-            timing_index = self.optimal_decision_index[self.inputs.key,:] # Need self inputs key so that if it's expected, we take the optimal decision time for EXPECTED inputs
+            timing_index = self.optimal_decision_index[key,:] # Need self inputs key so that if it's expected, we take the optimal decision time for EXPECTED inputs
         elif decision_type == 'fit':
-            timing_index = self.fit_decision_index[self.inputs.key,:]
+            timing_index = self.fit_decision_index[key,:]
         else:
             raise ValueError("decision_type must be \"optimal\" or \"fit\"")
         
+        #! METRIC TYPE SHOULD BE TRUE ALMOST ALWAYS
         if metric_type == 'true':
             metric_type_index = 0
         elif metric_type == 'expected':
@@ -663,13 +668,14 @@ class ModelConstructor:
                     ax.plot((decision_time[self.inputs.key,i],decision_time[self.inputs.key,i]),
                             (min(ylocs),self.results.exp_reward[self.inputs.key,i,decision_index[self.inputs.key,i]]),c='w')
                     ax.text(decision_time[self.inputs.key,i],self.results.exp_reward[self.inputs.key, i,decision_index[self.inputs.key,i]]+0.03,
-                            f'Optimal Decision Time = {decision_time[self.inputs.key,i]}',ha = 'center')
+                            f'Optimal Decision Time = {int(decision_time[self.inputs.key,i])}',ha = 'center')
 
                 # ax.set_xticks(xlocs)
                 ax.set_yticks(ylocs)
                 ax.set_xlabel(xlabel)
                 ax.set_ylabel(ylabel)
                 ax.set_title(titles[i])
+                ax.set_ylim(min(ylocs),max(ylocs))
         fig.suptitle(suptitle)
         plt.tight_layout()
         
@@ -700,7 +706,7 @@ class ModelFitting:
         
     def run_model_fit_procedure(self, free_params_init: dict, metric_keys: list, targets: np.ndarray,
                                 method='Nelder-Mead', bnds=None, tol = 0.0000001, niter=100,
-                                drop_condition_from_loss=None, limit_sd=True):
+                                drop_condition_from_loss=None, limit_sd=True,):
         self.loss_store = []
         self.optimal_decision_time_store = [] 
         self.leave_time_store = []
@@ -763,6 +769,10 @@ class ModelFitting:
             if 'guess_switch_delay' in free_params_keys and 'guess_switch_sd' in free_params_keys:
                 if new_parameters_dict['guess_switch_delay'] - 2*new_parameters_dict['guess_switch_sd']<0:
                     return 1e3
+                
+        for k,v in new_parameters_dict.items():
+            if v<0:
+                return 1e3
         
         self.parameter_arr.append(free_params_values)
         # Get the new arrays from the optimized free parameter inputs
@@ -774,10 +784,10 @@ class ModelFitting:
                 model_metric = getattr(self.model.player_behavior, metric_keys[i])
                 # Find the metric at optimal decision time
                 #! Metric type always being 'true' means that we use the decision_type for expected vs true, but the metric array
-                #! We're using is ALWAYS the 'true' array. If we're fitting the true guess delay, then the expected metric arrays shouldn't change
+                #! we're using is ALWAYS the 'true' array. If we're fitting the true guess delay, then the expected metric arrays shouldn't change
                 model_metrics[i,:] = self.model.results.get_metric(model_metric, 
                                                                    decision_type=decision_type, 
-                                                                    metric_type='true')  
+                                                                   metric_type='true')  
             elif 'decision_time' in metric_keys[i]:
                 model_metric = getattr(self.model.results,metric_keys[i])
                 model_metrics[i,:] = model_metric
@@ -785,7 +795,7 @@ class ModelFitting:
                 model_metric = getattr(self.model.score_metrics, metric_keys[i])
                 model_metrics[i,:] = self.model.results.get_metric(model_metric, 
                                                                    decision_type=decision_type, 
-                                                                    metric_type='true')  # Find the metric at optimal decision time
+                                                                   metric_type='true')  # Find the metric at optimal decision time
         
         loss = lf.ape_loss(model_metrics, targets, drop_condition_num=self.drop_condition_from_loss)
         
@@ -812,8 +822,15 @@ class ModelFitting:
             # Try is for if I'm fitting the switch delay (which is an array of 2, so we assign to 0, which is true)
             # Except is for if I'm fitting the rewards associated with the scoring 
             try:
-                self.model.kwargs[k][0] = v #! Always changing the TRUE value, the expected value should always be set as of 8/15/23
-        
+                #! Always changing the TRUE value, the expected value should always be set as of 8/15/23
+                #! 9/26/23 - Now want to fit both the true and expected values, at least for guess_switch_delay and guess_switch_sd
+                if '_true' in k:
+                    self.model.kwargs[k.removesuffix('_true')][0] = v  # the 0 is for the true element of the array
+                elif '_expected' in k:
+                    self.model.kwargs[k.removesuffix('_expected')][1] = v # The 1 is for the expected element of the array
+                else: # Else, change both to be the exact same thing
+                    self.model.kwargs[k][0] = v
+                    self.model.kwargs[k][1] = v
             except TypeError:
                 self.model.kwargs[k] = v
         #* Pass new set of kwargs to the inputs, then run through model constructor sequence again
