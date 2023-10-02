@@ -8,12 +8,16 @@ import itertools
 from tqdm import tqdm
 
 import read_data_functions as rdf
-from Optimal_Stopping_Object import ModelConstructor
+from Optimal_Stopping_Object import ModelConstructor, ModelFitting
 from initializer import InitialThangs
 import loss_functions as lf
 
 # * Select experiment you'd like to run
-EXPERIMENTS = ["Exp1","Exp2"]
+EXPERIMENTS = ["Exp2"]
+
+#* DECIDE TO FIT PARAMETERS OR NOT
+FIT_PARAMETERS = True
+
 for EXPERIMENT in EXPERIMENTS:
     print(f'Starting up {EXPERIMENT}')
     # * GET THE MODEL TRACKER TABLE
@@ -65,16 +69,13 @@ for EXPERIMENT in EXPERIMENTS:
 
         GUESS_SWITCH_DELAY = 65
         GUESS_SWITCH_SD = 65
-        INCORRECT_CHANGE = -0.2
+        INCORRECT_CHANGE = -0.1
         INDECISION_CHANGE = 0
         
-        if EXPERIMENT == "Exp1":
-            score_rewards_list = [[1.0, 0.0, 0.0], [1.0, INCORRECT_CHANGE, INDECISION_CHANGE]]
-        elif EXPERIMENT == "Exp2":
-            score_rewards_list = np.array([[1.0, 0.0, 0.0], [1.0, INCORRECT_CHANGE, INDECISION_CHANGE]])
+        score_rewards_list = [[1.0, 0.0, 0.0]]#, [1.0, INCORRECT_CHANGE, INDECISION_CHANGE]]
 
         params_dict = {
-            "agent_sd_change": [150, 0],
+            "agent_sd_change": [0],
             "timing_sd_change": [time_sd[0] / 2, 0],
             "guess_switch_delay_true": [GUESS_SWITCH_DELAY], #! Assuming guess switch delay always exists
             "guess_switch_delay_expected": [GUESS_SWITCH_DELAY, 1],
@@ -93,7 +94,7 @@ for EXPERIMENT in EXPERIMENTS:
         all_param_combos = itertools.product(*params_dict.values())  # The * unpacks into the product function
 
     # * Get targets for model comparisons
-    targets = np.array(
+    comparison_targets = np.array(
         [
             np.nanmedian(np.nanmedian(group.movement_metrics.movement_onset_times("task"), axis=2), axis=0),
             np.nanmedian(group.score_metrics.score_metric("wins"), axis=0) / 100,
@@ -140,6 +141,24 @@ for EXPERIMENT in EXPERIMENTS:
     print("Starting Models...")
     for param_tuple in tqdm(all_param_combos):
         params = dict(zip(param_keys, param_tuple))
+        model_name = f"model{c}_{datetime.now():%Y_%m_%d_%H_%M_%S}"
+
+        descriptive_parameter_row = {
+            "Model": model_name,
+            "Loss": 0,
+            "Known_Switch_Delay": params['guess_switch_delay_expected'] == params['guess_switch_delay_true'],
+            "Known_Switch_SD": params['guess_switch_sd_expected'] == params['guess_switch_sd_true'],
+            # "Known_Guess_SD": np.all(model.inputs.guess_sd[0] == model.inputs.guess_sd[1]),
+            "Known_Agent_SD": params["agent_sd_change"] == 0,
+            "Known_RT_SD": params.get("rt_sd_change",0) == 0,
+            "Known_MT_SD": params.get("mt_sd_change",0) == 0,
+            "Known_Timing_SD": params["timing_sd_change"] == 0,
+            "Win_Reward": map_reward_change(params["score_rewards_list"][0], comparison_num=1.0),
+            "Incorrect_Cost": map_reward_change(params["score_rewards_list"][1], comparison_num=0.0),
+            "Indecision_Cost": map_reward_change(params["score_rewards_list"][2], comparison_num=0.0),
+        }
+        descriptive_parameters.append(descriptive_parameter_row)
+        
         model = ModelConstructor(
             experiment=EXPERIMENT,
             num_blocks=it.num_blocks,
@@ -166,30 +185,63 @@ for EXPERIMENT in EXPERIMENTS:
             indecision_cost=params["score_rewards_list"][2],
             round_num = 20,
         )
-        model_name = f"model{c}_{datetime.now():%Y_%m_%d_%H_%M_%S}"
-
+        if FIT_PARAMETERS:
+            # If both known, then don't use true and expected
+            if descriptive_parameter_row['Known_Switch_Delay'] and descriptive_parameter_row['Known_Switch_SD']:
+                free_params_init_with_sd = {
+                    "guess_switch_delay": 0,
+                    "guess_switch_sd": 0,
+                }
+            # Separate exp and true for switch sd
+            elif descriptive_parameter_row['Known_Switch_Delay'] and not descriptive_parameter_row['Known_Switch_SD']:
+                free_params_init_with_sd = {
+                    "guess_switch_delay": 0,
+                    "guess_switch_sd_true": 0,
+                    "guess_switch_sd_expected": 0,
+                }
+            elif not descriptive_parameter_row['Known_Switch_Delay'] and descriptive_parameter_row['Known_Switch_SD']:
+                free_params_init_with_sd = {
+                    "guess_switch_delay_true": 0,
+                    "guess_switch_delay_expected": 0,
+                    "guess_switch_sd": 0,
+                }
+            else:
+                free_params_init_with_sd = {
+                    "guess_switch_delay_true": 0,
+                    "guess_switch_delay_expected": 0,
+                    "guess_switch_sd_true": 0,
+                    "guess_switch_sd_expected": 0,
+                }
+                
+            behavior_targets_with_sd = np.array(
+                [
+                    np.nanmedian(np.nanmedian(group.movement_metrics.movement_onset_times('task'), axis=2), axis=0), 
+                    np.nanmedian(np.nanstd(group.movement_metrics.movement_onset_times('task'), axis=2), axis=0),
+                ]
+            )
+            behavior_metric_keys_with_sd = ["wtd_leave_time","wtd_leave_time_sd",]
+            model_fit_object_known = ModelFitting(model=model)
+            res = model_fit_object_known.run_model_fit_procedure(
+                free_params_init=free_params_init_with_sd,
+                targets=behavior_targets_with_sd,
+                drop_condition_from_loss=None,  # Drop 1200 50
+                limit_sd=False,
+                metric_keys=behavior_metric_keys_with_sd,
+                bnds=None,
+                tol=0.000000001,
+                method="Powell",
+            )
+            if descriptive_parameter_row['Known_Switch_Delay'] and descriptive_parameter_row['Known_Switch_SD']:
+                assert np.all(model.inputs.guess_switch_delay[0] == model.inputs.guess_switch_delay[1])
+                
         loss = get_loss(
             model,
-            targets,
+            comparison_targets,
         )
+        descriptive_parameter_row['Loss'] = loss
         input_row_dict = create_input_row_dict(model, loss, model_name)
         input_parameters.append(input_row_dict)
 
-        descriptive_parameter_row = {
-            "Model": model_name,
-            "Loss": loss,
-            "Known_Switch_Delay": np.all(model.inputs.guess_switch_delay[0] == model.inputs.guess_switch_delay[1]),
-            "Known_Switch_SD": np.all(model.inputs.guess_switch_sd[0] == model.inputs.guess_switch_sd[1]),
-            # "Known_Guess_SD": np.all(model.inputs.guess_sd[0] == model.inputs.guess_sd[1]),
-            "Known_Agent_SD": params["agent_sd_change"] == 0,
-            "Known_RT_SD": params["rt_sd_change"] == 0,
-            "Known_MT_SD": params["mt_sd_change"] == 0,
-            "Known_Timing_SD": params["timing_sd_change"] == 0,
-            "Win_Reward": map_reward_change(params["score_rewards_list"][0], comparison_num=1.0),
-            "Incorrect_Cost": map_reward_change(params["score_rewards_list"][1], comparison_num=0.0),
-            "Indecision_Cost": map_reward_change(params["score_rewards_list"][2], comparison_num=0.0),
-        }
-        descriptive_parameters.append(descriptive_parameter_row)
         c += 1
 
     df_inputs = pd.DataFrame(input_parameters)
