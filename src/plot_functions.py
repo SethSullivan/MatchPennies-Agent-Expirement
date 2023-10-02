@@ -205,11 +205,16 @@ def plot_stats(ax, stats_inputs, statistics:list[dict],combos:list[str],
                ypos:list[int], xlocs, xloc_index:list[str], **kwargs):
     stacked = kwargs.get('stacked',False)
     fontsize = kwargs.get('fontsize',12)
+    show_effectsize = kwargs.get('show_effectsize',12)
     
     for i in range(len(combos)):
+        if show_effectsize:
+            cles = statistics[1][combos[i]]
+        else:
+            cles = None
         dv.stat_annotation(ax,xlocs[int(xloc_index[i][0])],xlocs[int(xloc_index[i][1])],y=ypos[i], 
-                           p_val= statistics[0][combos[i]], cles=statistics[1][combos[i]],
-                           fontsize=fontsize, stacked=stacked)
+                           p_val= statistics[0][combos[i]], cles=cles,
+                           fontsize=fontsize, stacked=stacked, lw=1.8)
         
          
     
