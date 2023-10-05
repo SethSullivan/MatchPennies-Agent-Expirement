@@ -8,7 +8,10 @@ wheel = dv.ColorWheel()
 class PlottingKwargs:
     def __init__(self,**kwargs):
         self.bw            = kwargs.get('box_width',0.75)
-        self.box_color     = kwargs.get('colors',wheel.seth_blue)
+        self.one_box_color = kwargs.get('one_box_color',wheel.seth_blue)
+        self.box_colors    = kwargs.get('box_colors', None)
+        self.jitter_data   = kwargs.get('jitter_data',False)
+        self.jitter_color  = kwargs.get('jitter_color',None)
         self.xlocs         = kwargs.get('xlocs')
         self.xtick_locs    = kwargs.get('xtick_locs', deepcopy(self.xlocs))
         self.ylocs         = kwargs.get('ylocs')
@@ -24,10 +27,14 @@ class PlottingKwargs:
         self.title_padding = kwargs.get('title_padding',0)
         self.legend_fontsize = kwargs.get('legend_fontsize',6)
         self.title_fontsize = kwargs.get('title_fontsize',20)
-        self.box_lw       = kwargs.get("box_lw", 1.2)
+        self.box_lw       = kwargs.get("box_lw", 2.)
         self.box_width    = kwargs.get("box_width", .75)
-        self.whisker_lw   = kwargs.get("whisker_lw", 2.0)
+        self.whisker_lw   = kwargs.get("whisker_lw", 2.)
         self.reorder_xaxis = kwargs.get('reorder_xaxis',False)
+        self.model_markersize = kwargs.get('model_markersize',8)
+        self.data_markersize  = kwargs.get('data_markersize',50)
+        self.axeslabel_fontsize = kwargs.get('axeslabel_fontsize',14)
+        self.ticklabel_fontsize = kwargs.get('ticklabel_fontsize',13)
 
 def make_figure_panel(figsize, inset_size, dpi = 100):
     fig,axmain = plt.subplots(dpi = dpi, figsize = figsize)
@@ -52,20 +59,20 @@ def multi_boxplot(ax, data, xlocs, **kwargs):
     box_lw       = kwargs.get("box_lw", 1.2)
     box_width    = kwargs.get("box_width", .75)
     whisker_lw   = kwargs.get("whisker_lw", 2.0)
-
-    color = kwargs.get("colors",  wheel.seth_blue)
+    colors       = kwargs.get("colors", None)
+    one_color    = kwargs.get('one_color',wheel.grey)
     #box properties
     box_props,whisker_props,cap_props,median_props = {},{},{},{}
-    box_props = {"facecolor": "none", "edgecolor" : color, "linewidth": box_lw, "alpha": 1}
+    box_props = {"facecolor": "none", "edgecolor" : one_color, "linewidth": box_lw, "alpha": 1}
 
     #whisker properties
-    whisker_props = {"linewidth" : whisker_lw, "color": color}
+    whisker_props = {"linewidth" : whisker_lw, "color": one_color}
 
     #cap properties
-    cap_props = {"linewidth" : whisker_lw, "color": color}
+    cap_props = {"linewidth" : whisker_lw, "color": one_color}
 
     #median properties
-    median_props = {"linewidth" : whisker_lw, "color": color}
+    median_props = {"linewidth" : whisker_lw, "color": one_color}
 
     include_means = kwargs.get('include_means')
     '''Make Box Plots'''
@@ -78,15 +85,18 @@ def multi_boxplot(ax, data, xlocs, **kwargs):
         filtered_data = data
     
     bp = ax.boxplot(filtered_data,   positions = xlocs, patch_artist = True,  showfliers = False, 
-                boxprops = box_props  , whiskerprops = whisker_props,
-                capprops = cap_props, medianprops = median_props, widths = box_width,
+                boxprops = box_props , 
+                whiskerprops = whisker_props,
+                capprops = cap_props, 
+                medianprops = median_props, 
+                widths = box_width,
                 )
-    
-    # for element in bp:
-    #     for patch, color in zip(bp[element],colors):
-    #         print(patch)
-    #         patch.set_color(color)
-    
+    if colors is not None:
+        for element in bp:
+            for patch, color in zip(bp[element],colors):
+                print(patch)
+                patch.set_color(color)
+        
     return ax,bp
 
 def scatter_with_correlation(ax,xdata,ydata,**kwargs):
@@ -113,41 +123,41 @@ def scatter_with_correlation(ax,xdata,ydata,**kwargs):
             
     return ax,spear_r
 
-# def unity_optimal_plot(axs,xdata,ydata,it,**kwargs):
-#     pk = PlottingKwargs(**kwargs)
-#     ax0,ax1 = axs
-#     for i in range(pk.xlocs):
-#         ax0.scatter(xdata[:,i], ydata[:,i])
-#         ax0.plot(pk.xlocs,pk.ylocs, color = wheel.dark_grey)
-#         ax0.set_xlim(pk.xlocs[0],pk.xlocs[-1])
-#         ax0.set_ylim(pk.ylocs[0],pk.ylocs[-1])
-#         ax0.set_xlabel('Optimal Mean Decision Time (ms)')
-#         ax0.set_ylabel('Participant Mean Decision Time (ms)')
-#         ax0.set_title(f'Optimal Simulation vs. Participant Mean Decision Time\nCondition: {it.trial_block_titles[i]}')
+def unity_optimal_plot(axs,xdata,ydata,it,**kwargs):
+    pk = PlottingKwargs(**kwargs)
+    ax0,ax1 = axs
+    for i in range(pk.xlocs):
+        ax0.scatter(xdata[:,i], ydata[:,i])
+        ax0.plot(pk.xlocs,pk.ylocs, color = wheel.dark_grey)
+        ax0.set_xlim(pk.xlocs[0],pk.xlocs[-1])
+        ax0.set_ylim(pk.ylocs[0],pk.ylocs[-1])
+        ax0.set_xlabel('Optimal Mean Decision Time (ms)')
+        ax0.set_ylabel('Participant Mean Decision Time (ms)')
+        ax0.set_title(f'Optimal Simulation vs. Participant Mean Decision Time\nCondition: {it.trial_block_titles[i]}')
 
 
-#         diff = data_metric[:,i] - all_subjects_sim_results_dict[metric][:,i] 
-#         ax1.scatter(ax1_xlocs,diff)
-#         ax1.axhline(zorder=0,linestyle='--')
-#         max_diff = np.max(abs(diff))
+        diff = data_metric[:,i] - all_subjects_sim_results_dict[metric][:,i] 
+        ax1.scatter(ax1_xlocs,diff)
+        ax1.axhline(zorder=0,linestyle='--')
+        max_diff = np.max(abs(diff))
 
-#         arrow_length = max_diff 
-#         head_length = 0.2*arrow_length
-#         arrow_x_init = -0.25
-#         arrow_y_init = max_diff/10
+        arrow_length = max_diff 
+        head_length = 0.2*arrow_length
+        arrow_x_init = -0.25
+        arrow_y_init = max_diff/10
         
-#         text_y1 = arrow_length/2 + arrow_y_init
-#         text_y2 = -arrow_length/2 - arrow_y_init
+        text_y1 = arrow_length/2 + arrow_y_init
+        text_y2 = -arrow_length/2 - arrow_y_init
         
-#         ax1.arrow(arrow_x_init,arrow_y_init,0, arrow_length, width = 0.05, length_includes_head = False, head_length = head_length,head_width=0.15,shape = 'left',color=wheel.grey)
-#         ax1.text(arrow_x_init/2,text_y1,'Greater Mean\nDecision Time',rotation = 90, fontweight='bold',ha='center',va='center',fontsize=9)
-#         ax1.arrow(arrow_x_init,-arrow_y_init,0,-arrow_length, width = 0.05, length_includes_head = False, head_length = head_length,head_width=0.15,shape = 'right',color=wheel.grey)
-#         ax1.text(arrow_x_init/2,text_y2,'Lesser Mean\nDecision Time',rotation = 90, fontweight='bold',ha='center',va='center',fontsize = 9)
+        ax1.arrow(arrow_x_init,arrow_y_init,0, arrow_length, width = 0.05, length_includes_head = False, head_length = head_length,head_width=0.15,shape = 'left',color=wheel.grey)
+        ax1.text(arrow_x_init/2,text_y1,'Greater Mean\nDecision Time',rotation = 90, fontweight='bold',ha='center',va='center',fontsize=9)
+        ax1.arrow(arrow_x_init,-arrow_y_init,0,-arrow_length, width = 0.05, length_includes_head = False, head_length = head_length,head_width=0.15,shape = 'right',color=wheel.grey)
+        ax1.text(arrow_x_init/2,text_y2,'Lesser Mean\nDecision Time',rotation = 90, fontweight='bold',ha='center',va='center',fontsize = 9)
         
-#         ax1.set_ylim(-max_diff-(1/2)*max_diff,max_diff+(1/2)*max_diff)
-#         ax1.set_xlim(-0.3,1.2)
-#         ax1.set_xticks([])
-#         ax1.spines.bottom.set_visible(False)
+        ax1.set_ylim(-max_diff-(1/2)*max_diff,max_diff+(1/2)*max_diff)
+        ax1.set_xlim(-0.3,1.2)
+        ax1.set_xticks([])
+        ax1.spines.bottom.set_visible(False)
 
 def multiple_models_boxplot(ax,data,model_data,labels,
                             show_boxplot=True,show_models=True,
@@ -156,14 +166,22 @@ def multiple_models_boxplot(ax,data,model_data,labels,
     
     w, h = plt.gcf().get_size_inches()
     if pk.reorder_xaxis:
-        data = data[:,[0,2,4,1,3,5]]
         pk.xticklabels = pk.xticklabels[::2] + pk.xticklabels[1::2]
+        data = data[:,[0,2,4,1,3,5]]
         model_data = np.array(model_data)[:,[0,2,4,1,3,5]]
 
     if show_boxplot:
-        ax,bp = multi_boxplot(ax,data,pk.xlocs,box_width = pk.bw,colors=pk.box_color,include_means=pk.include_means)
+        # ax,bp = multi_boxplot(ax,data,pk.xlocs,box_width = pk.bw,
+        #                       one_color=pk.one_box_color,colors=pk.box_colors, 
+        #                       include_means=pk.include_means)
+        for i in range(len(pk.xlocs)):
+            dv.boxplot(ax,pk.xlocs[i],data[:,i],color = pk.box_colors[i],data_color=pk.box_colors[i], **pk.__dict__)
+        
         if pk.jitter:
-            dv.jitter_array(ax=ax,x_positions=pk.xlocs,data=data.T, noise_scale=0.06, include_mean = False, circle_size=100)
+            if pk.jitter_color is None:
+                pk.jitter_color = pk.box_colors
+            dv.jitter_array(ax=ax,x_positions=pk.xlocs,data=data.T, data_color = pk.jitter_color, data_edge_color = '0.25', 
+                            noise_scale=0.06, include_mean = False, circle_size=pk.data_markersize)
 
     if pk.line_colors is None:
         np.random.seed(1)
@@ -181,40 +199,45 @@ def multiple_models_boxplot(ax,data,model_data,labels,
         else:
             offset = np.linspace(-pk.bw/5,pk.bw/5,len(model_data))
         for i in range(len(model_data)):
-            ax.plot(pk.xlocs+offset[i],model_data[i],c=pk.line_colors[i],marker='o',markersize=12, zorder=200,ls=pk.linestyles[i])
+            ax.plot(pk.xlocs+offset[i],model_data[i],c=pk.line_colors[i],marker='o',
+                    markersize=pk.model_markersize, zorder=200,ls=pk.linestyles[i], clip_on=False)
             legend_colors.append(pk.line_colors[i])
             legend_labels.append(labels[i])
             legend_linestyles.append(pk.linestyles[i])
 
     ax.set_xticks(pk.xtick_locs)
     ax.set_yticks(pk.ylocs)
-    ax.set_xticklabels(pk.xticklabels,fontsize=23)
-    ax.set_yticklabels(pk.ylocs,fontsize=23)
-    ax.set_xlabel(pk.xlabel,labelpad=10,fontsize=30)
-    ax.set_ylabel(pk.ylabel,labelpad=5,fontsize=30)
+    ax.set_xticklabels(pk.xticklabels,fontsize=pk.ticklabel_fontsize,fontweight='bold')
+    [ticklabel.set_color(color) for (color,ticklabel) in zip(pk.box_colors,ax.xaxis.get_ticklabels())]
+    ax.set_yticklabels(pk.ylocs,fontsize=pk.ticklabel_fontsize)
+    ax.set_xlabel(pk.xlabel,labelpad=5,fontsize=pk.axeslabel_fontsize)
+    ax.set_ylabel(pk.ylabel,labelpad=5,fontsize=pk.axeslabel_fontsize)
     ax.set_title(pk.title, fontsize = pk.title_fontsize, pad=pk.title_padding)
     if len(labels)>3:
         ncol = 2
     else:
         ncol=1
     dv.legend(ax,legend_labels,legend_colors,ls = legend_linestyles,loc=pk.legend_loc,
-              fontsize=pk.legend_fontsize, ncol=ncol, columnspacing=1)
+              fontsize=pk.legend_fontsize, ncol=ncol, columnspacing=1,linewidth=3)
     
     
-def plot_stats(ax, stats_inputs, statistics:list[dict],combos:list[str], 
-               ypos:list[int], xlocs, xloc_index:list[str], **kwargs):
-    stacked = kwargs.get('stacked',False)
-    fontsize = kwargs.get('fontsize',12)
-    show_effectsize = kwargs.get('show_effectsize',12)
-    
+def plot_stats(ax, statistics:list[dict],combos:list[str], 
+               ypos:list[int], xpositions:list[list[float,float]], 
+               show_effectsize=False, **kwargs):
+    '''
+    stacked: 
+    fontsize: 
+    h: 
+    lw: 
+    '''
+        
     for i in range(len(combos)):
         if show_effectsize:
-            cles = statistics[1][combos[i]]
+            kwargs.update({'cles':statistics[1][combos[i]]})
         else:
-            cles = None
-        dv.stat_annotation(ax,xlocs[int(xloc_index[i][0])],xlocs[int(xloc_index[i][1])],y=ypos[i], 
-                           p_val= statistics[0][combos[i]], cles=cles,
-                           fontsize=fontsize, stacked=stacked, lw=1.8)
+            kwargs.update({'cles':None})
+        dv.stat_annotation(ax,xpositions[i][0],xpositions[i][1],y=ypos[i], 
+                           p_val= statistics[0][combos[i]], **kwargs)
         
          
     
