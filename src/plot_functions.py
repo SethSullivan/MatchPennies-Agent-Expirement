@@ -180,6 +180,7 @@ def multiple_models_boxplot(ax,data,model_data,labels,
         if pk.jitter:
             if pk.jitter_color is None:
                 pk.jitter_color = pk.box_colors
+            np.random.seed(0)
             dv.jitter_array(ax=ax,x_positions=pk.xlocs,data=data.T, data_color = pk.jitter_color, data_edge_color = '0.25', 
                             noise_scale=0.06, include_mean = False, circle_size=pk.data_markersize)
 
@@ -210,8 +211,8 @@ def multiple_models_boxplot(ax,data,model_data,labels,
     ax.set_xticklabels(pk.xticklabels,fontsize=pk.ticklabel_fontsize,fontweight='bold')
     [ticklabel.set_color(color) for (color,ticklabel) in zip(pk.box_colors,ax.xaxis.get_ticklabels())]
     ax.set_yticklabels(pk.ylocs,fontsize=pk.ticklabel_fontsize)
-    ax.set_xlabel(pk.xlabel,labelpad=5,fontsize=pk.axeslabel_fontsize)
-    ax.set_ylabel(pk.ylabel,labelpad=5,fontsize=pk.axeslabel_fontsize)
+    ax.set_xlabel(pk.xlabel,labelpad=4,fontsize=pk.axeslabel_fontsize)
+    ax.set_ylabel(pk.ylabel,labelpad=1,fontsize=pk.axeslabel_fontsize)
     ax.set_title(pk.title, fontsize = pk.title_fontsize, pad=pk.title_padding)
     if len(labels)>3:
         ncol = 2
