@@ -103,6 +103,52 @@ def df_to_array(df_col, num_subjects, num_blocks):
     ans = np.array(df_col).reshape(num_subjects, num_blocks)
     return ans
 
+def collapse_across(arr, combos):
+            ans = []
+            if len(combos[0]) == 2:
+                for combo in combos:
+                    a = int(combo[0])
+                    b = int(combo[1])
+                    ans.append(np.concatenate((arr[:, a], arr[:, b])))
+            else:
+                for combo in combos:
+                    a = int(combo[0])
+                    b = int(combo[1])
+                    c = int(combo[2])
+                    ans.append(np.concatenate((arr[:, a], arr[:, b], arr[:, c])))
+            return_ans = np.array(ans).T
+            assert return_ans.shape[0] > 15
+
+            return return_ans
+def get_combos(condition_nums, experiment):
+    def _check_parity(combo):
+        a = int(combo[0])
+        b = int(combo[1])
+        if a % 2 == b % 2:
+            return True
+        else:
+            return False
+
+    # * If not collapsing, then go through every combination
+    if condition_nums is None:
+        # But only want across the means, don't care about main effects of std
+        if experiment == "Exp1":
+            condition_nums = ["0", "1", "2", "3", "4", "5"]
+            # Only take the even conditions together and the odd conditions together
+            combos_ = [
+                "".join(map(str, comb)) for comb in combinations(condition_nums, 2)
+            ]  # Creates list of unique combos, order doesn't matter
+            combos = [c for c in combos_ if _check_parity(c)]
+
+        # Want every combo for exp2
+        elif experiment == "Exp2":
+            condition_nums = ["0", "1", "2", "3"]
+            combos = [
+                "".join(map(str, comb)) for comb in combinations(condition_nums, 2)
+            ]  # Creates list of unique combos, order doesn't matter
+    else:
+        combos = ["".join(map(str, comb)) for comb in combinations(condition_nums, 2)]  # Creates list of unique combos, order doesn't matter
+    return combos
 
 class Inputs:
     FACTOR1 = "Factor_1"
@@ -125,7 +171,7 @@ class Inputs:
         self.f2_xlabel = f2_xlabel
         self.f2_xticklabels = f2_xticklabels
         self.M_init = M
-
+        self.combos = get_combos(self.condition_nums, self.experiment)
         assert self.experiment == "Exp1" or self.experiment == "Exp2"
 
         if self.experiment == "Exp1":
@@ -166,7 +212,7 @@ class Anova:
         assert (
             self.inputs.df[self.inputs.FACTOR1].str.contains("1000").any()
             or self.inputs.df[self.inputs.FACTOR1].str.contains("-1 Inc").any()
-            or self.inputs.df[self.inputs.FACTOR1].str.contains("Reaction").any()
+            or self.inputs.df[self.inputs.FACTOR1].str.contains("React").any()
         )
         if self.anova_type == "rm_anova":
             ans = pg.rm_anova(
@@ -186,35 +232,18 @@ class Bootstrap:
     def __init__(self, inputs: Inputs, anova_obj: Anova, change_m=None, alternative="two-sided", test="mean", no_collapse=False, **kwargs):
         self.inputs = inputs
         self.anova_obj = anova_obj
-        self.anova = self.anova_obj.anova
+        if self.anova_obj is not None:
+            self.anova = self.anova_obj.anova
+            self.metric = df_to_array(self.inputs.df[self.anova_obj.dependent_variable], self.inputs.num_subjects, self.inputs.num_blocks)
         self.alternative = alternative
         self.test = test
         self.no_collapse = no_collapse
-        self.metric = df_to_array(self.inputs.df[self.anova_obj.dependent_variable], self.inputs.num_subjects, self.inputs.num_blocks)
         self.collapse = None # Set in run_boostrap
         
         if change_m is None:
             self.M = copy.deepcopy(self.inputs.M_init)
         else:
             self.M = change_m
-    
-    def collapse_across(self, arr, combos):
-            ans = []
-            if len(combos[0]) == 2:
-                for combo in combos:
-                    a = int(combo[0])
-                    b = int(combo[1])
-                    ans.append(np.concatenate((arr[:, a], arr[:, b])))
-            else:
-                for combo in combos:
-                    a = int(combo[0])
-                    b = int(combo[1])
-                    c = int(combo[2])
-                    ans.append(np.concatenate((arr[:, a], arr[:, b], arr[:, c])))
-            return_ans = np.array(ans).T
-            assert return_ans.shape[0] > 15
-
-            return return_ans
         
     def run_bootstrap(self):
         
@@ -232,13 +261,13 @@ class Bootstrap:
             self.collapse=True
             
             # * Factor 1 collapse
-            f1_collapse_metric = self.collapse_across(self.metric, self.inputs.f1_collapse_combos)
+            f1_collapse_metric = collapse_across(self.metric, self.inputs.f1_collapse_combos)
             f1_collapse_pvals_dict, f1_collapse_cles_dict = self.pairwise_bootstrap(
                 f1_collapse_metric, condition_nums=self.inputs.f1_condition_nums
             )
 
             # * Factor 2 collapse
-            f2_collapse_metric = self.collapse_across(self.metric, self.inputs.f2_collapse_combos)
+            f2_collapse_metric = collapse_across(self.metric, self.inputs.f2_collapse_combos)
             f2_collapse_pvals_dict, f2_collapse_cles_dict = self.pairwise_bootstrap(
                 f2_collapse_metric, condition_nums=self.inputs.f2_condition_nums
             )
@@ -253,35 +282,6 @@ class Bootstrap:
             return [f1_collapse_pvals_dict, f1_collapse_cles_dict, f2_collapse_pvals_dict, f2_collapse_cles_dict]
 
     def pairwise_bootstrap(self, data, condition_nums=None, **kwargs):
-        def _get_combos(condition_nums):
-            def _check_parity(combo):
-                a = int(combo[0])
-                b = int(combo[1])
-                if a % 2 == b % 2:
-                    return True
-                else:
-                    return False
-
-            # * If not collapsing, then go through every combination
-            if condition_nums is None:
-                # But only want across the means, don't care about main effects of std
-                if self.inputs.experiment == "Exp1":
-                    condition_nums = ["0", "1", "2", "3", "4", "5"]
-                    # Only take the even conditions together and the odd conditions together
-                    combos_ = [
-                        "".join(map(str, comb)) for comb in combinations(condition_nums, 2)
-                    ]  # Creates list of unique combos, order doesn't matter
-                    combos = [c for c in combos_ if _check_parity(c)]
-
-                # Want every combo for exp2
-                elif self.inputs.experiment == "Exp2":
-                    condition_nums = ["0", "1", "2", "3"]
-                    combos = [
-                        "".join(map(str, comb)) for comb in combinations(condition_nums, 2)
-                    ]  # Creates list of unique combos, order doesn't matter
-            else:
-                combos = ["".join(map(str, comb)) for comb in combinations(condition_nums, 2)]  # Creates list of unique combos, order doesn't matter
-            return combos
 
         def _get_alternative_dict(combos):
             if self.inputs.experiment == "Exp1":
@@ -315,15 +315,14 @@ class Bootstrap:
             if not hasattr(self, "inputs"):
                 self.alternative = kwargs.get('inputs')
             
-        combos = _get_combos(condition_nums=condition_nums)
-        alternative_dict = _get_alternative_dict(combos)
+        alternative_dict = _get_alternative_dict(self.inputs.combos)
 
         # if self.experiment == 'Exp1':
         pvals = {}
         cles1 = {}
         cles2 = {}
         c = -1
-        for combo in combos:
+        for combo in self.inputs.combos:
             c += 1
             i = int(combo[0])
             j = int(combo[1])
@@ -334,7 +333,7 @@ class Bootstrap:
         # Create array and do holm bonferroni
         
         check, pvals_corrected = pg.multicomp(pvals=list(pvals.values()), method="holm")
-        pvals_corrected_dict = dict(zip(combos,pvals_corrected))
+        pvals_corrected_dict = dict(zip(self.inputs.combos,pvals_corrected))
         
         cles_dict = {}
         for (k1,v1),(k2,v2) in zip(cles1.items(),cles2.items()):
