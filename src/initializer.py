@@ -22,7 +22,7 @@ class InitialThangs:
 
         if experiment == 'Exp1':
             self.tp3_title = r'(1000,50)'
-            self.tp4_title = r'(1100,150)'
+            self.tp4_title = r'(1000,150)'
             self.tp5_title = r'(1100,50)'
             self.tp6_title = r'(1100,150)'
             self.tp7_title = r'(1200,50)'
