@@ -26,6 +26,7 @@ class PlottingKwargs:
         self.title         = kwargs.get('title')
         self.title_padding = kwargs.get('title_padding',0)
         self.legend_fontsize = kwargs.get('legend_fontsize',6)
+        self.legend_linewidth = kwargs.get('legend_linewidth',3)
         self.title_fontsize = kwargs.get('title_fontsize',20)
         self.box_lw       = kwargs.get("box_lw", 2.)
         self.box_width    = kwargs.get("box_width", .75)
@@ -219,7 +220,7 @@ def multiple_models_boxplot(ax,data,model_data,labels,
     else:
         ncol=1
     dv.legend(ax,legend_labels,legend_colors,ls = legend_linestyles,loc=pk.legend_loc,
-              fontsize=pk.legend_fontsize, ncol=ncol, columnspacing=1,linewidth=3)
+              fontsize=pk.legend_fontsize, ncol=ncol, columnspacing=1,linewidth=pk.legend_linewidth)
     
     
 def plot_stats(ax, statistics:list[dict],combos:list[str], 
