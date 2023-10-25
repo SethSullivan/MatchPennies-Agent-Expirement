@@ -154,6 +154,7 @@ class MovementMetrics:
         
         self.big_num = 100000
         self.task_enter_right_target_id,self.task_enter_left_target_id = self.right_left_target_ids('task')
+        self.reaction_enter_right_target_id,self.reaction_enter_left_target_id = self.right_left_target_ids('reaction')
     
         self.reaction_times = None # Here for autocomplete purposes
         self.get_reaction_times() # I'm setting reaction times in this function, it's in a function so I can unfilter if I want to 
@@ -205,12 +206,32 @@ class MovementMetrics:
         ans[reach_times == self.big_num] = 0 # Player never left start and thus failed to select a target
         
         return ans
+    @cached_property
+    def reaction_decision_array(self):
+        #* Determine the decision array based on target selection or indecision
+        reach_times = np.minimum(self.reaction_enter_right_target_id, self.reaction_enter_left_target_id).astype(float)        
+        ans = np.zeros((self.exp_info.num_subjects, self.exp_info.num_reaction_blocks, self.exp_info.num_reaction_trials))*np.nan
+        
+        ans[self.reaction_enter_right_target_id < self.reaction_enter_left_target_id] = 1 # Player selected right target
+        ans[self.reaction_enter_left_target_id < self.reaction_enter_right_target_id] = -1 # Player selected left target        
+        return ans
     
-    def left_right_decisions(self,left_right):
+    def exp2_left_right_decisions(self,left_right,task='task',react_or_guess=None):
+        if task == 'task':
+            decision_array = self.task_decision_array
+        elif task == 'reaction':
+            decision_array = self.reaction_decision_array
+            if react_or_guess == 'react':
+                decision_array = decision_array*self.reaction_react_mask
+            elif react_or_guess == 'guess':
+                decision_array = decision_array*self.reaction_guess_mask
+            else:
+                raise ValueError('react_or_guess must be react or guess')
+            
         if left_right == 'left':
-            return np.count_nonzero(self.task_decision_array==-1,axis=2)
+            return np.count_nonzero(decision_array==-1,axis=2)
         if left_right == 'right':
-            return np.count_nonzero(self.task_decision_array==1, axis=2)
+            return np.count_nonzero(decision_array==1, axis=2)
     
     def movement_onset_times(self, task, replace_zeros_with_nan = True):
         if task == 'reaction':
@@ -268,6 +289,8 @@ class MovementMetrics:
             return self.reaction_times[self.reaction_react_mask].reshape(self.exp_info.num_subjects,2,50)
         elif react_or_guess == 'guess':
             return self.reaction_times[self.reaction_guess_mask].reshape(self.exp_info.num_subjects,2,50)
+        else:
+            raise ValueError('react_or_guess must be react or guess')
         
     def exp2_react_guess_reaction_time_split(self, react_or_guess, mixed_or_only):
         '''
