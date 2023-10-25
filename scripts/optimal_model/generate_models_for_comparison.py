@@ -53,7 +53,7 @@ SAVE = False
 for EXPERIMENT in EXPERIMENTS:
     print(f'Starting up {EXPERIMENT}')
     # * GET THE MODEL TRACKER TABLE
-    MODELS_PATH = Path(f"D:\\OneDrive - University of Delaware - o365\\Desktop\\MatchPennies-Agent-Expirement\\results\\{EXPERIMENT}\models")
+    MODELS_PATH = Path(f"D:\\OneDrive - University of Delaware - o365\\Desktop\\MatchPennies-Agent-Expirement\\results\\models")
 
     # * Initial Thangs
     # Get path and save path
