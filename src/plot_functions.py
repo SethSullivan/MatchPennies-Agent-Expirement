@@ -182,7 +182,7 @@ def multiple_models_boxplot(ax,data,model_data,labels,
             if pk.jitter_color is None:
                 pk.jitter_color = pk.box_colors
             np.random.seed(0)
-            dv.jitter_array(ax=ax,x_positions=pk.xlocs,data=data.T, data_color = pk.jitter_color, data_edge_color = '0.25', 
+            dv.jitter_array(ax=ax,x_positions=pk.xlocs,data=data.T, data_color = pk.jitter_color, data_edge_color = wheel.lighten_color(wheel.light_grey,1.2), 
                             noise_scale=0.06, include_mean = False, circle_size=pk.data_markersize)
 
     if pk.line_colors is None:
@@ -199,7 +199,7 @@ def multiple_models_boxplot(ax,data,model_data,labels,
         if len(model_data)==1:
             offset = np.zeros(len(model_data))
         else:
-            offset = np.linspace(-pk.bw/5,pk.bw/5,len(model_data))
+            offset = np.linspace(-pk.bw/5,pk.bw/5,len(model_data))[::-1]
         for i in range(len(model_data)):
             ax.plot(pk.xlocs+offset[i],model_data[i],c=pk.line_colors[i],marker='o',
                     markersize=pk.model_markersize, zorder=200,ls=pk.linestyles[i], clip_on=False)
