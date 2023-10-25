@@ -12,8 +12,38 @@ from Optimal_Stopping_Object import ModelConstructor, ModelFitting
 from initializer import InitialThangs
 import loss_functions as lf
 
+# * Functions
+def get_loss(model, targets, drop_condition_num=None):
+    model_metrics = [
+        model.player_behavior.wtd_leave_time,
+        model.score_metrics.prob_win,
+        model.score_metrics.prob_incorrect,
+        model.score_metrics.prob_indecision,
+    ]
+    predictions = [model.results.get_metric(metric, decision_type="optimal", metric_type="true") for metric in model_metrics]
+    loss = lf.ape_loss(predictions, targets, drop_condition_num=drop_condition_num)
+
+    return loss
+
+def create_input_row_dict(model, loss, model_name,):
+    input_row_dict = {"Model": model_name, "Loss": loss}
+    input_row_dict.update(vars(model.inputs))
+    input_row_dict.pop("timesteps")
+
+    return input_row_dict
+
+def map_reward_change(score: float, comparison_num: float) -> str:
+    if score > comparison_num:
+        score_change = "Greater"
+    elif score < comparison_num:
+        score_change = "Less"
+    else:
+        score_change = "Normal"
+    return score_change
+
+
 # * Select experiment you'd like to run
-EXPERIMENTS = ["Exp2"]
+EXPERIMENTS = ["Exp1"]
 
 #* DECIDE TO FIT PARAMETERS OR NOT
 FIT_PARAMETERS = True
@@ -91,6 +121,8 @@ for EXPERIMENT in EXPERIMENTS:
         if len(PARAMS_TO_REMOVE) != 0:
             for param in PARAMS_TO_REMOVE:
                 params_dict.pop(param)
+        
+        #* Get all param combos
         all_param_combos = itertools.product(*params_dict.values())  # The * unpacks into the product function
 
     # * Get targets for model comparisons
@@ -103,35 +135,6 @@ for EXPERIMENT in EXPERIMENTS:
         ]
     )
     # metric_keys = ['wtd_leave_time','prob_win','prob_incorrect','prob_indecision']
-
-    # * Functions
-    def get_loss(model, targets, drop_condition_num=None):
-        model_metrics = [
-            model.player_behavior.wtd_leave_time,
-            model.score_metrics.prob_win,
-            model.score_metrics.prob_incorrect,
-            model.score_metrics.prob_indecision,
-        ]
-        predictions = [model.results.get_metric(metric, decision_type="optimal", metric_type="true") for metric in model_metrics]
-        loss = lf.ape_loss(predictions, targets, drop_condition_num=drop_condition_num)
-
-        return loss
-
-    def create_input_row_dict(model, loss, model_name,):
-        input_row_dict = {"Model": model_name, "Loss": loss}
-        input_row_dict.update(vars(model.inputs))
-        input_row_dict.pop("timesteps")
-
-        return input_row_dict
-
-    def map_reward_change(score: float, comparison_num: float) -> str:
-        if score > comparison_num:
-            score_change = "Greater"
-        elif score < comparison_num:
-            score_change = "Less"
-        else:
-            score_change = "Normal"
-        return score_change
 
     # * Loop through all the changing parameters
     c = 0
