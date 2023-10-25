@@ -34,9 +34,6 @@ it = InitialThangs(EXPERIMENT)
 # * Get group data
 if "group" not in locals():
     group = rdf.generate_subject_object_v3(EXPERIMENT, "All Trials")
-else:
-    if group.exp_info.experiment != EXPERIMENT:  # This means i changed experiment and need to run again
-        group = rdf.generate_subject_object_v3(EXPERIMENT, "All Trials")
 
 #* Get raw input data
     
