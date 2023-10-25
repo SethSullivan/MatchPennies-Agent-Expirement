@@ -11,6 +11,7 @@ import read_data_functions as rdf
 from Optimal_Stopping_Object import ModelConstructor, ModelFitting
 from initializer import InitialThangs
 import loss_functions as lf
+
 '''
 Assumptions
 1. Reaction time gets 25 subtracted off
@@ -45,10 +46,12 @@ def create_input_row_dict(model, loss, model_name,):
 
     return input_row_dict
 
+#* !! SELECT THESE BEFORE RUNNING !!
 EXPERIMENT = "Exp1"
+FIT_PARAMETERS = False
 
 # * GET THE MODEL TRACKER TABLE
-MODELS_PATH = Path(f"D:\\OneDrive - University of Delaware - o365\\Desktop\\MatchPennies-Agent-Expirement\\results\\{EXPERIMENT}\models")
+MODELS_PATH = Path(f"D:\\OneDrive - University of Delaware - o365\\Desktop\\MatchPennies-Agent-Expirement\\results\\models")
 
 # * Initial Thangs
 # Get path and save path
@@ -67,9 +70,9 @@ if True:
         rt = np.nanmedian(group.movement_metrics.reaction_times, axis=1) - 25
         rt_sd = np.nanstd(group.movement_metrics.reaction_times, axis=1)
 
-    mt = np.min(np.nanmedian(group.movement_metrics.movement_times("task"), axis=2), axis=0)  # Get movement time for the condition where they tried the hardest
-    mt_sd = np.nanstd(group.movement_metrics.movement_times("task"), axis=1)
-    time_sd = np.array([(np.nanstd(group.movement_metrics.coincidence_reach_time, axis=1))] * it.num_blocks)
+    mt = np.min(np.nanmedian(group.movement_metrics.movement_times("task"), axis=2), axis=1)  # Get movement time for the condition where they tried the hardest
+    mt_sd = np.min(np.nanstd(group.movement_metrics.movement_times("task"), axis=2),axis = 1)
+    time_sd = np.array([np.nanstd(group.movement_metrics.coincidence_reach_time, axis=1)]*it.num_blocks).T #! This needs to be shape = (6,)
     guess_sd = np.nanstd(group.react_guess_movement_metrics.movement_onset_times("guess"), axis=2)
     agent_sds = np.nanstd(group.raw_data.agent_task_leave_time, axis=2)
     agent_means = np.nanmean(group.raw_data.agent_task_leave_time, axis=2)
@@ -82,7 +85,8 @@ for i in range(it.num_subjects):
         GUESS_SWITCH_SD = 65
 
         params_dict = {
-            "timing_sd_change": [time_sd[0] / 2, 0],
+            "timing_sd_true": [time_sd[i]],
+            "timing_sd_expected": [time_sd[i], np.array([1]*it.num_blocks)],
             "guess_switch_delay_true": [GUESS_SWITCH_DELAY], #! Assuming guess switch delay always exists
             "guess_switch_delay_expected": [GUESS_SWITCH_DELAY, 1],
             "guess_switch_sd_true": [GUESS_SWITCH_SD], #! Assuming guess switch sd always exists
@@ -91,10 +95,10 @@ for i in range(it.num_subjects):
         # * Get targets for model comparisons
         comparison_targets = np.array(
             [         
-                np.nanmedian(np.nanmedian(group.movement_metrics.movement_onset_times("task"), axis=2), axis=0),
-                np.nanmedian(group.score_metrics.score_metric("wins"), axis=0) / 100,
-                np.nanmedian(group.score_metrics.score_metric("incorrects"), axis=0) / 100,
-                np.nanmedian(group.score_metrics.score_metric("indecisions"), axis=0) / 100,
+                np.nanmedian(group.movement_metrics.movement_onset_times("task"), axis=2)[i],
+                group.score_metrics.score_metric("wins")[i] / 100,
+                group.score_metrics.score_metric("incorrects")[i] / 100,
+                group.score_metrics.score_metric("indecisions")[i] / 100,
             ]
         )
         #* Get all param combos
@@ -108,14 +112,14 @@ for i in range(it.num_subjects):
     print("Starting Models...")
     for param_tuple in tqdm(all_param_combos):
         params = dict(zip(param_keys, param_tuple))
-        model_name = f"model{c}_{datetime.now():%Y_%m_%d_%H_%M_%S}"
-
+        model_name = f"sub{i}_model{c}_{datetime.now():%Y_%m_%d_%H_%M_%S}"
+ 
         descriptive_parameter_row = {
             "Model": model_name,
             "Loss": 0,
             "Known_Switch_Delay": params['guess_switch_delay_expected'] == params['guess_switch_delay_true'],
             "Known_Switch_SD": params['guess_switch_sd_expected'] == params['guess_switch_sd_true'],
-            "Known_Timing_SD": params["timing_sd_change"] == 0,
+            "Known_Timing_SD": params['timing_sd_expected'] == params['timing_sd_true'],
         }
         descriptive_parameters.append(descriptive_parameter_row)
         
@@ -123,15 +127,14 @@ for i in range(it.num_subjects):
             experiment=EXPERIMENT,
             num_blocks=it.num_blocks,
             num_timesteps=1800,
-            agent_means=np.array([agent_means, agent_means])[:, :, np.newaxis],
-            agent_sds=np.array([agent_sds, agent_sds + params.get("agent_sd_change",0)])[:, :, np.newaxis],  #!
-            reaction_time=np.array([rt, rt])[:, np.newaxis, np.newaxis],
-            movement_time=np.array([mt, mt])[:, np.newaxis, np.newaxis],
-            reaction_sd=np.array([rt_sd, rt_sd - params.get("rt_sd_change",0)])[
-                :, np.newaxis, np.newaxis
-            ],  #! Reducing these, aka the particiapnt thinks they are more certain than they are
-            movement_sd=np.array([mt_sd, mt_sd - params.get("mt_sd_change",0)])[:, np.newaxis, np.newaxis],
-            timing_sd=np.array([time_sd, time_sd - params["timing_sd_change"]])[:, :, np.newaxis],
+            agent_means=np.array([agent_means[i], agent_means[i]])[:, :, np.newaxis],
+            agent_sds=np.array([agent_sds[i], agent_sds[i]])[:, :, np.newaxis],  #!
+            reaction_time=np.array([rt[i], rt[i]])[:, np.newaxis, np.newaxis],
+            movement_time=np.array([mt[i], mt[i]])[:, np.newaxis, np.newaxis],
+            reaction_sd=np.array([rt_sd[i], rt_sd[i]])[:, np.newaxis, np.newaxis],  #! Reducing these, aka the particiapnt thinks they are more certain than they are
+            movement_sd=np.array([mt_sd[i], mt_sd[i]])[:, np.newaxis, np.newaxis],
+            timing_sd=np.array([params["timing_sd_true"], 
+                                params["timing_sd_expected"]])[:, :, np.newaxis],
             guess_switch_delay=np.array([params["guess_switch_delay_true"], 
                                          params["guess_switch_delay_expected"]])[:, np.newaxis, np.newaxis],  # Designed like this for broadcasting reasons
             guess_switch_sd=np.array([params["guess_switch_sd_true"], 
@@ -140,8 +143,80 @@ for i in range(it.num_subjects):
             electromechanical_delay=np.array([50, 50])[:, np.newaxis, np.newaxis],
             switch_cost_exists=True,
             expected=True,  #! Should always be True... if the parameter is ground truth, then the two values of the parameter array should be the same
-            win_reward=params["score_rewards_list"][0],
-            incorrect_cost=params["score_rewards_list"][1],  #! These are applied onto the base reward matrix in Optimal Model object
-            indecision_cost=params["score_rewards_list"][2],
+            win_reward=1.0,
+            incorrect_cost=0.0,  #! These are applied onto the base reward matrix in Optimal Model object
+            indecision_cost=0.0,
             round_num = 20,
         )
+        
+        if FIT_PARAMETERS:
+            # If both known, then don't use true and expected
+            if descriptive_parameter_row['Known_Switch_Delay'] and descriptive_parameter_row['Known_Switch_SD']:
+                free_params_init_with_sd = {
+                    "guess_switch_delay": 0,
+                    "guess_switch_sd": 0,
+                }
+            # Separate exp and true for switch sd
+            elif descriptive_parameter_row['Known_Switch_Delay'] and not descriptive_parameter_row['Known_Switch_SD']:
+                free_params_init_with_sd = {
+                    "guess_switch_delay": 0,
+                    "guess_switch_sd_true": 0,
+                    "guess_switch_sd_expected": 0,
+                }
+            elif not descriptive_parameter_row['Known_Switch_Delay'] and descriptive_parameter_row['Known_Switch_SD']:
+                free_params_init_with_sd = {
+                    "guess_switch_delay_true": 0,
+                    "guess_switch_delay_expected": 0,
+                    "guess_switch_sd": 0,
+                }
+            else:
+                free_params_init_with_sd = {
+                    "guess_switch_delay_true": 0,
+                    "guess_switch_delay_expected": 0,
+                    "guess_switch_sd_true": 0,
+                    "guess_switch_sd_expected": 0,
+                }
+                
+            behavior_targets_with_sd = np.array(
+                [
+                    np.nanmedian(group.movement_metrics.movement_onset_times('task'), axis=2)[i],
+                    np.nanstd(group.movement_metrics.movement_onset_times('task'), axis=2)[i]
+                ]
+            )
+            behavior_metric_keys_with_sd = ["wtd_leave_time","wtd_leave_time_sd",]
+            model_fit_object_known = ModelFitting(model=model)
+            res = model_fit_object_known.run_model_fit_procedure(
+                free_params_init=free_params_init_with_sd,
+                targets=behavior_targets_with_sd,
+                drop_condition_from_loss=None, 
+                limit_sd=False,
+                metric_keys=behavior_metric_keys_with_sd,
+                bnds=None,
+                tol=0.000000001,
+                method="Powell",
+            )
+            if descriptive_parameter_row['Known_Switch_Delay'] and descriptive_parameter_row['Known_Switch_SD']:
+                assert np.all(model.inputs.guess_switch_delay[0] == model.inputs.guess_switch_delay[1])
+                
+        loss = get_loss(
+            model,
+            comparison_targets,
+        )
+        descriptive_parameter_row['Loss'] = loss
+        input_row_dict = create_input_row_dict(model, loss, model_name)
+        input_parameters.append(input_row_dict)
+
+        c += 1
+
+    df_inputs = pd.DataFrame(input_parameters)
+    df_descriptions = pd.DataFrame(descriptive_parameters)
+
+    save_date = datetime.now()
+    # * Save the old model table to a new file
+    with open(MODELS_PATH / f"{EXPERIMENT}_sub{i}_model_parameters_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
+        dill.dump(df_inputs, f)
+
+    with open(MODELS_PATH / f"{EXPERIMENT}_sub{i}_model_descriptions_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
+        dill.dump(df_descriptions, f)
+
+    print(f"Model generation for {EXPERIMENT}, Sub{i} completed")
