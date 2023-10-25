@@ -171,7 +171,6 @@ class Inputs:
         self.f2_xlabel = f2_xlabel
         self.f2_xticklabels = f2_xticklabels
         self.M_init = M
-        self.combos = get_combos(self.condition_nums, self.experiment)
         assert self.experiment == "Exp1" or self.experiment == "Exp2"
 
         if self.experiment == "Exp1":
@@ -251,7 +250,7 @@ class Bootstrap:
         if self.anova["p-GG-corr"][2] < 0.05 or self.no_collapse:
             print("Significant interaction, doing pairwise bootstraps for each condition...")
             self.collapse = False
-            pval_dict, cles_dict = self.pairwise_bootstrap(self.metric)
+            pval_dict, cles_dict = self.pairwise_bootstrap(self.metric, condition_nums=self.inputs.condition_nums)
             return [pval_dict, cles_dict]
         # * Collapse
         else:
@@ -292,16 +291,6 @@ class Bootstrap:
             else:
                 alternative_dict = dict(zip(combos, [self.alternative] * len(combos)))
             return alternative_dict
-        
-        def _get_corrected_pvals(pvals,combos):
-            raise NotImplementedError
-            if self.collapse:
-                check, pvals_corrected = pg.multicomp(pvals=pvals, method="holm")
-                return pvals_corrected
-            else:
-                for combo in combos:
-                    if (combo[0]*combo[1])%2==0:
-                        pass
                 
         # * Need these to be able to be generated incase I don't want to run an anova
         # This is a use case for the mini reaction time experiment
@@ -314,26 +303,29 @@ class Bootstrap:
                 self.alternative = kwargs.get('alternative')
             if not hasattr(self, "inputs"):
                 self.alternative = kwargs.get('inputs')
-            
-        alternative_dict = _get_alternative_dict(self.inputs.combos)
-
+                
+        combos = get_combos(condition_nums, self.inputs.experiment)
+        alternative_dict = _get_alternative_dict(combos)
+        used_combos = alternative_dict.keys()
         # if self.experiment == 'Exp1':
         pvals = {}
         cles1 = {}
         cles2 = {}
         c = -1
-        for combo in self.inputs.combos:
+        for combo in used_combos:
             c += 1
             i = int(combo[0])
             j = int(combo[1])
-            pvals.update({combo:au.bootstrap(data[:, i], data[:, j], paired=True, M=self.M, alternative=alternative_dict[combo], test=self.test)})
+            pvals.update({combo:au.bootstrap(data[:, i], data[:, j], paired=True, 
+                                             M=self.M, alternative=alternative_dict[combo], 
+                                             test=self.test)})
             cles1.update({combo:au.cles(data[:, i], data[:, j], paired=True)}) 
             cles2.update({combo:au.cles(data[:, j], data[:, i], paired=True)}) 
 
         # Create array and do holm bonferroni
         
-        check, pvals_corrected = pg.multicomp(pvals=list(pvals.values()), method="holm")
-        pvals_corrected_dict = dict(zip(self.inputs.combos,pvals_corrected))
+        pvals_corrected = au.holmbonferroni_correction(np.array(list(pvals.values())))
+        pvals_corrected_dict = dict(zip(used_combos,pvals_corrected))
         
         cles_dict = {}
         for (k1,v1),(k2,v2) in zip(cles1.items(),cles2.items()):
