@@ -48,6 +48,8 @@ EXPERIMENTS = ["Exp1"]
 #* DECIDE TO FIT PARAMETERS OR NOT
 FIT_PARAMETERS = True
 
+SAVE = False
+
 for EXPERIMENT in EXPERIMENTS:
     print(f'Starting up {EXPERIMENT}')
     # * GET THE MODEL TRACKER TABLE
@@ -249,13 +251,13 @@ for EXPERIMENT in EXPERIMENTS:
 
     df_inputs = pd.DataFrame(input_parameters)
     df_descriptions = pd.DataFrame(descriptive_parameters)
+    if SAVE:
+        save_date = datetime.now()
+        # * Save the old model table to a new file
+        with open(MODELS_PATH / f"{EXPERIMENT}_model_parameters_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
+            dill.dump(df_inputs, f)
 
-    save_date = datetime.now()
-    # * Save the old model table to a new file
-    with open(MODELS_PATH / f"{EXPERIMENT}_model_parameters_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
-        dill.dump(df_inputs, f)
-
-    with open(MODELS_PATH / f"{EXPERIMENT}_model_descriptions_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
-        dill.dump(df_descriptions, f)
+        with open(MODELS_PATH / f"{EXPERIMENT}_model_descriptions_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
+            dill.dump(df_descriptions, f)
 
     print(f"Model generation for {EXPERIMENT} completed")
