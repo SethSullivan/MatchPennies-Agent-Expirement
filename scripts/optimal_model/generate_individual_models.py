@@ -49,6 +49,7 @@ def create_input_row_dict(model, loss, model_name,):
 #* !! SELECT THESE BEFORE RUNNING !!
 EXPERIMENT = "Exp1"
 FIT_PARAMETERS = False
+GROUP = True # Run group model or individual models
 
 # * GET THE MODEL TRACKER TABLE
 MODELS_PATH = Path(f"D:\\OneDrive - University of Delaware - o365\\Desktop\\MatchPennies-Agent-Expirement\\results\\models")
@@ -65,19 +66,9 @@ else:
     if group.exp_info.experiment != EXPERIMENT:  # This means i changed experiment and need to run again
         group = rdf.generate_subject_object_v3(EXPERIMENT, "All Trials")
 
-if True:
-    if EXPERIMENT == "Exp1":
-        rt = np.nanmedian(group.movement_metrics.reaction_times, axis=1) - 25
-        rt_sd = np.nanstd(group.movement_metrics.reaction_times, axis=1)
 
-    mt = np.min(np.nanmedian(group.movement_metrics.movement_times("task"), axis=2), axis=1)  # Get movement time for the condition where they tried the hardest
-    mt_sd = np.min(np.nanstd(group.movement_metrics.movement_times("task"), axis=2),axis = 1)
-    time_sd = np.array([np.nanstd(group.movement_metrics.coincidence_reach_time, axis=1)]*it.num_blocks).T #! This needs to be shape = (6,)
-    guess_sd = np.nanstd(group.react_guess_movement_metrics.movement_onset_times("guess"), axis=2)
-    agent_sds = np.nanstd(group.raw_data.agent_task_leave_time, axis=2)
-    agent_means = np.nanmean(group.raw_data.agent_task_leave_time, axis=2)
-    guess_leave_time_sd = np.nanstd(group.react_guess_movement_metrics.movement_onset_times("guess"), axis=2)
-    
+
+
 for i in range(it.num_subjects):
     # * Set the parameters that change with each model
     if True:
@@ -85,8 +76,8 @@ for i in range(it.num_subjects):
         GUESS_SWITCH_SD = 65
 
         params_dict = {
-            "timing_sd_true": [time_sd[i]],
-            "timing_sd_expected": [time_sd[i], np.array([1]*it.num_blocks)],
+            "timing_sd_true": [timing_sd[i]],
+            "timing_sd_expected": [timing_sd[i], np.array([1]*it.num_blocks)],
             "guess_switch_delay_true": [GUESS_SWITCH_DELAY], #! Assuming guess switch delay always exists
             "guess_switch_delay_expected": [GUESS_SWITCH_DELAY, 1],
             "guess_switch_sd_true": [GUESS_SWITCH_SD], #! Assuming guess switch sd always exists
