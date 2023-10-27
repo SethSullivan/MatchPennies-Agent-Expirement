@@ -102,126 +102,91 @@ for EXPERIMENT in EXPERIMENTS:
         
     bootstrap_parameters = np.array([x for x in model_input_dict.values() if x.shape[0]==it.num_subjects])
 
-    distribution,results,participant_ids = parameter_bootstrap(parameters=bootstrap_parameters, M=M)
+    parameter_distribution,results,participant_ids = parameter_bootstrap(parameters=bootstrap_parameters, M=M)
     
     print('done')
     with open(constants.MODELS_PATH / 'participant_median_movement_onset_time.pkl','rb') as f:
         participant_median_movement_onset_time = dill.load(f)
     with open(constants.MODELS_PATH / 'participant_sd_movement_onset_time.pkl','rb') as f:
         participant_sd_movement_onset_time = dill.load(f)
-    
-    for i in range(M):
-        player_inputs = dict(zip(input_keys,distribution[i,:]))
-
-        GUESS_SWITCH_DELAY = 65
-        GUESS_SWITCH_SD = 65
-        INCORRECT_CHANGE = -0.1
-        INDECISION_CHANGE = 0
-        
-        params_dict = {
-            "timing_sd_true": [[player_inputs['timing_sd']]*it.num_blocks],
-            "timing_sd_expected": [[player_inputs['timing_sd']]*it.num_blocks, np.array([1]*it.num_blocks)],
-            "guess_switch_delay_true": [GUESS_SWITCH_DELAY], #! Assuming guess switch delay always exists
-            "guess_switch_delay_expected": [GUESS_SWITCH_DELAY, 1],
-            "guess_switch_sd_true": [GUESS_SWITCH_SD], #! Assuming guess switch sd always exists
-            "guess_switch_sd_expected": [GUESS_SWITCH_SD, 1],
-        }
-        
-        #* Get all param combos 
-        #! Not doing every combo, just fitting all of them and letting the optimizer say what's expected and what's true
-        # all_param_combos = itertools.product(*params_dict.values())  # The * unpacks into the product function
-        # * Get targets for model comparisons
-        # comparison_targets = np.array(
-        #     [
-        #     np.nanmedian(np.nanmedian(group.movement_metrics.movement_onset_times("task"), axis=2), axis=0),
-        #     np.nanmedian(group.score_metrics.score_metric("wins"), axis=0) / 100,
-        #     np.nanmedian(group.score_metrics.score_metric("incorrects"), axis=0) / 100,
-        #     np.nanmedian(group.score_metrics.score_metric("indecisions"), axis=0) / 100,
-        #     ]   
-        # ) 
-        # Comparing to only the participant ids that are use
+            
+    input_parameters = []
+    print("Starting Models...")
+    for i in range(1):
+        player_inputs = dict(zip(input_keys,parameter_distribution[i,:]))
 
         # * Loop through all the changing parameters
-        c = 0
-        input_parameters = []
-        descriptive_parameters = []  # Used for saying what changed, as opposed to the actual parameter values
-        param_keys = params_dict.keys()
-        print("Starting Models...")
-        for param_tuple in tqdm(all_param_combos):
-            params = dict(zip(param_keys, param_tuple))
-            model_name = f"model{c}_{datetime.now():%Y_%m_%d_%H_%M_%S}"
+        model_name = f"model{i}_{datetime.now():%Y_%m_%d_%H_%M_%S}"
 
-            descriptive_parameter_row = {
-            "Model": model_name,
-            "Loss": 0,
-            "Known_Switch_Delay": params['guess_switch_delay_expected'] == params['guess_switch_delay_true'],
-            "Known_Switch_SD": params['guess_switch_sd_expected'] == params['guess_switch_sd_true'],
-            "Known_Timing_SD": params['timing_sd_expected'] == params['timing_sd_true'],
-            }
-            descriptive_parameters.append(descriptive_parameter_row)
+        #* 3 Models 
+        #* 1. Full optimal, no fitting, no switch delay or uncertainty
+        #* 2. Full optimal, accounting for fit switch delay and uncertainty, and the expected and true have to be equal
+        #* 3. Full optimal, not accounting for fit switch delay and uncertainty, and the expected and true are both fit simultaneously
+        
+        optimal_model_no_switch = ModelConstructor(
+            experiment=EXPERIMENT,
+            num_blocks=it.num_blocks,
+            num_timesteps=1800,
+            agent_means=np.array([model_input_dict["agent_means"], model_input_dict["agent_means"]])[:, :, np.newaxis],
+            agent_sds=np.array([model_input_dict["agent_sds"], model_input_dict["agent_sds"]])[:, :, np.newaxis],  #!
+            reaction_time=np.array([player_inputs["rt"], player_inputs["rt"]])[:, np.newaxis, np.newaxis],
+            movement_time=np.array([player_inputs["mt"], player_inputs["mt"]])[:, np.newaxis, np.newaxis],
+            reaction_sd=np.array([player_inputs["rt_sd"], player_inputs["rt_sd"]])[:, np.newaxis, np.newaxis],  #! Reducing these, aka the particiapnt thinks they are more certain than they are
+            movement_sd=np.array([player_inputs["mt_sd"], player_inputs["mt_sd"]])[:, np.newaxis, np.newaxis],
+            timing_sd=np.array([[player_inputs['timing_sd']]*it.num_blocks, 
+                                [player_inputs['timing_sd']]*it.num_blocks])[:, :, np.newaxis],
+            guess_switch_delay=np.array([0, 0])[:, np.newaxis, np.newaxis], # These are being FIT, so copied models can just have them as 0
+            guess_switch_sd=np.array([0,0])[:, np.newaxis, np.newaxis],  
+            electromechanical_delay=np.array([50, 50])[:, np.newaxis, np.newaxis],
+            electromechanical_sd = np.array([10,10])[:, np.newaxis, np.newaxis],
+            switch_cost_exists=True,
+            expected=False,  #! Can be true or false here since true and expected dimensions are the same for everything
+            win_reward=1.0,
+            incorrect_cost=0.0,  #! These are applied onto the base reward matrix in Optimal Model object
+            indecision_cost=0.0,
+            round_num = 20,
+        )
+        #* Switch true will get fit
+        optimal_model_with_switch = deepcopy(optimal_model_no_switch)
+        
+        optimal_model_with_switch.inputs.electromechanical_sd = np.array([0,0])[:, np.newaxis, np.newaxis]
+        
+        #* Switch true and expected will get fit
+        suboptimal_model_with_switch = deepcopy(optimal_model_with_switch)
+        suboptimal_model_with_switch.inputs.expected = True        
+        
+        optimal_model_with_switch.run_model()
+        
+        if FIT_PARAMETERS:
+            #* We fit just the true, don't need the expected because we don't use those for optimal model get_metrics()
+            free_params_optimal = {
+                "guess_switch_delay_true": 0,
+                "guess_switch_sd_true": 0,
+                }
             
-            model = ModelConstructor(
-                experiment=EXPERIMENT,
-                num_blocks=it.num_blocks,
-                num_timesteps=1800,
-                agent_means=np.array([model_input_dict["agent_means"], model_input_dict["agent_means"]])[:, :, np.newaxis],
-                agent_sds=np.array([model_input_dict["agent_sds"], model_input_dict["agent_sds"]])[:, :, np.newaxis],  #!
-                reaction_time=np.array([player_inputs["rt"], player_inputs["rt"]])[:, np.newaxis, np.newaxis],
-                movement_time=np.array([player_inputs["mt"], player_inputs["mt"]])[:, np.newaxis, np.newaxis],
-                reaction_sd=np.array([player_inputs["rt_sd"], player_inputs["rt_sd"]])[:, np.newaxis, np.newaxis],  #! Reducing these, aka the particiapnt thinks they are more certain than they are
-                movement_sd=np.array([player_inputs["mt_sd"], player_inputs["mt_sd"]])[:, np.newaxis, np.newaxis],
-                timing_sd=np.array([params["timing_sd_true"], 
-                                    params["timing_sd_expected"]])[:, :, np.newaxis],
-                guess_switch_delay=np.array([params["guess_switch_delay_true"], 
-                                            params["guess_switch_delay_expected"]])[:, np.newaxis, np.newaxis],  # Designed like this for broadcasting reasons
-                guess_switch_sd=np.array([params["guess_switch_sd_true"], 
-                                        params["guess_switch_sd_expected"]])[:, np.newaxis, np.newaxis],  # This includes electromechanical delay sd and timing sd bc it's straight from data
-                # guess_sd =  np.array([params['guess_sd_true'],params['guess_sd_expected']])[:,:,np.newaxis], # This includes electromechanical delay sd
-                electromechanical_delay=np.array([50, 50])[:, np.newaxis, np.newaxis],
-                switch_cost_exists=True,
-                expected=True,  #! Should always be True... if the parameter is ground truth, then the two values of the parameter array should be the same
-                win_reward=1.0,
-                incorrect_cost=0.0,  #! These are applied onto the base reward matrix in Optimal Model object
-                indecision_cost=0.0,
-                round_num = 20,
-            )
-            if FIT_PARAMETERS:
-                # If both known, then don't use true and expected
-                if descriptive_parameter_row['Known_Switch_Delay'] and descriptive_parameter_row['Known_Switch_SD']:
-                    free_params_init_with_sd = {
-                        "guess_switch_delay": 0,
-                        "guess_switch_sd": 0,
-                    }
-                # Separate exp and true for switch sd
-                elif descriptive_parameter_row['Known_Switch_Delay'] and not descriptive_parameter_row['Known_Switch_SD']:
-                    free_params_init_with_sd = {
-                        "guess_switch_delay": 0,
-                        "guess_switch_sd_true": 0,
-                        "guess_switch_sd_expected": 0,
-                    }
-                elif not descriptive_parameter_row['Known_Switch_Delay'] and descriptive_parameter_row['Known_Switch_SD']:
-                    free_params_init_with_sd = {
-                        "guess_switch_delay_true": 0,
-                        "guess_switch_delay_expected": 0,
-                        "guess_switch_sd": 0,
-                    }
-                else:
-                    free_params_init_with_sd = {
-                        "guess_switch_delay_true": 0,
-                        "guess_switch_delay_expected": 0,
-                        "guess_switch_sd_true": 0,
-                        "guess_switch_sd_expected": 0,
-                    }
-                comparison_targets = np.array(
-                    [
-                        np.nanmedian(participant_median_movement_onset_time[participant_ids[i,:]], axis=0),
-                        np.nanmedian(participant_sd_movement_onset_time[participant_ids[i,:]], axis=0),
-                    ]   
-                )      
-                metric_keys = ['wtd_leave_time','wtd_leave_time_sd']
+            #* Fit the true and expected separately and see what the model does
+            free_params_suboptimal = {
+                "guess_switch_delay_true": 0,
+                "guess_switch_delay_expected": 0,
+                "guess_switch_sd_true": 0,
+                "guess_switch_sd_expected": 0,
+                }
+            # Need to be in for loop because we're using specific participant_ids
+            comparison_targets = np.array(
+                [
+                    np.nanmedian(participant_median_movement_onset_time[participant_ids[i,:]], axis=0),
+                    np.nanmedian(participant_sd_movement_onset_time[participant_ids[i,:]], axis=0),
+                ]   
+            )      
+            metric_keys = ['wtd_leave_time','wtd_leave_time_sd']
+            models = [optimal_model_with_switch,optimal_model_no_switch]
+            model_fit_objects= []
+            model_fit_results = []
+            for model in models:
+                print('Fitting Model')
                 model_fit = ModelFitting(model=model)
                 res = model_fit.run_model_fit_procedure(
-                    free_params_init=free_params_init_with_sd,
+                    free_params_init=free_params_optimal,
                     targets=comparison_targets,
                     drop_condition_from_loss=None,  # Drop 1200 50
                     limit_sd=False,
@@ -230,25 +195,18 @@ for EXPERIMENT in EXPERIMENTS:
                     tol=0.000000001,
                     method="Powell",
                 )
-                if descriptive_parameter_row['Known_Switch_Delay'] and descriptive_parameter_row['Known_Switch_SD']:
-                    assert np.all(model.inputs.guess_switch_delay[0] == model.inputs.guess_switch_delay[1])
-                    
-            loss = model_fit.loss_store[-1]
-            descriptive_parameter_row['Loss'] = loss
-            input_row_dict = create_input_row_dict(model, loss, model_name)
-            input_parameters.append(input_row_dict)
-
-            c += 1
+                model_fit_objects.append(model_fit)
+                model_fit_results.append(res)
+                loss = model_fit.loss_store[-1]
+                input_row_dict = create_input_row_dict(model, loss, model_name)
+                input_parameters.append(input_row_dict)
 
         df_inputs = pd.DataFrame(input_parameters)
-        df_descriptions = pd.DataFrame(descriptive_parameters)
         if SAVE:
             save_date = datetime.now()
             # * Save the old model table to a new file
             with open(MODELS_PATH / f"{EXPERIMENT}_model_parameters_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
                 dill.dump(df_inputs, f)
 
-            with open(MODELS_PATH / f"{EXPERIMENT}_model_descriptions_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
-                dill.dump(df_descriptions, f)
 
         print(f"Model generation for {EXPERIMENT} completed")
