@@ -1,4 +1,5 @@
 import data_visualization as dv
+from pathlib import Path
 wheel = dv.ColorWheel()
 
 ELECTROMECHANICAL_DELAY = 50
@@ -8,3 +9,10 @@ xticklabel_colors_means = [wheel.rak_blue, wheel.rak_red, wheel.rak_orange,
 xticklabel_colors_sd = [wheel.rak_blue, wheel.dark_blue_hc, 
                         wheel.rak_red, wheel.lighten_color(wheel.rak_red,1.5),
                         wheel.rak_orange,wheel.burnt_orange,]
+
+MODELS_PATH = Path(r"D:\OneDrive - University of Delaware - o365\Desktop\MatchPennies-Agent-Expirement\results\models")
+MODEL_INPUT_PATH = Path(r"D:\OneDrive - University of Delaware - o365\Desktop\MatchPennies-Agent-Expirement\results\model_inputs")
+
+model_input_savenames = ['exp1_rt_median_array.pkl','exp1_rt_sd_array.pkl',
+                        'exp1_mt_median_array.pkl','exp1_mt_sd_array.pkl',
+                        'exp1_timing_sd_array.pkl','exp1_agent_means.pkl','exp1_agent_sds.pkl']
