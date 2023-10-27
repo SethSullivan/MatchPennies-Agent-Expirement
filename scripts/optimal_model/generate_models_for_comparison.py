@@ -190,6 +190,7 @@ for EXPERIMENT in EXPERIMENTS:
             indecision_cost=params["score_rewards_list"][2],
             round_num = 20,
         )
+        model.run_model()
         if FIT_PARAMETERS:
             # If both known, then don't use true and expected
             if descriptive_parameter_row['Known_Switch_Delay'] and descriptive_parameter_row['Known_Switch_SD']:
