@@ -10,6 +10,7 @@ import data_visualization as dv
 from copy import deepcopy 
 from numba_stats import norm
 from functools import cached_property
+from functools import lru_cache
 from scipy import optimize
 import time
 import multiprocessing as mp
@@ -170,10 +171,11 @@ class ModelInputs:
             self.guess_switch_sd = kwargs.get("guess_switch_sd") # This would include an electromechanical sd in it 
             self.guess_sd        = kwargs.get("guess_sd") #! OPTION to directly use guess leave time sd
             self.use_true_guess_sd = kwargs.get("use_true_guess_sd",False)
+            self.electromechanical_sd = kwargs.get("electromechanical_sd",0)
             # If i don't directly use data, then guess_sd is the combination of timing_sd (includes electromechanical sd probably) and guess_switch_sd
             if self.guess_sd is None or not self.use_true_guess_sd:
                 self.guess_sd_from_data = False
-                self.guess_sd = np.sqrt(self.guess_switch_sd**2 + self.timing_sd**2)
+                self.guess_sd = np.sqrt(self.guess_switch_sd**2 + self.timing_sd**2 + self.electromechanical_sd**2)
             else:
                 self.guess_sd_from_data = True
                 self.guess_sd = self.guess_sd
@@ -264,32 +266,37 @@ class AgentBehavior:
         ans = stats.norm.cdf(1500,self.inputs.agent_means + 150,self.inputs.agent_sds)
         return ans
     
-    @property
-    def agent_moments(self):
+    @lru_cache # Only need to run this function if timing_sd changes, or agent_means/agent_sds change (don't need to worry about them tho)
+    def agent_moments(self, timing_sd_input):
         """
         Get first three central moments (EX2 is normalized for mean,
         EX3 is normalized for mean and sd) of the new distribution based on timing uncertainty
         """
         #* Steps done outside for loop in get_moments to make it faster
+        #
+        # DOing this bc lru cache needs a hashable data type (aka a float or int)
+        # We then recreate the timing_sd array which is just one number in (2,6,1) shape
+        timing_sd = np.ones_like(self.inputs.timing_sd)*timing_sd_input
+            
         # Creates a 1,1,2000 inf timesteps, that can broadcast to 2,6,1
         inf_timesteps = np.arange(0.0, 2000.0, self.inputs.nsteps)[np.newaxis,np.newaxis,:] # Going to 2000 is a good approximation, doesn't get better by going higher
         time_means = deepcopy(self.inputs.timesteps[0,0,:]) # Get the timing means that player can select as their stopping time
         agent_pdf = stats.norm.pdf(inf_timesteps, self.inputs.agent_means, self.inputs.agent_sds)  # Find agent pdf
         prob_agent_less_player = stats.norm.cdf(
             0, self.inputs.agent_means - inf_timesteps, 
-            np.sqrt(self.inputs.agent_sds**2 + (self.inputs.timing_sd) ** 2)
+            np.sqrt(self.inputs.agent_sds**2 + (timing_sd) ** 2)
         )
         true_moments = get_moments(
             inf_timesteps.squeeze(), 
             time_means.squeeze(), 
-            self.inputs.timing_sd[0,:,:].squeeze(), # Squeezing for numba
+            timing_sd[0,:,:].squeeze(), # Squeezing for numba
             prob_agent_less_player[0,:,:].squeeze(), 
             agent_pdf[0,:,:].squeeze()
         )
         expected_moments = get_moments(
             inf_timesteps.squeeze(), 
             time_means.squeeze(), 
-            self.inputs.timing_sd[1,:,:].squeeze(), 
+            timing_sd[1,:,:].squeeze(), 
             prob_agent_less_player[1,:,:].squeeze(), 
             agent_pdf[1,:,:].squeeze()
         )
@@ -301,7 +308,7 @@ class AgentBehavior:
 
     def cutoff_agent_behavior(self):
         # Get the First Three moments for the left and right distributions (if X<Y and if X>Y respectively)
-        EX_R, EX2_R, EX3_R, EX_G, EX2_G, EX3_G = self.agent_moments
+        EX_R, EX2_R, EX3_R, EX_G, EX2_G, EX3_G = self.agent_moments(self.inputs.timing_sd[0,0,0])
         # no_inf_moments = [np.nan_to_num(x,nan=np.nan,posinf=np.nan,neginf=np.nan) for x in moments]
 
         self.reaction_leave_time, self.reaction_leave_time_var, self.cutoff_reaction_skew = EX_R, EX2_R, EX3_R
@@ -613,14 +620,13 @@ class ModelConstructor:
 
     def __init__(self, **kwargs):
         self.kwargs = kwargs
-        self.run_model(**kwargs)
-        
-    def run_model(self, **kwargs):
+        # self.run_model(**kwargs)
+        self.inputs           = ModelInputs(**self.kwargs)
+
+    def run_model(self,):
         '''
         Run model through 
         '''
-        self.data_leave_times = kwargs.get('data_leave_times')
-        self.inputs           = ModelInputs(**kwargs)
         self.agent_behavior   = AgentBehavior(self.inputs)
         self.player_behavior  = PlayerBehavior(self.inputs, self.agent_behavior)
         self.score_metrics    = ScoreMetrics(self.inputs, self.player_behavior, self.agent_behavior)
@@ -706,7 +712,7 @@ class ModelFitting:
         
     def run_model_fit_procedure(self, free_params_init: dict, metric_keys: list, targets: np.ndarray,
                                 method='Nelder-Mead', bnds=None, tol = 0.0000001, niter=100,
-                                drop_condition_from_loss=None, limit_sd=True,):
+                                drop_condition_from_loss=None, limit_sd=False,):
         self.loss_store = []
         self.optimal_decision_time_store = [] 
         self.leave_time_store = []
@@ -796,7 +802,6 @@ class ModelFitting:
                 model_metrics[i,:] = self.model.results.get_metric(model_metric, 
                                                                    decision_type=decision_type, 
                                                                    metric_type='true')  # Find the metric at optimal decision time
-        
         loss = lf.ape_loss(model_metrics, targets, drop_condition_num=self.drop_condition_from_loss)
         
         self.loss_store.append(loss)
@@ -835,15 +840,16 @@ class ModelFitting:
                 self.model.kwargs[k] = v
         #* Pass new set of kwargs to the inputs, then run through model constructor sequence again
         self.model.inputs = ModelInputs(**self.model.kwargs) 
+        self.model.run_model()
         
-        #* Update Model
-        if 'timing_sd' in free_param_dict.keys(): # AgentBehavior needs to be run again if the timing_sd changes
-            print('AgentBehavior is being run again')
-            self.model.agent_behavior = AgentBehavior(self.model.inputs)
+        #* Update Model (old pre 10/27/23, moved all the below into run_model and memoized get_moments so agent_behavior doesn't take a wicked long time)
+        # if 'timing_sd' in free_param_dict.keys(): # AgentBehavior needs to be run again if the timing_sd changes
+        #     print('AgentBehavior is being run again')
+        #     self.model.agent_behavior = AgentBehavior(self.model.inputs)
             
-        self.model.player_behavior = PlayerBehavior(self.model.inputs, self.model.agent_behavior)
-        self.model.score_metrics   = ScoreMetrics(self.model.inputs, self.model.player_behavior, self.model.agent_behavior)
-        self.model.results         = Results(self.model.inputs, self.model.score_metrics)
+        # self.model.player_behavior = PlayerBehavior(self.model.inputs, self.model.agent_behavior)
+        # self.model.score_metrics   = ScoreMetrics(self.model.inputs, self.model.player_behavior, self.model.agent_behavior)
+        # self.model.results         = Results(self.model.inputs, self.model.score_metrics)
         
         #* Get new fit decision time (as of 6/26/23 I'm no longer fitting these decision times)
         # self.fit_model(self.player_behavior.wtd_leave_time,self.data_leave_times)
