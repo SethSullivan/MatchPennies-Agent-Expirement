@@ -266,8 +266,8 @@ class AgentBehavior:
         ans = stats.norm.cdf(1500,self.inputs.agent_means + 150,self.inputs.agent_sds)
         return ans
     
-    @lru_cache # Only need to run this function if timing_sd changes, or agent_means/agent_sds change (don't need to worry about them tho)
-    def agent_moments(self, timing_sd_input):
+     # Only need to run this function if timing_sd changes, or agent_means/agent_sds change (don't need to worry about them tho)
+    def agent_moments(self):
         """
         Get first three central moments (EX2 is normalized for mean,
         EX3 is normalized for mean and sd) of the new distribution based on timing uncertainty
@@ -276,7 +276,7 @@ class AgentBehavior:
         #
         # DOing this bc lru cache needs a hashable data type (aka a float or int)
         # We then recreate the timing_sd array which is just one number in (2,6,1) shape
-        timing_sd = np.ones_like(self.inputs.timing_sd)*timing_sd_input
+        timing_sd = self.inputs.timing_sd
             
         # Creates a 1,1,2000 inf timesteps, that can broadcast to 2,6,1
         inf_timesteps = np.arange(0.0, 2000.0, self.inputs.nsteps)[np.newaxis,np.newaxis,:] # Going to 2000 is a good approximation, doesn't get better by going higher
@@ -308,7 +308,7 @@ class AgentBehavior:
 
     def cutoff_agent_behavior(self):
         # Get the First Three moments for the left and right distributions (if X<Y and if X>Y respectively)
-        EX_R, EX2_R, EX3_R, EX_G, EX2_G, EX3_G = self.agent_moments(self.inputs.timing_sd[0,0,0])
+        EX_R, EX2_R, EX3_R, EX_G, EX2_G, EX3_G = self.agent_moments()
         # no_inf_moments = [np.nan_to_num(x,nan=np.nan,posinf=np.nan,neginf=np.nan) for x in moments]
 
         self.reaction_leave_time, self.reaction_leave_time_var, self.cutoff_reaction_skew = EX_R, EX2_R, EX3_R
@@ -553,7 +553,8 @@ class Results:
         self.fit_decision_index = index
 
     def get_metric(self, metric1, metric2=None, 
-                   decision_type = 'optimal', metric_type='true', key = None):
+                   decision_type = 'optimal', 
+                   metric_type='true', key = None):
         '''
         
         decision_type = "optimal" or "fit"
@@ -571,6 +572,7 @@ class Results:
         if metric2 is not None:
             metric2 = metric2.squeeze()
         
+        #* This uses the optimal decision time of expected versus true
         if key is None:
             key = self.inputs.key
         
@@ -623,11 +625,13 @@ class ModelConstructor:
         # self.run_model(**kwargs)
         self.inputs           = ModelInputs(**self.kwargs)
 
-    def run_model(self,):
+    def run_model(self,skip_agent_behavior=False):
         '''
         Run model through 
         '''
-        self.agent_behavior   = AgentBehavior(self.inputs)
+        if not skip_agent_behavior:
+            self.agent_behavior   = AgentBehavior(self.inputs)
+            
         self.player_behavior  = PlayerBehavior(self.inputs, self.agent_behavior)
         self.score_metrics    = ScoreMetrics(self.inputs, self.player_behavior, self.agent_behavior)
         self.results          = Results(self.inputs,self.score_metrics)
@@ -789,11 +793,10 @@ class ModelFitting:
             if 'leave_time' in metric_keys[i]:
                 model_metric = getattr(self.model.player_behavior, metric_keys[i])
                 # Find the metric at optimal decision time
-                #! Metric type always being 'true' means that we use the decision_type for expected vs true, but the metric array
-                #! we're using is ALWAYS the 'true' array. If we're fitting the true guess delay, then the expected metric arrays shouldn't change
+                #! Metric type always being 'true' means that the metric array we're using is ALWAYS the 'true' array. 
                 model_metrics[i,:] = self.model.results.get_metric(model_metric, 
                                                                    decision_type=decision_type, 
-                                                                   metric_type='true')  
+                                                                   metric_type="true")  
             elif 'decision_time' in metric_keys[i]:
                 model_metric = getattr(self.model.results,metric_keys[i])
                 model_metrics[i,:] = model_metric
@@ -801,7 +804,7 @@ class ModelFitting:
                 model_metric = getattr(self.model.score_metrics, metric_keys[i])
                 model_metrics[i,:] = self.model.results.get_metric(model_metric, 
                                                                    decision_type=decision_type, 
-                                                                   metric_type='true')  # Find the metric at optimal decision time
+                                                                   metric_type="true")  # Find the metric at optimal decision time
         loss = lf.ape_loss(model_metrics, targets, drop_condition_num=self.drop_condition_from_loss)
         
         self.loss_store.append(loss)
@@ -840,9 +843,9 @@ class ModelFitting:
                 self.model.kwargs[k] = v
         #* Pass new set of kwargs to the inputs, then run through model constructor sequence again
         self.model.inputs = ModelInputs(**self.model.kwargs) 
-        self.model.run_model()
+        self.model.run_model(skip_agent_behavior=True)
         
-        #* Update Model (old pre 10/27/23, moved all the below into run_model and memoized get_moments so agent_behavior doesn't take a wicked long time)
+        #* Update Model (old pre 10/27/23, moved all the below into run_model and can skip redoing the agent behavior bc timing sd isn't changing
         # if 'timing_sd' in free_param_dict.keys(): # AgentBehavior needs to be run again if the timing_sd changes
         #     print('AgentBehavior is being run again')
         #     self.model.agent_behavior = AgentBehavior(self.model.inputs)
