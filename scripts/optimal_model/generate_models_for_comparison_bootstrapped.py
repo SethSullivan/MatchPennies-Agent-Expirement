@@ -41,15 +41,15 @@ def map_reward_change(score: float, comparison_num: float) -> str:
         score_change = "Normal"
     return score_change
 
-@nb.njit(parallel=True)
+# @nb.njit(parallel=True)
 def parameter_bootstrap(parameters:np.ndarray,M=1e4,):
     print('begin bootstrap')
     M = int(M)
     num_params = len(parameters)
     num_subjects = len(parameters[0])
-    distribution = np.empty((M,num_params))
-    results = np.empty((num_params))
-    participant_ids = np.empty((M,num_subjects),dtype=np.int32) 
+    distribution = np.zeros((M,num_params))*np.nan
+    results = np.zeros((M,num_params))*np.nan
+    participant_ids = np.zeros((M,num_subjects),dtype=np.int32)
     for i in range(M):
         # One set of participant ids, use across every paramter
         participant_ids[i,:] = np.random.randint(0,num_subjects,size=num_subjects)
@@ -58,7 +58,7 @@ def parameter_bootstrap(parameters:np.ndarray,M=1e4,):
         for j in range(num_params):
             distribution[i,j] = np.nanmean(parameters[j][participant_ids[i,:]])
             
-        results[i] = np.mean(distribution[i,:])
+        results[i,:] = np.mean(distribution,axis=0)
     return distribution, results, participant_ids
     
     
@@ -136,11 +136,11 @@ for EXPERIMENT in EXPERIMENTS:
             timing_sd=np.array([[player_inputs['timing_sd']]*it.num_blocks, 
                                 [player_inputs['timing_sd']]*it.num_blocks])[:, :, np.newaxis],
             guess_switch_delay=np.array([0, 0])[:, np.newaxis, np.newaxis], # These are being FIT, so copied models can just have them as 0
-            guess_switch_sd=np.array([0,0])[:, np.newaxis, np.newaxis],  
+            guess_switch_sd=np.array([0,0])[:, np.newaxis, np.newaxis],   
             electromechanical_delay=np.array([50, 50])[:, np.newaxis, np.newaxis],
             electromechanical_sd = np.array([10,10])[:, np.newaxis, np.newaxis],
             switch_cost_exists=True,
-            expected=False,  #! Can be true or false here since true and expected dimensions are the same for everything
+            expected=False,  
             win_reward=1.0,
             incorrect_cost=0.0,  #! These are applied onto the base reward matrix in Optimal Model object
             indecision_cost=0.0,
@@ -149,14 +149,34 @@ for EXPERIMENT in EXPERIMENTS:
         #* Switch true will get fit
         optimal_model_with_switch = deepcopy(optimal_model_no_switch)
         
-        optimal_model_with_switch.inputs.electromechanical_sd = np.array([0,0])[:, np.newaxis, np.newaxis]
-        
+        suboptimal_model_with_switch = ModelConstructor(
+            experiment=EXPERIMENT,
+            num_blocks=it.num_blocks,
+            num_timesteps=1800,
+            agent_means=np.array([model_input_dict["agent_means"], model_input_dict["agent_means"]])[:, :, np.newaxis],
+            agent_sds=np.array([model_input_dict["agent_sds"], model_input_dict["agent_sds"]])[:, :, np.newaxis],  #!
+            reaction_time=np.array([player_inputs["rt"], player_inputs["rt"]])[:, np.newaxis, np.newaxis],
+            movement_time=np.array([player_inputs["mt"], player_inputs["mt"]])[:, np.newaxis, np.newaxis],
+            reaction_sd=np.array([player_inputs["rt_sd"], player_inputs["rt_sd"]])[:, np.newaxis, np.newaxis],  #! Reducing these, aka the particiapnt thinks they are more certain than they are
+            movement_sd=np.array([player_inputs["mt_sd"], player_inputs["mt_sd"]])[:, np.newaxis, np.newaxis],
+            timing_sd=np.array([[player_inputs['timing_sd']]*it.num_blocks, 
+                                [player_inputs['timing_sd']]*it.num_blocks])[:, :, np.newaxis],
+            guess_switch_delay=np.array([0, 0])[:, np.newaxis, np.newaxis], # These are being FIT, so copied models can just have them as 0
+            guess_switch_sd=np.array([0,0])[:, np.newaxis, np.newaxis],   
+            electromechanical_delay=np.array([50, 50])[:, np.newaxis, np.newaxis],
+            electromechanical_sd = np.array([10,10])[:, np.newaxis, np.newaxis],
+            switch_cost_exists=True,
+            expected=True, 
+            win_reward=1.0,
+            incorrect_cost=0.0,  #! These are applied onto the base reward matrix in Optimal Model object
+            indecision_cost=0.0,
+            round_num = 20,
+        )
         #* Switch true and expected will get fit
-        suboptimal_model_with_switch = deepcopy(optimal_model_with_switch)
-        suboptimal_model_with_switch.inputs.expected = True        
-        
+        optimal_model_no_switch.run_model()
         optimal_model_with_switch.run_model()
-        
+        suboptimal_model_with_switch.run_model()
+
         if FIT_PARAMETERS:
             #* We fit just the true, don't need the expected because we don't use those for optimal model get_metrics()
             free_params_optimal = {
@@ -179,14 +199,18 @@ for EXPERIMENT in EXPERIMENTS:
                 ]   
             )      
             metric_keys = ['wtd_leave_time','wtd_leave_time_sd']
-            models = [optimal_model_with_switch,optimal_model_no_switch]
+            models = [optimal_model_with_switch,suboptimal_model_with_switch]
+            free_params = [free_params_optimal, free_params_suboptimal]
+            specific_name = ['optimal_','suboptimal_']
             model_fit_objects= []
             model_fit_results = []
-            for model in models:
+            for j,model in enumerate(models):
                 print('Fitting Model')
+                print(model)
                 model_fit = ModelFitting(model=model)
+                print(model_fit)
                 res = model_fit.run_model_fit_procedure(
-                    free_params_init=free_params_optimal,
+                    free_params_init=free_params[i],
                     targets=comparison_targets,
                     drop_condition_from_loss=None,  # Drop 1200 50
                     limit_sd=False,
@@ -195,17 +219,19 @@ for EXPERIMENT in EXPERIMENTS:
                     tol=0.000000001,
                     method="Powell",
                 )
+                specific_model_name = specific_name[j] + model_name
                 model_fit_objects.append(model_fit)
                 model_fit_results.append(res)
                 loss = model_fit.loss_store[-1]
-                input_row_dict = create_input_row_dict(model, loss, model_name)
+                print(loss)
+                input_row_dict = create_input_row_dict(model, loss, specific_model_name)
                 input_parameters.append(input_row_dict)
 
         df_inputs = pd.DataFrame(input_parameters)
         if SAVE:
             save_date = datetime.now()
             # * Save the old model table to a new file
-            with open(MODELS_PATH / f"{EXPERIMENT}_model_parameters_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
+            with open(MODELS_PATH / f"{EXPERIMENT}_three_model_comparison_model_parameters_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
                 dill.dump(df_inputs, f)
 
 
