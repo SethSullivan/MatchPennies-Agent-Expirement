@@ -239,7 +239,8 @@ for EXPERIMENT in EXPERIMENTS:
             )
             if descriptive_parameter_row['Known_Switch_Delay'] and descriptive_parameter_row['Known_Switch_SD']:
                 assert np.all(model.inputs.guess_switch_delay[0] == model.inputs.guess_switch_delay[1])
-                
+        # ! Getting loss on metrics that matter the most. This is not what's being fit on
+        # ! 10/31/23 - when I'm doing bootstrap version I don't do this and I use what's actually being fit
         loss = get_loss(
             model,
             comparison_targets,
