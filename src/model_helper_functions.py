@@ -20,13 +20,22 @@ metrics_dict = dict(zip(keys,metrics))
 with open(constants.MODEL_INPUT_PATH / 'model_input_dict.pkl','wb') as f:
     dill.dump(metrics_dict,f)
         
+        
 participant_median_movement_onset_time = np.nanmedian(group.movement_metrics.movement_onset_times("task"), axis=2)
 with open(constants.MODEL_INPUT_PATH / 'participant_median_movement_onset_time.pkl','wb') as f:
     dill.dump(participant_median_movement_onset_time,f)
 participant_sd_movement_onset_time = np.nanstd(group.movement_metrics.movement_onset_times("task"), axis=2)
 with open(constants.MODEL_INPUT_PATH / 'participant_sd_movement_onset_time.pkl','wb') as f:
     dill.dump(participant_sd_movement_onset_time,f)
-
+wins = group.score_metrics.score_metric("wins")
+with open(constants.MODEL_INPUT_PATH / 'participant_wins.pkl','wb') as f:
+    dill.dump(wins,f)
+incorrects = group.score_metrics.score_metric("incorrects")
+with open(constants.MODEL_INPUT_PATH / 'participant_incorrects.pkl','wb') as f:
+    dill.dump(incorrects,f)
+indecisions = group.score_metrics.score_metric("indecisions")
+with open(constants.MODEL_INPUT_PATH / 'participant_indecisions.pkl','wb') as f:
+    dill.dump(indecisions,f)
 
 @nb.njit(parallel=True)
 def parameter_bootstrap(parameters:np.ndarray,M=1e4,):
@@ -39,23 +48,23 @@ def parameter_bootstrap(parameters:np.ndarray,M=1e4,):
         results[i] = np.mean(distribution[i,:])
     return distribution, results
 
-class BootstrapInputs:
-    def __init__(self,group,M=1e4):
-        self.rt = np.nanmedian(group.movement_metrics.reaction_times, axis=1) - 25
-        self.rt_sd = np.nanstd(group.movement_metrics.reaction_times, axis=1)
-        self.mt = np.min(np.nanmedian(group.movement_metrics.movement_times("task"), axis=2), axis=1)  # Get movement time for the condition where they tried the hardest
-        self.mt_sd = np.min(np.nanstd(group.movement_metrics.movement_times("task"), axis=2), axis=1)
-        self.timing_sd = np.nanstd(group.movement_metrics.coincidence_reach_time, axis=1) #! This needs to be shape = (6,)
-        self.agent_sds = np.nanstd(group.raw_data.agent_task_leave_time, axis=2)
-        self.agent_means = np.nanmean(group.raw_data.agent_task_leave_time, axis=2)
-        self.parameters = np.array([self.rt,self.rt_sd,self.mt,self.mt_sd,self.timing_sd])
+# class BootstrapInputs:
+#     def __init__(self,group,M=1e4):
+#         self.rt = np.nanmedian(group.movement_metrics.reaction_times, axis=1) - 25
+#         self.rt_sd = np.nanstd(group.movement_metrics.reaction_times, axis=1)
+#         self.mt = np.min(np.nanmedian(group.movement_metrics.movement_times("task"), axis=2), axis=1)  # Get movement time for the condition where they tried the hardest
+#         self.mt_sd = np.min(np.nanstd(group.movement_metrics.movement_times("task"), axis=2), axis=1)
+#         self.timing_sd = np.nanstd(group.movement_metrics.coincidence_reach_time, axis=1) #! This needs to be shape = (6,)
+#         self.agent_sds = np.nanstd(group.raw_data.agent_task_leave_time, axis=2)
+#         self.agent_means = np.nanmean(group.raw_data.agent_task_leave_time, axis=2)
+#         self.parameters = np.array([self.rt,self.rt_sd,self.mt,self.mt_sd,self.timing_sd])
         
-    @property
-    def get_boot_inputs(self):
-        self.boot_dist,self.boot_results = parameter_bootstrap(self.parameters,M=M)
-        keys = ['rt','rt_sd','mt','mt_sd','timing_sd','agent_mean','agent_sd']
-        results_dict = dict(zip(results_keys,results))
-        distribution_dict = dict(zip(results_keys,distribution))
+#     @property
+#     def get_boot_inputs(self):
+#         self.boot_dist,self.boot_results = parameter_bootstrap(self.parameters,M=M)
+#         keys = ['rt','rt_sd','mt','mt_sd','timing_sd','agent_mean','agent_sd']
+#         results_dict = dict(zip(results_keys,results))
+#         distribution_dict = dict(zip(results_keys,distribution))
 
 # class ModelInputs:
 #     def __init__(self,group,GROUP_OR_INDIVIDUAL):
