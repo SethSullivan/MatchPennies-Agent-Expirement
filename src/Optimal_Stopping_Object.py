@@ -783,7 +783,7 @@ class ModelFitting:
         for k,v in new_parameters_dict.items():
             if v<0:
                 return 1e3
-        
+        #TODO Figure out how to make sure that the _expected isn't greater than it's _true pair
         self.parameter_arr.append(free_params_values)
         # Get the new arrays from the optimized free parameter inputs
         self.update_model(new_parameters_dict) 
@@ -843,7 +843,11 @@ class ModelFitting:
                 self.model.kwargs[k] = v
         #* Pass new set of kwargs to the inputs, then run through model constructor sequence again
         self.model.inputs = ModelInputs(**self.model.kwargs) 
-        self.model.run_model(skip_agent_behavior=True)
+        if any(key in dict for key in ["timing_sd","timing_sd_expected","timing_sd_true"]):
+            self.model.run_model(skip_agent_behavior=False)
+        else:
+            self.model.run_model(skip_agent_behavior=True)
+            
         
         #* Update Model (old pre 10/27/23, moved all the below into run_model and can skip redoing the agent behavior bc timing sd isn't changing
         # if 'timing_sd' in free_param_dict.keys(): # AgentBehavior needs to be run again if the timing_sd changes
