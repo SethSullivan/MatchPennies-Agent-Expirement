@@ -59,42 +59,31 @@ def get_moments(timesteps:np.ndarray, time_means:np.ndarray, time_sds:np.ndarray
     for i in range(time_sds.shape[0]):
         #* looping over conditions
         for j in range(time_sds.shape[1]):
-            sig_y = time_sds[i,j]
-            xpdf = agent_pdf[i,j,:]
+            #* 11/02/23 - Removed these so numba doesn't have any temporary arrays
+            # sig_y = time_sds[i,j]
+            # xpdf = agent_pdf[i,j,:]
             #* Looping over possible mean decision times
             for k in nb.prange(time_means.shape[0]):
-                #*Commented out is the old way of doing this bc sc.erfc is recognized by numba, but now I know how to use norm.cdf with numba (which is the same as the error function)
-                # xpdf = (1/(sig_x*np.sqrt(2*np.pi)))*np.e**((-0.5)*((timesteps - mu_x)/sig_x)**2) # Pdf of agent, used when getting expected value EX_R, etc.
-                # prob_x_less_y = (sc.erfc((mu_x - mu_y[i])/(np.sqrt(2)*np.sqrt(sig_x**2 + sig_y**2))))/2 # Probability of a reaction decision, aka player decides after agent
-                # y_integrated = np.empty(len(timesteps),dtype=np.float64)
-                # y_inverse_integrated = np.empty(len(timesteps),dtype=np.float64)
-                # for k in range(len(timesteps)): # Looping here bc numba_scipy version of sc.erfc can only take float, not an array
-                #     t = timesteps[k]
-                #     y_integrated[k] = (sc.erfc((t - mu_y[i])/(np.sqrt(2)*sig_y)))/2 # Going from x to infinity is the complementary error function (bc we want all the y's that are greater than x)
-                #     y_inverse_integrated[k] = (sc.erfc((mu_y[i] - t)/(np.sqrt(2)*sig_y)))/2 # Swap limits of integration (mu_y[i] - t) now
-
-                mu_y = time_means[k] # Put the timing mean in an easy to use variable,
-                prob_x_less_y = prob_agent_less_player[i,j,k]  # get prob agent is less than player for that specific agent mean (i) and timing mean (j)
-                prob_x_greater_y = 1 - prob_x_less_y
-                y_integrated = 1 - norm.cdf(timesteps, mu_y, sig_y) # For ALL timesteps, what's the probabilit for every timing mean (from 0 to 2000) that the timing mean is greater than that current timestep
-                y_inverse_integrated = 1 - y_integrated
-                if prob_x_less_y!=0:
-                    integral_sum_R = nb_sum(timesteps*xpdf*y_integrated)*dx
-                    EX_R[i,j,k] = integral_sum_R/prob_x_less_y
+                # mu_y = time_means[k] # Put the timing mean in an easy to use variable,
+                y_integrated = 1 - norm.cdf(timesteps, time_means[k], time_sds[i,j]) # For ALL timesteps, what's the probabilit for every timing mean (from 0 to 2000) that the timing mean is greater than that current timestep
+                # y_inverse_integrated = 1 - y_integrated
+                if prob_agent_less_player[i,j,k]!=0:
+                    # integral_sum_R = nb_sum(timesteps*agent_pdf[i,j,:]*y_integrated)*dx
+                    EX_R[i,j,k] = nb_sum(timesteps*agent_pdf[i,j,:]*y_integrated)*dx/prob_agent_less_player[i,j,k]
                     # SECOND CENTRAL MOMENT = VARIANCE
-                    integral_sum2_R = nb_sum((timesteps - EX_R[i,j,k])**2*xpdf*y_integrated)*dx
-                    EX2_R[i,j,k] = integral_sum2_R/prob_x_less_y  # SECOND CENTRAL MOMENT = VARIANCE
-                    # EX3_R[i,j] = 0 #np.sum((timesteps-EX_R[i,j])**3*xpdf*y_integrated)*dx/prob_x_less_y # THIRD CENTRAL MOMENT = SKEW
+                    # integral_sum2_R = nb_sum((timesteps - EX_R[i,j,k])**2*agent_pdf[i,j,:]*y_integrated)*dx
+                    EX2_R[i,j,k] = nb_sum((timesteps - EX_R[i,j,k])**2*agent_pdf[i,j,:]*y_integrated)*dx/prob_agent_less_player[i,j,k]  # SECOND CENTRAL MOMENT = VARIANCE
+                    # EX3_R[i,j] = 0 #np.sum((timesteps-EX_R[i,j])**3*agent_pdf[i,j,:]*y_integrated)*dx/prob_agent_less_player[i,j,k] # THIRD CENTRAL MOMENT = SKEW
                 else:
                     EX_R[i,j,k] = 0
                     EX2_R[i,j,k] = 0
                     
-                if prob_x_greater_y!=0:
-                    integral_sum_G = nb_sum(timesteps*xpdf*y_inverse_integrated)*dx
-                    EX_G[i,j,k] =  integral_sum_G / prob_x_greater_y
-                    integral_sum2_G = nb_sum((timesteps - EX_G[i,j,k])**2*xpdf*y_inverse_integrated)*dx
-                    EX2_G[i,j,k] = integral_sum2_G / prob_x_greater_y
-                    # EX3_G[i,j] = 0#np.sum((timesteps-EX_G[i,j])**3*xpdf*y_inverse_integrated)*dx/prob_x_greater_y # THIRD CENTRAL MOMENT = SKEW
+                if (1-prob_agent_less_player[i,j,k])!=0:
+                    # integral_sum_G = nb_sum(timesteps*agent_pdf[i,j,:]*(1 - y_integrated))*dx
+                    EX_G[i,j,k] =  nb_sum(timesteps*agent_pdf[i,j,:]*(1 - y_integrated))*dx / (1-prob_agent_less_player[i,j,k])
+                    # integral_sum2_G = nb_sum((timesteps - EX_G[i,j,k])**2*agent_pdf[i,j,:]*(1 - y_integrated))*dx
+                    EX2_G[i,j,k] = nb_sum((timesteps - EX_G[i,j,k])**2*agent_pdf[i,j,:]*(1 - y_integrated))*dx / (1-prob_agent_less_player[i,j,k])
+                    # EX3_G[i,j] = 0#np.sum((timesteps-EX_G[i,j])**3*agent_pdf[i,j,:]*(1 - y_integrated))*dx/prob_x_greater_y # THIRD CENTRAL MOMENT = SKEW
                 else:
                     EX_G[i,j,k] = 0
                     EX2_G[i,j,k] = 0
