@@ -31,63 +31,74 @@ Added in the flexibility to change reward around instead of agent mean and sd
 #####################################################
 ###### Helper Functions to get the Moments ##########
 #####################################################
-@nb.njit(fastmath=True)
+@nb.njit(parallel=False,fastmath=True) # Parallel slows it down
 def nb_sum(x):
     n_sum = 0
     for i in nb.prange(len(x)):
         n_sum += x[i]
     return n_sum
-
-# @nb.njit(nb.types.UniTuple(nb.float64[:,:],6)(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:,:], nb.float64[:,:]),
-        #  parallel=True, fastmath=True)
-@nb.njit(parallel=True, fastmath=False)
-def get_moments(timesteps, time_means, time_sds, prob_agent_less_player, agent_pdf):
-    shape = (time_sds.shape[0], time_means.shape[-1])
+# Declaring actually slows it down
+# @nb.njit(nb.types.UniTuple(nb.float64[:,:,:],6)(nb.float64[:], nb.float64[:], nb.float64[:,:], nb.float64[:,:,:], nb.float64[:,:,:]),
+#          parallel=True, fastmath=True)
+@nb.njit(parallel=True, fastmath=False) # For some reason fastmath slows it down a bit
+def get_moments(timesteps:np.ndarray, time_means:np.ndarray, time_sds:np.ndarray, 
+                prob_agent_less_player:np.ndarray, agent_pdf:np.ndarray):
+    '''
+    timesteps: (2000,)
+    time_means: (1800,)
+    time_sds: (2,6)
+    prob_agent_less_player: (2,6,2000)
+    agent_pdf: (2,6,2000)
+    '''
+    shape = (time_sds.shape[0], time_sds.shape[1], time_means.shape[-1])
     EX_R, EX2_R, EX3_R = np.zeros((shape)), np.zeros((shape)), np.zeros((shape))
     EX_G, EX2_G, EX3_G = np.zeros((shape)), np.zeros((shape)), np.zeros((shape))
     dx = timesteps[1] - timesteps[0]
 
-    for i in nb.prange(len(time_sds)):
-        sig_y = time_sds[i]
-        xpdf = agent_pdf[i,:]
+    #* Looping expected/unexpected
+    for i in range(time_sds.shape[0]):
+        #* looping over conditions
+        for j in range(time_sds.shape[1]):
+            sig_y = time_sds[i,j]
+            xpdf = agent_pdf[i,j,:]
+            #* Looping over possible mean decision times
+            for k in nb.prange(time_means.shape[0]):
+                #*Commented out is the old way of doing this bc sc.erfc is recognized by numba, but now I know how to use norm.cdf with numba (which is the same as the error function)
+                # xpdf = (1/(sig_x*np.sqrt(2*np.pi)))*np.e**((-0.5)*((timesteps - mu_x)/sig_x)**2) # Pdf of agent, used when getting expected value EX_R, etc.
+                # prob_x_less_y = (sc.erfc((mu_x - mu_y[i])/(np.sqrt(2)*np.sqrt(sig_x**2 + sig_y**2))))/2 # Probability of a reaction decision, aka player decides after agent
+                # y_integrated = np.empty(len(timesteps),dtype=np.float64)
+                # y_inverse_integrated = np.empty(len(timesteps),dtype=np.float64)
+                # for k in range(len(timesteps)): # Looping here bc numba_scipy version of sc.erfc can only take float, not an array
+                #     t = timesteps[k]
+                #     y_integrated[k] = (sc.erfc((t - mu_y[i])/(np.sqrt(2)*sig_y)))/2 # Going from x to infinity is the complementary error function (bc we want all the y's that are greater than x)
+                #     y_inverse_integrated[k] = (sc.erfc((mu_y[i] - t)/(np.sqrt(2)*sig_y)))/2 # Swap limits of integration (mu_y[i] - t) now
 
-        for j in range(time_means.shape[-1]):  # Need to loop through every possible decision time mean
-            #*Commented out is the old way of doing this bc sc.erfc is recognized by numba, but now I know how to use norm.cdf with numba (which is the same as the error function)
-            # xpdf = (1/(sig_x*np.sqrt(2*np.pi)))*np.e**((-0.5)*((timesteps - mu_x)/sig_x)**2) # Pdf of agent, used when getting expected value EX_R, etc.
-            # prob_x_less_y = (sc.erfc((mu_x - mu_y[i])/(np.sqrt(2)*np.sqrt(sig_x**2 + sig_y**2))))/2 # Probability of a reaction decision, aka player decides after agent
-            # y_integrated = np.empty(len(timesteps),dtype=np.float64)
-            # y_inverse_integrated = np.empty(len(timesteps),dtype=np.float64)
-            # for k in range(len(timesteps)): # Looping here bc numba_scipy version of sc.erfc can only take float, not an array
-            #     t = timesteps[k]
-            #     y_integrated[k] = (sc.erfc((t - mu_y[i])/(np.sqrt(2)*sig_y)))/2 # Going from x to infinity is the complementary error function (bc we want all the y's that are greater than x)
-            #     y_inverse_integrated[k] = (sc.erfc((mu_y[i] - t)/(np.sqrt(2)*sig_y)))/2 # Swap limits of integration (mu_y[i] - t) now
-
-            mu_y = time_means[j] # Put the timing mean in an easy to use variable,
-            prob_x_less_y = prob_agent_less_player[i,j]  # get prob agent is less than player for that specific agent mean (i) and timing mean (j)
-            prob_x_greater_y = 1 - prob_x_less_y
-            y_integrated = 1 - norm.cdf(timesteps, mu_y, sig_y) # For ALL timesteps, what's the probabilit for every timing mean (from 0 to 2000) that the timing mean is greater than that current timestep
-            y_inverse_integrated = 1 - y_integrated
-
-            if prob_x_less_y != 0:
-                EX_R[i,j] = nb_sum(timesteps*xpdf*y_integrated)*dx / prob_x_less_y
-                EX2_R[i,j] = nb_sum((timesteps - EX_R[i,j]) ** 2*xpdf*y_integrated)*dx / prob_x_less_y  # SECOND CENTRAL MOMENT = VARIANCE
-                # EX3_R[i,j] = 0 #np.sum((timesteps-EX_R[i,j])**3*xpdf*y_integrated)*dx/prob_x_less_y # THIRD CENTRAL MOMENT = SKEW
-            else:
-                EX_R[i,j] = 0
-                EX2_R[i,j] = 0  # SECOND CENTRAL MOMENT = VARIANCE
-                # EX3_R[i,j] = 0 # THIRD CENTRAL MOMENT = SKEW
-
-            if prob_x_greater_y != 0:
-                EX_G[i,j] = nb_sum(timesteps*xpdf*y_inverse_integrated)*dx / prob_x_greater_y
-                EX2_G[i,j] = (
-                    nb_sum((timesteps - EX_G[i,j]) ** 2*xpdf*y_inverse_integrated)*dx / prob_x_greater_y
-                )  # SECOND CENTRAL MOMENT = VARIANCE
-                # EX3_G[i,j] = 0#np.sum((timesteps-EX_G[i,j])**3*xpdf*y_inverse_integrated)*dx/prob_x_greater_y # THIRD CENTRAL MOMENT = SKEW
-            else:
-                EX_G[i,j] = 0
-                EX2_G[i,j] = 0  # SECOND CENTRAL MOMENT = VARIANCE
-                # EX3_G[i,j] = 0 # THIRD CENTRAL MOMENT = SKEW
-
+                mu_y = time_means[k] # Put the timing mean in an easy to use variable,
+                prob_x_less_y = prob_agent_less_player[i,j,k]  # get prob agent is less than player for that specific agent mean (i) and timing mean (j)
+                prob_x_greater_y = 1 - prob_x_less_y
+                y_integrated = 1 - norm.cdf(timesteps, mu_y, sig_y) # For ALL timesteps, what's the probabilit for every timing mean (from 0 to 2000) that the timing mean is greater than that current timestep
+                y_inverse_integrated = 1 - y_integrated
+                if prob_x_less_y!=0:
+                    integral_sum_R = nb_sum(timesteps*xpdf*y_integrated)*dx
+                    EX_R[i,j,k] = integral_sum_R/prob_x_less_y
+                    # SECOND CENTRAL MOMENT = VARIANCE
+                    integral_sum2_R = nb_sum((timesteps - EX_R[i,j,k])**2*xpdf*y_integrated)*dx
+                    EX2_R[i,j,k] = integral_sum2_R/prob_x_less_y  # SECOND CENTRAL MOMENT = VARIANCE
+                    # EX3_R[i,j] = 0 #np.sum((timesteps-EX_R[i,j])**3*xpdf*y_integrated)*dx/prob_x_less_y # THIRD CENTRAL MOMENT = SKEW
+                else:
+                    EX_R[i,j,k] = 0
+                    EX2_R[i,j,k] = 0
+                    
+                if prob_x_greater_y!=0:
+                    integral_sum_G = nb_sum(timesteps*xpdf*y_inverse_integrated)*dx
+                    EX_G[i,j,k] =  integral_sum_G / prob_x_greater_y
+                    integral_sum2_G = nb_sum((timesteps - EX_G[i,j,k])**2*xpdf*y_inverse_integrated)*dx
+                    EX2_G[i,j,k] = integral_sum2_G / prob_x_greater_y
+                    # EX3_G[i,j] = 0#np.sum((timesteps-EX_G[i,j])**3*xpdf*y_inverse_integrated)*dx/prob_x_greater_y # THIRD CENTRAL MOMENT = SKEW
+                else:
+                    EX_G[i,j,k] = 0
+                    EX2_G[i,j,k] = 0
+                    
     return EX_R, EX2_R, EX3_R, EX_G, EX2_G, EX3_G
 
 
@@ -139,9 +150,9 @@ def combine_sd_dicts(d1, d2):
 
 class ModelInputs:
     def __init__(self, **kwargs):
-        """
-        Model Inputs
-        """
+        self.reset(**kwargs)
+        
+    def reset(self,**kwargs):
         #*Task Conditions
         if True:
             self.experiment = kwargs.get("experiment")
@@ -150,7 +161,10 @@ class ModelInputs:
             self.agent_sds = kwargs.get("agent_sds") # If exp2, need to be np.array([50]*4)
             self.nsteps = kwargs.get('nsteps',1)
             self.num_timesteps = int(kwargs.get("num_timesteps")/self.nsteps)
-            self.timesteps = kwargs.get("timesteps", np.tile(np.arange(0.0, float(self.num_timesteps), self.nsteps), (2, self.num_blocks, 1))) # Has shape starting with (2,)
+            self.timesteps = kwargs.get("timesteps", np.tile(np.arange(0.0, float(self.num_timesteps), self.nsteps), 
+                                                             (2, self.num_blocks, 1)
+                                                             )
+                                        ) # Has shape starting with (2,)
             self.round_num = kwargs.get('round_num',20)
 
         #*Player Parameters and Rewards
@@ -168,7 +182,7 @@ class ModelInputs:
             self.reaction_sd     = kwargs.get("reaction_sd")
             self.movement_sd     = kwargs.get("movement_sd")
             self.timing_sd       = kwargs.get("timing_sd")
-            self.guess_switch_sd = kwargs.get("guess_switch_sd") # This would include an electromechanical sd in it 
+            self.guess_switch_sd = kwargs.get("guess_switch_sd")
             self.guess_sd        = kwargs.get("guess_sd") #! OPTION to directly use guess leave time sd
             self.use_true_guess_sd = kwargs.get("use_true_guess_sd",False)
             self.electromechanical_sd = kwargs.get("electromechanical_sd",0)
@@ -181,8 +195,8 @@ class ModelInputs:
                 self.guess_sd = self.guess_sd
 
             # Ability
-            self.reaction_time               = kwargs.get("reaction_time")
-            self.movement_time               = kwargs.get("movement_time")
+            self.reaction_time = kwargs.get("reaction_time")
+            self.movement_time = kwargs.get("movement_time")
             
             self.guess_switch_delay       = kwargs.get("guess_switch_delay")
             self.electromechanical_delay  = kwargs.get('electromechanical_delay')
@@ -235,6 +249,9 @@ class ModelInputs:
             
 class AgentBehavior:
     def __init__(self, model_inputs: ModelInputs):
+        self.reset(model_inputs)
+        
+    def reset(self,model_inputs):
         self.inputs = model_inputs
         self.reaction_leave_time_var = None
         self.cutoff_reaction_skew = None
@@ -286,24 +303,15 @@ class AgentBehavior:
             0, self.inputs.agent_means - inf_timesteps, 
             np.sqrt(self.inputs.agent_sds**2 + (timing_sd) ** 2)
         )
-        true_moments = get_moments(
+        #* Returns tuple of First three moments for left (Reaction) and right (Gamble) of distribution
+        #* Don't actually use the skew at all
+        return_vals = get_moments(
             inf_timesteps.squeeze(), 
             time_means.squeeze(), 
-            timing_sd[0,:,:].squeeze(), # Squeezing for numba
-            prob_agent_less_player[0,:,:].squeeze(), 
-            agent_pdf[0,:,:].squeeze()
+            timing_sd.squeeze(), # Squeezing for numba
+            prob_agent_less_player.squeeze(), 
+            agent_pdf.squeeze()
         )
-        expected_moments = get_moments(
-            inf_timesteps.squeeze(), 
-            time_means.squeeze(), 
-            timing_sd[1,:,:].squeeze(), 
-            prob_agent_less_player[1,:,:].squeeze(), 
-            agent_pdf[1,:,:].squeeze()
-        )
-        
-        return_vals = []
-        for a,b in zip(true_moments,expected_moments):
-            return_vals.append(np.stack((a,b)))
         return return_vals
 
     def cutoff_agent_behavior(self):
@@ -328,6 +336,9 @@ class PlayerBehavior:
     """
 
     def __init__(self, model_inputs: ModelInputs, agent_behavior: AgentBehavior):
+        self.reset(model_inputs,agent_behavior)
+        
+    def reset(self, model_inputs,agent_behavior):
         self.inputs = model_inputs
         self.agent_behavior = agent_behavior
 
@@ -346,6 +357,7 @@ class PlayerBehavior:
         
         #! NOT SURE IF AGENT BEHAVIOR SHOULD INFLUENCE THIS, (8/16/23 i say it should bc it looks like guess leave time sd changes for 1000 and 1100 conditions btwn 50 and 150)
         # Also, the model predicts high guess switch sd when not accounting for it in order to get the best fit. This doesn't seem reflective of reality
+        #! 11/1/23 - I don't think it should. Doesn't make sense with how I've modeled this. The guess time sd is only your timing sd, electro sd, and switch sd
         if self.inputs.guess_sd_from_data: 
             self.guess_leave_time_sd = self.inputs.guess_sd # DOESN'T Add on agent behavior, took it from data which includes that
         else:
@@ -353,21 +365,7 @@ class PlayerBehavior:
             #                                     self.inputs.guess_sd**2
             #                             )
             self.guess_leave_time_sd = self.inputs.guess_sd
-        #* If each element in the array is the same, then I passed a constant
-        # TODO NEED TO DECIDE WHAT I'M GOING TO SAY THE LEAVE TIME SD IS. RIGHT NOW I PASS COINCIDENCE TIME SD
-        # TODO BUT THE guess LEAVE TIME SD IS ALSO DEPENDENT ON THE AGENT'S LEAVE TIME SD
-        # TODO (OR IS IT? DOES guess LEAVE TIME SD CHANGE ACROSS CONDITIONS?)
         
-        # If every element isn't the same, then I passed the subjects actual leave time uncertainty in the task 
-        # (I DON'T DO THIS ANYMORE 8/16/23 ESPECIALLY WHEN FITTING the GUESS SD)
-        # if not (self.inputs.guess_sd == self.inputs.guess_sd).all()
-        #     self.guess_leave_time_sd = self.inputs.guess_sd[:, np.newaxis]
-        # else:  # If I didn't, then I need to throw on timing uncertainty 
-        #     self.guess_leave_time_sd = np.sqrt(
-        #         self.agent_behavior.guess_leave_time_sd**2
-        #         + self.inputs.guess_sd ** 2
-        #         + tile(self.inputs.timing_sd ** 2, self.inputs.num_timesteps)
-        #     )
         self.wtd_leave_time_sd = (
             self.prob_selecting_reaction*self.reaction_leave_time_sd + self.prob_selecting_guess*self.guess_leave_time_sd
         )
@@ -424,6 +422,9 @@ class PlayerBehavior:
 
 class ScoreMetrics:
     def __init__(self, model_inputs: ModelInputs, player_behavior: PlayerBehavior, agent_behavior: AgentBehavior):
+        self.reset(model_inputs,player_behavior,agent_behavior)
+        
+    def reset(self,model_inputs,player_behavior,agent_behavior):
         self.inputs = model_inputs
         #*These don't consider the probability that you select reaction
         # Prob of win
@@ -490,29 +491,42 @@ class Results:
     """
 
     def __init__(self, inputs: ModelInputs,score_metrics: ScoreMetrics):
+        self.reset(inputs,score_metrics)
+        
+    def reset(self,inputs,score_metrics):
         self.inputs = inputs
         self.score_metrics = score_metrics
+        self.fit_decision_index = None
         # self.max_exp_reward = np.nanmax(np.round(self.results.exp_reward,3),axis=2)
         # self.last_max_index = np.argwhere(np.round(self.results.exp_reward,3) - self.max_exp_reward == 0)[-1]
-        self.exp_reward_reaction = (
-            score_metrics.prob_win_reaction*self.inputs.win_reward
-            + score_metrics.prob_incorrect_reaction*self.inputs.incorrect_cost
-            + score_metrics.prob_indecision_reaction*self.inputs.indecision_cost
+    
+    @cached_property
+    def exp_reward_reaction(self):
+        ans = (
+            self.score_metrics.prob_win_reaction*self.inputs.win_reward
+            + self.score_metrics.prob_incorrect_reaction*self.inputs.incorrect_cost
+            + self.score_metrics.prob_indecision_reaction*self.inputs.indecision_cost
         )
-
-        self.exp_reward_guess = (
-            score_metrics.prob_win_guess*self.inputs.win_reward
-            + score_metrics.prob_incorrect_guess*self.inputs.incorrect_cost
-            + score_metrics.prob_indecision_guess*self.inputs.indecision_cost
+        return ans
+    @cached_property
+    def exp_reward_guess(self):
+        ans = (
+            self.score_metrics.prob_win_guess*self.inputs.win_reward
+            + self.score_metrics.prob_incorrect_guess*self.inputs.incorrect_cost
+            + self.score_metrics.prob_indecision_guess*self.inputs.indecision_cost
         )
-
-        self.exp_reward = np.round(
-            score_metrics.prob_win*self.inputs.win_reward
-            + score_metrics.prob_incorrect*self.inputs.incorrect_cost
-            + score_metrics.prob_indecision*self.inputs.indecision_cost,
+        return ans
+    
+    @cached_property
+    def exp_reward(self):
+        ans = np.round(
+            self.score_metrics.prob_win*self.inputs.win_reward
+            + self.score_metrics.prob_incorrect*self.inputs.incorrect_cost
+            + self.score_metrics.prob_indecision*self.inputs.indecision_cost,
             self.inputs.round_num
         )
-        self.fit_decision_index = None
+        return ans
+        
         
     @property
     def optimal_decision_index(self):
@@ -622,19 +636,21 @@ class ModelConstructor:
 
     def __init__(self, **kwargs):
         self.kwargs = kwargs
-        # self.run_model(**kwargs)
-        self.inputs           = ModelInputs(**self.kwargs)
+        self.inputs = ModelInputs(**self.kwargs)
 
-    def run_model(self,skip_agent_behavior=False):
-        '''
-        Run model through 
-        '''
-        if not skip_agent_behavior:
-            self.agent_behavior   = AgentBehavior(self.inputs)
+        self.agent_behavior   = AgentBehavior(self.inputs)
             
         self.player_behavior  = PlayerBehavior(self.inputs, self.agent_behavior)
         self.score_metrics    = ScoreMetrics(self.inputs, self.player_behavior, self.agent_behavior)
         self.results          = Results(self.inputs,self.score_metrics)
+        
+    def reset_model(self,skip_agent_behavior=False,**kwargs):
+        self.inputs.reset(**kwargs)
+        if not skip_agent_behavior:
+            self.agent_behavior.reset(self.inputs)
+        self.player_behavior.reset(self.inputs,self.agent_behavior)
+        self.score_metrics.reset(self.inputs,self.player_behavior,self.agent_behavior)
+        self.results.reset(self.inputs,self.score_metrics)
         
     def fit_model(self, metric, target) -> None:
         '''
@@ -841,14 +857,13 @@ class ModelFitting:
                     self.model.kwargs[k][1] = v
             except TypeError:
                 self.model.kwargs[k] = v
-        #* Pass new set of kwargs to the inputs, then run through model constructor sequence again
-        self.model.inputs = ModelInputs(**self.model.kwargs) 
-        if any(key in dict for key in ["timing_sd","timing_sd_expected","timing_sd_true"]):
-            self.model.run_model(skip_agent_behavior=False)
+                
+        #* Pass new set of kwargs to the reset_model which runs constructor sequence through resets, instead of re-instantiating
+        if any(key in free_param_dict.keys() for key in ["timing_sd","timing_sd_expected","timing_sd_true"]):
+            self.model.reset_model(skip_agent_behavior=False,**self.model.kwargs)
         else:
-            self.model.run_model(skip_agent_behavior=True)
+            self.model.reset_model(skip_agent_behavior=True,**self.model.kwargs)
             
-        
         #* Update Model (old pre 10/27/23, moved all the below into run_model and can skip redoing the agent behavior bc timing sd isn't changing
         # if 'timing_sd' in free_param_dict.keys(): # AgentBehavior needs to be run again if the timing_sd changes
         #     print('AgentBehavior is being run again')
