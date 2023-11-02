@@ -51,8 +51,8 @@ def get_moments(timesteps:np.ndarray, time_means:np.ndarray, time_sds:np.ndarray
     agent_pdf: (2,6,2000)
     '''
     shape = (time_sds.shape[0], time_sds.shape[1], time_means.shape[-1])
-    EX_R, EX2_R, EX3_R = np.zeros((shape)), np.zeros((shape)), np.zeros((shape))
-    EX_G, EX2_G, EX3_G = np.zeros((shape)), np.zeros((shape)), np.zeros((shape))
+    EX_R, EX2_R = np.zeros((shape)), np.zeros((shape)) 
+    EX_G, EX2_G = np.zeros((shape)), np.zeros((shape))
     dx = timesteps[1] - timesteps[0]
 
     #* Looping expected/unexpected
@@ -88,7 +88,7 @@ def get_moments(timesteps:np.ndarray, time_means:np.ndarray, time_sds:np.ndarray
                     EX_G[i,j,k] = 0
                     EX2_G[i,j,k] = 0
                     
-    return EX_R, EX2_R, EX3_R, EX_G, EX2_G, EX3_G
+    return EX_R, EX2_R, EX_G, EX2_G
 
 
 def add_skewnorm_and_norm_distributions(timesteps,norm_mean,norm_sd,skewnorm_mean,skewnorm_sd,skewnorm_skew):
@@ -305,13 +305,13 @@ class AgentBehavior:
 
     def cutoff_agent_behavior(self):
         # Get the First Three moments for the left and right distributions (if X<Y and if X>Y respectively)
-        EX_R, EX2_R, EX3_R, EX_G, EX2_G, EX3_G = self.agent_moments()
+        EX_R, EX2_R, EX_G, EX2_G = self.agent_moments()
         # no_inf_moments = [np.nan_to_num(x,nan=np.nan,posinf=np.nan,neginf=np.nan) for x in moments]
 
-        self.reaction_leave_time, self.reaction_leave_time_var, self.cutoff_reaction_skew = EX_R, EX2_R, EX3_R
+        self.reaction_leave_time, self.reaction_leave_time_var = EX_R, EX2_R
         self.reaction_leave_time_sd = np.sqrt(self.reaction_leave_time_var)
 
-        self.guess_leave_time, self.guess_leave_time_var, self.cutoff_guess_skew = EX_G, EX2_G, EX3_G
+        self.guess_leave_time, self.guess_leave_time_var, = EX_G, EX2_G
         self.guess_leave_time_sd = np.sqrt(self.guess_leave_time_var)
 
 
@@ -651,48 +651,6 @@ class ModelConstructor:
         decision_index = np.argmin(loss, axis=2)  # Across timesteps (axis=2) return the indices that minimize difference between metric and target
         self.results.set_fit_decision_index(decision_index.astype(int)) # Set the decision_index
         
-    def plot_optimals(self, metric_names=['exp_reward'],optimal_fit='optimal', **kwargs):
-        figsize = kwargs.get('figsize',(20,10))
-        dpi     = kwargs.get('dpi',125)
-        xlocs   = kwargs.get('xlocs',np.arange(0,self.inputs.num_timesteps))
-        ylocs   = kwargs.get('ylocs',np.arange(0,1.1,0.25))
-        xlabel  = kwargs.get('xlabel', 'Time (ms)')
-        ylabel  = kwargs.get('ylabel', 'Probability')
-        suptitle   = kwargs.get('suptitle', None)
-        titles  = kwargs.get('titles', None)
-        show_optimals = kwargs.get('show_optimals',True)
-        
-        if optimal_fit == 'optimal':
-            decision_time = self.results.optimal_decision_time
-            decision_index = self.results.optimal_decision_index
-        elif optimal_fit == 'fit':
-            decision_time = self.results.fit_decision_time
-            decision_index = self.results.fit_decision_index
-        fig,axs = plt.subplots(2,3,figsize=figsize, dpi=125)
-        for metric in metric_names:
-            if metric in dir(self.results):
-                y = getattr(self.results,metric)
-            elif metric in dir(self.score_metrics):
-                y = getattr(self.score_metrics,metric)
-            elif metric in dir(self.player_behavior,metric):
-                y = getattr(self.player_behavior,metric)
-            for i,ax in enumerate(axs.T.flatten()):
-                ax.plot(xlocs,y[self.inputs.key,i,:])
-                if show_optimals:
-                    print('Warning:Make sure that self.inputs.key is giving what you want')
-                    ax.plot((decision_time[self.inputs.key,i],decision_time[self.inputs.key,i]),
-                            (min(ylocs),self.results.exp_reward[self.inputs.key,i,decision_index[self.inputs.key,i]]),c='w')
-                    ax.text(decision_time[self.inputs.key,i],self.results.exp_reward[self.inputs.key, i,decision_index[self.inputs.key,i]]+0.03,
-                            f'Optimal Decision Time = {int(decision_time[self.inputs.key,i])}',ha = 'center')
-
-                # ax.set_xticks(xlocs)
-                ax.set_yticks(ylocs)
-                ax.set_xlabel(xlabel)
-                ax.set_ylabel(ylabel)
-                ax.set_title(titles[i])
-                ax.set_ylim(min(ylocs),max(ylocs))
-        fig.suptitle(suptitle)
-        plt.tight_layout()
         
 class ModelFitting:
     '''
@@ -749,7 +707,7 @@ class ModelFitting:
                 
         elif method=='basinhopping':
             out = optimize.basinhopping(self.get_loss, self.initial_guess,niter=niter,
-                                 minimizer_kwargs={'method':'Nelder-Mead',
+                                 minimizer_kwargs={'method':'Powell',
                                                    'args':(metric_keys, targets, free_params_init.keys())},
                                  stepsize=0.05
                                  )
@@ -846,7 +804,8 @@ class ModelFitting:
                     self.model.kwargs[k][1] = v
             except TypeError:
                 self.model.kwargs[k] = v
-                
+        # if self.model.kwargs["guess_switch_delay"].squeeze()[1] == self.model.kwargs["guess_switch_sd"].squeeze()[1]:
+        #     print([v for v in free_param_dict.values()])
         #* Pass new set of kwargs to the reset_model which runs constructor sequence through resets, instead of re-instantiating
         if any(key in free_param_dict.keys() for key in ["timing_sd","timing_sd_expected","timing_sd_true"]):
             self.model.reset_model(skip_agent_behavior=False,**self.model.kwargs)
