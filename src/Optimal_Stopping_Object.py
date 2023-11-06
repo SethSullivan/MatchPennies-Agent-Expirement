@@ -17,14 +17,7 @@ import multiprocessing as mp
 import loss_functions as lf
 wheel = dv.ColorWheel()
 """
-04/04/23
-
-v4 Takes away the Truncation stuff
-
-04/17/23
-
-Added in the flexibility to change reward around instead of agent mean and sd
-
+Functions and Classes to generate and fit the optimal model
 """
 
 
@@ -744,9 +737,17 @@ class ModelFitting:
                     return 1e3
                 
         for k,v in new_parameters_dict.items():
-            if v<0:
+            #* return big loss if anything is less than 0
+            if v<0 or v>300:
+                self.loss_store.append(1e3)
                 return 1e3
-        #TODO Figure out how to make sure that the _expected isn't greater than it's _true pair
+            #* Return big loss if true is less than expected
+            if k.endswith("_true"):
+                expected_key = k.replace("_true","_expected")
+                if v < new_parameters_dict[expected_key]:
+                    self.loss_store.append(1e3)
+                    return 1e3
+        
         self.parameter_arr.append(free_params_values)
         # Get the new arrays from the optimized free parameter inputs
         self.update_model(new_parameters_dict) 
@@ -768,6 +769,7 @@ class ModelFitting:
                 model_metrics[i,:] = self.model.results.get_metric(model_metric, 
                                                                    decision_type=decision_type, 
                                                                    metric_type="true")  # Find the metric at optimal decision time
+                
         loss = lf.ape_loss(model_metrics, targets, drop_condition_num=self.drop_condition_from_loss)
         
         self.loss_store.append(loss)
@@ -776,7 +778,6 @@ class ModelFitting:
                                                                    decision_type=decision_type,metric_type='true'))
         self.leave_time_sd_store.append(self.model.results.get_metric(self.model.player_behavior.wtd_leave_time_sd,
                                                                       decision_type=decision_type,metric_type='true'))
-
         return loss
     
     def update_model(self, free_param_dict):
