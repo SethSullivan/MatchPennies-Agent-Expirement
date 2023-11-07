@@ -59,7 +59,7 @@ SAVE = True
 M = 100
 MODEL_TO_FIT = "suboptimal"
 print(f"Fitting {MODEL_TO_FIT}")
-WARM_START = False
+WARM_START = True
 input_keys = ["rt","rt_sd","mt","mt_sd","timing_sd",]
 
 
@@ -90,7 +90,7 @@ with open(constants.MODEL_INPUT_PATH / 'participant_indecisions.pkl','rb') as f:
     
 input_parameters_for_df = []
 results_for_df = []
-#* Load in warmstart if it exists
+#* Load in warmstart if it exists, won't use this unless WARM_START = False
 try:
     path = constants.MODELS_PATH / "warmstart_models"
     f_results = list(path.glob(f"{EXPERIMENT}_{MODEL_TO_FIT}_warmstart_results*"))[-1]
@@ -102,7 +102,7 @@ except:
 
 if WARM_START:
     print("FINDING INITIAL CONDITIONS")
-    iters = 10000
+    iters = 3
 else:
     print("BOOTSTRAPPING MODEL FITS USING WARMSTART")
     iters = participant_ids.shape[1]
@@ -111,8 +111,6 @@ print("Starting Models...")
 for i in tqdm(range(iters)):
     print(f"{i+1}/{iters}")
     #* 
-    
-        
     if WARM_START:
         player_inputs = dict(zip(input_keys,true_parameters))
         switch_delay_rand = np.random.uniform(0,150)
@@ -182,7 +180,7 @@ for i in tqdm(range(iters)):
             reaction_sd=np.array([player_inputs["rt_sd"], player_inputs["rt_sd"]])[:, np.newaxis, np.newaxis],  #! Reducing these, aka the particiapnt thinks they are more certain than they are
             movement_sd=np.array([player_inputs["mt_sd"], player_inputs["mt_sd"]])[:, np.newaxis, np.newaxis],
             timing_sd=np.array([[player_inputs['timing_sd']]*it.num_blocks, 
-                                [player_inputs['timing_sd']*0.1]*it.num_blocks])[:, :, np.newaxis],
+                                [player_inputs['timing_sd']]*it.num_blocks])[:, :, np.newaxis],
             guess_switch_delay=np.array([0, 0])[:, np.newaxis, np.newaxis], # These are being FIT, so copied models can just have them as 0
             guess_switch_sd=np.array([0,0])[:, np.newaxis, np.newaxis],   
             electromechanical_delay=np.array([50, 50])[:, np.newaxis, np.newaxis],
