@@ -14,6 +14,12 @@ from initializer import InitialThangs
 import loss_functions as lf
 import constants
 
+'''
+This script can either do the warmstarts (set WARM_START = True)
+
+It can also bootstrap using the best warmstart initial conditions
+'''
+
 # * Functions
 def create_input_row_dict(model, loss, model_name,):
     input_row_dict = {"Model": model_name, "Loss": loss}
@@ -49,11 +55,11 @@ it = InitialThangs(EXPERIMENT)
 
 #* DECIDE TO FIT PARAMETERS OR NOT
 FIT_PARAMETERS = True
-SAVE = False
+SAVE = True
 M = 100
 MODEL_TO_FIT = "suboptimal"
 print(f"Fitting {MODEL_TO_FIT}")
-GET_INITIAL_GUESS = True
+WARM_START = False
 input_keys = ["rt","rt_sd","mt","mt_sd","timing_sd",]
 
 
@@ -84,27 +90,44 @@ with open(constants.MODEL_INPUT_PATH / 'participant_indecisions.pkl','rb') as f:
     
 input_parameters_for_df = []
 results_for_df = []
-if GET_INITIAL_GUESS:
+#* Load in warmstart if it exists
+try:
+    path = constants.MODELS_PATH / "warmstart_models"
+    f_results = list(path.glob(f"{EXPERIMENT}_{MODEL_TO_FIT}_warmstart_results*"))[-1]
+    f_inputs = list(path.glob(f"{EXPERIMENT}_{MODEL_TO_FIT}_warmstart_inputs*"))[-1]
+    df_warmstart_results = pd.read_pickle(path / f_results)
+    df_warmstart_inputs = pd.read_pickle(path / f_inputs)
+except:
+    pass
+
+if WARM_START:
     print("FINDING INITIAL CONDITIONS")
-    iters = 100
+    iters = 10000
 else:
     print("BOOTSTRAPPING MODEL FITS USING WARMSTART")
     iters = participant_ids.shape[1]
-    
+initial_time = time.time()
 print("Starting Models...")
-for i in range(iters):
-    if GET_INITIAL_GUESS:
+for i in tqdm(range(iters)):
+    print(f"{i+1}/{iters}")
+    #* 
+    
+        
+    if WARM_START:
         player_inputs = dict(zip(input_keys,true_parameters))
+        switch_delay_rand = np.random.uniform(0,150)
+        switch_sd_rand = np.random.uniform(0,200)
+        #* Optimal/Suboptimal handles the initial guess to free params mapping
         initial_guess = {
-            "guess_switch_delay_true": np.random.uniform(0,200),
-            "guess_switch_delay_expected": np.random.uniform(0,200),
-            "guess_switch_sd_true": np.random.uniform(0,300),
-            "guess_switch_sd_expected": np.random.uniform(0,300),
+            "guess_switch_delay_true": switch_delay_rand + np.random.uniform(0,75),
+            "guess_switch_delay_expected": switch_delay_rand,
+            "guess_switch_sd_true": switch_sd_rand + np.random.uniform(0,75),
+            "guess_switch_sd_expected": switch_sd_rand,
         }
-        print(initial_guess)
     else: 
         #TODO Load in initial guess dict from warmstart
         player_inputs = dict(zip(input_keys,parameter_distribution[i,:]))
+
 
     # * Loop through all the changing parameters
     model_name = f"model{i}_{datetime.now():%Y_%m_%d_%H_%M_%S}"
@@ -137,12 +160,10 @@ for i in range(iters):
         indecision_cost=0.0,
         round_num = 20,
     )
-    f = time.time()
-    print(f"One run time: {f-s}")
     #* Switch true will get fit
     if MODEL_TO_FIT == "optimal":
         fit_model = deepcopy(optimal_model_no_switch)
-        #* Not putting _true or _expected makes true == expected
+        #! Not putting _true or _expected makes true == expected
         free_params = {
             "guess_switch_delay": initial_guess['guess_switch_delay_true'],
             "guess_switch_sd": initial_guess['guess_switch_sd_true'],
@@ -150,7 +171,6 @@ for i in range(iters):
         specific_name = 'optimal_'
         
     elif MODEL_TO_FIT == "suboptimal":
-        s = time.time()
         fit_model = ModelConstructor(
             experiment=EXPERIMENT,
             num_blocks=it.num_blocks,
@@ -174,8 +194,6 @@ for i in range(iters):
             indecision_cost=0.0,
             round_num = 20,
         )
-        f = time.time()
-        print(f"One run time: {f-s}")
         #* Fit the true and expected separately and see what the model does
         free_params = {
             "guess_switch_delay_true": initial_guess['guess_switch_delay_true'],
@@ -196,7 +214,7 @@ for i in range(iters):
         specific_name = 'suboptimal_'
                     
     # Need to be in for loop because we're using specific participant_ids
-    if GET_INITIAL_GUESS:
+    if WARM_START:
         comparison_targets = np.array(
             [
                 np.nanmedian(participant_median_movement_onset_time, axis=0),
@@ -206,6 +224,12 @@ for i in range(iters):
                 np.nanmedian(participant_indecisions,axis=0)/it.num_trials,
             ]   
         )
+        # comparison_targets = np.array(
+        #     [
+        #         np.nanmedian(participant_median_movement_onset_time, axis=0),
+        #         np.nanmedian(participant_sd_movement_onset_time, axis=0),
+        #     ]
+        # )
     else:
         comparison_targets = np.array(
             [
@@ -217,7 +241,6 @@ for i in range(iters):
             ]   
         )      
     metric_keys = ['wtd_leave_time','wtd_leave_time_sd','prob_win','prob_incorrect','prob_indecision']
-    print('Fitting Model')
     model_fit = ModelFitting(model=fit_model)
     start_time = time.time()
     res = model_fit.run_model_fit_procedure(
@@ -230,7 +253,6 @@ for i in range(iters):
         tol=0.0001,
         method="Powell",
     )
-    print(res)
     end_time = time.time()
     print(f"Time: {end_time - start_time}")
     specific_model_name = specific_name + model_name
@@ -244,12 +266,14 @@ df_inputs = pd.DataFrame(input_parameters_for_df)
 df_results = pd.DataFrame(results_for_df)
 
 if SAVE:
-    save_date = datetime.now()
-    # * Save the old model table to a new file
-    with open(constants.MODELS_PATH / f"{EXPERIMENT}_three_model_comparison_parameters_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
-        dill.dump(df_inputs, f)
-    with open(constants.MODELS_PATH / f"{EXPERIMENT}_three_model_comparison_outputs_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
-        dill.dump(df_inputs, f)
-
-
+    if WARM_START:
+        save_date = datetime.now()
+        # * Save the old model table to a new file
+        with open(constants.MODELS_PATH / "warmstart_models" / f"{EXPERIMENT}_{specific_name}warmstart_inputs_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
+            dill.dump(df_inputs, f)
+        with open(constants.MODELS_PATH / "warmstart_models"/ f"{EXPERIMENT}_{specific_name}warmstart_results_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
+            dill.dump(df_results, f)
+finish_time = time.time()
+total_time = finish_time - initial_time
 print(f"Model generation for {EXPERIMENT} completed")
+print(f"Total Runtime for {iters} number of iterations: {total_time}")
