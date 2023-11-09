@@ -23,3 +23,5 @@ MODEL_INPUT_PATH = find_parent(Path.cwd(),"MatchPennies-Agent-Expirement") / "re
 model_input_savenames = ['exp1_rt_median_array.pkl','exp1_rt_sd_array.pkl',
                         'exp1_mt_median_array.pkl','exp1_mt_sd_array.pkl',
                         'exp1_timing_sd_array.pkl','exp1_agent_means.pkl','exp1_agent_sds.pkl']
+# This goes along with parameter distribution so I know which index corresponds to which metric
+input_keys = ["rt","rt_sd","mt","mt_sd","timing_sd",]
