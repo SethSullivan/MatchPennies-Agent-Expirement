@@ -3,8 +3,8 @@ Individual_Figures/
 Modeling Figures/
 Model Objects/
 figures/
+models/
 __pycache__/
 src.egg-info/
 *.png
-*.pkl
 .vscode/

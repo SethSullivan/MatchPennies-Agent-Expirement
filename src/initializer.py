@@ -3,23 +3,9 @@ import os
 
 # Initial thangs
 class InitialThangs:
-    def __init__(self, experiment):
+    def __init__(self, experiment,normal_computer=True):
         self.experiment = experiment
-        os.chdir(f'D:\OneDrive - University of Delaware - o365\Subject_Data\MatchPennies_Agent_{experiment}')
-        self.PATH = Path(os.getcwd())
-        self.SAVE_PATH = Path(f'C:\\Users\\Seth Sullivan\\OneDrive - University of Delaware - o365\\Desktop\\MatchPennies-Agent-Expirement\\Group_Figures\\{experiment}\\')
-        if not os.path.exists(self.SAVE_PATH):
-            os.makedirs(self.SAVE_PATH)
-
-        # Fields pull and pull list
-        self.figures_pull_list = []
-        self.fields_pull = []
-        with open(self.PATH / 'Figures_Pull_List.txt','r') as pull_file:
-            self.figures_pull_list = pull_file.read().splitlines()
-        with open(self.PATH/'Fields_Pull.txt','r') as self.fields_pull:
-            self.fields_pull = self.fields_pull.read().splitlines()
-        self.num_subjects = len(self.figures_pull_list)
-
+        DATA_PATH = Path(f'D:\OneDrive - University of Delaware - o365\Subject_Data\MatchPennies_Agent_{experiment}')
         if experiment == 'Exp1':
             self.tp3_title = r'(1000,50)'
             self.tp4_title = r'(1000,150)'
@@ -29,6 +15,7 @@ class InitialThangs:
             self.tp8_title = r'(1200,150)'
             self.trial_block_titles = [self.tp3_title, self.tp4_title, self.tp5_title,self.tp6_title, self.tp7_title, self.tp8_title]
             self.xlabel = r'Agent $\it{N}\mathbf{(\mu,\sigma)}$ Movement Onset Time (ms)'
+            self.num_subjects = 20
             self.num_blocks = len(self.trial_block_titles)
             self.num_trials = 80
             self.num_rows,self.num_cols = 2,3
@@ -47,7 +34,7 @@ class InitialThangs:
             self.num_blocks = len(self.trial_block_titles)
             self.xlabel = 'Feedback Condition'
             self.condition_nums = ['0','1','2','3']
-
+            self.num_subjects = 24
             self.num_trials = 80
             self.num_rows,self.num_cols = 2,2
             self.f1_xlabel = 'Incorrect Reward'

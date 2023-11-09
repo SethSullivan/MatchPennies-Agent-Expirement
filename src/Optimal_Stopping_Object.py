@@ -15,12 +15,29 @@ from scipy import optimize
 import time
 import multiprocessing as mp
 import loss_functions as lf
+import constants
+import dill
 wheel = dv.ColorWheel()
 """
 Functions and Classes to generate and fit the optimal model
 """
-
-
+#! Lookup Table for agent leave times as global constant, not in model inputs anymore
+try:
+    with open(constants.MODEL_INPUT_PATH / 'reaction_leave_time_lookup.pkl','rb') as f:
+        agent_reaction_leave_time_lookup = dill.load(f)  
+    with open(constants.MODEL_INPUT_PATH / 'reaction_leave_time_sd_lookup.pkl','rb') as f:
+        agent_reaction_leave_time_sd_lookup = dill.load(f)  
+    with open(constants.MODEL_INPUT_PATH / 'guess_leave_time_lookup.pkl','rb') as f:
+        agent_guess_leave_time_lookup = dill.load(f)  
+    with open(constants.MODEL_INPUT_PATH / 'guess_leave_time_sd_lookup.pkl','rb') as f:
+        agent_guess_leave_time_sd_lookup = dill.load(f) 
+except FileNotFoundError:
+    print("Lookup Table not found, going to run through get_moments calculation")
+    agent_reaction_leave_time_lookup = None
+    agent_reaction_leave_time_sd_lookup = None
+    agent_guess_leave_time_lookup = None
+    agent_guess_leave_time_sd_lookup = None
+    
 #####################################################
 ###### Helper Functions to get the Moments ##########
 #####################################################
@@ -298,15 +315,18 @@ class AgentBehavior:
 
     def cutoff_agent_behavior(self):
         # Get the First Three moments for the left and right distributions (if X<Y and if X>Y respectively)
-        EX_R, EX2_R, EX_G, EX2_G = self.agent_moments()
-        # no_inf_moments = [np.nan_to_num(x,nan=np.nan,posinf=np.nan,neginf=np.nan) for x in moments]
+        if agent_reaction_leave_time_lookup is None:
+            EX_R, EX2_R, EX_G, EX2_G = self.agent_moments()
+            self.reaction_leave_time, self.reaction_leave_time_var = EX_R, EX2_R
+            self.reaction_leave_time_sd = np.sqrt(self.reaction_leave_time_var)
 
-        self.reaction_leave_time, self.reaction_leave_time_var = EX_R, EX2_R
-        self.reaction_leave_time_sd = np.sqrt(self.reaction_leave_time_var)
-
-        self.guess_leave_time, self.guess_leave_time_var, = EX_G, EX2_G
-        self.guess_leave_time_sd = np.sqrt(self.guess_leave_time_var)
-
+            self.guess_leave_time, self.guess_leave_time_var, = EX_G, EX2_G
+            self.guess_leave_time_sd = np.sqrt(self.guess_leave_time_var)
+        else:
+            self.reaction_leave_time = agent_reaction_leave_time_lookup[int(self.inputs.timing_sd[0,0,0]),int(self.inputs.timing_sd[1,0,0])]
+            self.reaction_leave_time_sd = agent_reaction_leave_time_sd_lookup[int(self.inputs.timing_sd[0,0,0]),int(self.inputs.timing_sd[1,0,0])]
+            self.guess_leave_time = agent_guess_leave_time_lookup[int(self.inputs.timing_sd[0,0,0]),int(self.inputs.timing_sd[1,0,0])]
+            self.guess_leave_time_sd = agent_guess_leave_time_sd_lookup[int(self.inputs.timing_sd[0,0,0]),int(self.inputs.timing_sd[1,0,0])]
 
 class PlayerBehavior:
     """
@@ -746,6 +766,9 @@ class ModelFitting:
                 expected_key = k.replace("_true","_expected")
                 if v < new_parameters_dict[expected_key]:
                     self.loss_store.append(1e3)
+                    return 1e3
+            if k == ("timing_sd_expected"):
+                if v>self.model.inputs.timing_sd[0,0,0]:
                     return 1e3
         
         self.parameter_arr.append(free_params_values)
