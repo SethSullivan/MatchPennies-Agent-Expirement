@@ -124,7 +124,7 @@ def cutoff_agent_behavior(*args):
     guess_leave_time_sd = np.sqrt(guess_leave_time_var)
     return reaction_leave_time,reaction_leave_time_sd,guess_leave_time,guess_leave_time_sd
 
-def find_lookups(max_timing_sd = 80,timesteps = np.tile(np.arange(0.0, float(1800), 1), (2, 6, 1))):
+def find_lookups(max_timing_sd = 100, timesteps = np.tile(np.arange(0.0, float(1800), 1), (2, 6, 1))):
     print("starting lookup")
     input_keys = ["rt","rt_sd","mt","mt_sd","timing_sd",]
     true_parameters = [np.nanmedian(v) for k,v in model_input_dict.items() if "agent" not in k] 
@@ -162,6 +162,7 @@ def find_lookups(max_timing_sd = 80,timesteps = np.tile(np.arange(0.0, float(180
                 incorrect_cost=0.0,  #! These are applied onto the base reward matrix in Optimal Model object
                 indecision_cost=0.0,
                 round_num = 20,
+                use_agent_behavior_lookup = True,
             )
             reaction_leave_time_lookup[i,j,:,:] = model.agent_behavior.reaction_leave_time
             reaction_leave_time_sd_lookup[i,j,:,:] = model.agent_behavior.reaction_leave_time_sd
