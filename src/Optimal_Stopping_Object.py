@@ -176,7 +176,8 @@ class ModelInputs:
                 self.key = 1 # 1 refers to 'exp' row
             else:
                 self.key = 0 # 0 refers to 'true' row
-
+            self.use_agent_behavior_lookup = kwargs.get("use_agent_behavior_lookup",True)
+            
             # Uncertainty
             self.reaction_sd     = kwargs.get("reaction_sd")
             self.movement_sd     = kwargs.get("movement_sd")
@@ -315,18 +316,26 @@ class AgentBehavior:
 
     def cutoff_agent_behavior(self):
         # Get the First Three moments for the left and right distributions (if X<Y and if X>Y respectively)
-        if agent_reaction_leave_time_lookup is None:
+        if self.inputs.use_agent_behavior_lookup:
+            try:
+                self.reaction_leave_time = agent_reaction_leave_time_lookup[int(self.inputs.timing_sd[0,0,0]),int(self.inputs.timing_sd[1,0,0])]
+                self.reaction_leave_time_sd = agent_reaction_leave_time_sd_lookup[int(self.inputs.timing_sd[0,0,0]),int(self.inputs.timing_sd[1,0,0])]
+                self.guess_leave_time = agent_guess_leave_time_lookup[int(self.inputs.timing_sd[0,0,0]),int(self.inputs.timing_sd[1,0,0])]
+                self.guess_leave_time_sd = agent_guess_leave_time_sd_lookup[int(self.inputs.timing_sd[0,0,0]),int(self.inputs.timing_sd[1,0,0])]          
+            except IndexError:
+                EX_R, EX2_R, EX_G, EX2_G = self.agent_moments()
+                self.reaction_leave_time, self.reaction_leave_time_var = EX_R, EX2_R
+                self.reaction_leave_time_sd = np.sqrt(self.reaction_leave_time_var)
+
+                self.guess_leave_time, self.guess_leave_time_var, = EX_G, EX2_G
+                self.guess_leave_time_sd = np.sqrt(self.guess_leave_time_var)
+        else:
             EX_R, EX2_R, EX_G, EX2_G = self.agent_moments()
             self.reaction_leave_time, self.reaction_leave_time_var = EX_R, EX2_R
             self.reaction_leave_time_sd = np.sqrt(self.reaction_leave_time_var)
 
             self.guess_leave_time, self.guess_leave_time_var, = EX_G, EX2_G
             self.guess_leave_time_sd = np.sqrt(self.guess_leave_time_var)
-        else:
-            self.reaction_leave_time = agent_reaction_leave_time_lookup[int(self.inputs.timing_sd[0,0,0]),int(self.inputs.timing_sd[1,0,0])]
-            self.reaction_leave_time_sd = agent_reaction_leave_time_sd_lookup[int(self.inputs.timing_sd[0,0,0]),int(self.inputs.timing_sd[1,0,0])]
-            self.guess_leave_time = agent_guess_leave_time_lookup[int(self.inputs.timing_sd[0,0,0]),int(self.inputs.timing_sd[1,0,0])]
-            self.guess_leave_time_sd = agent_guess_leave_time_sd_lookup[int(self.inputs.timing_sd[0,0,0]),int(self.inputs.timing_sd[1,0,0])]
 
 class PlayerBehavior:
     """
