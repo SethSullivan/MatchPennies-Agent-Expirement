@@ -59,9 +59,9 @@ it = InitialThangs(EXPERIMENT)
 #! SET THE SETTINGS BEFORE RUNNING SCRIPT
 print("DID YOU SET THE RIGHT SETTINGS?")
 FIT_PARAMETERS = True
-SAVE = False
+SAVE = True
 MODEL_TO_FIT = "suboptimal"
-WARM_START = True
+WARM_START = False # If False, that means I'm bootstrapping with the warmstart initial condition 
 input_keys = ["rt","rt_sd","mt","mt_sd","timing_sd",]
 print(f" Fit Parameters: {FIT_PARAMETERS}\n Save: {SAVE}\n Model to Fit: {MODEL_TO_FIT}\n Warm Start: {WARM_START}")
 print(f" Fitting: {MODEL_TO_FIT}")
@@ -92,7 +92,7 @@ with open(constants.MODEL_INPUT_PATH / 'participant_indecisions.pkl','rb') as f:
  
 if WARM_START:
     print("FINDING INITIAL CONDITIONS")
-    iters = 100
+    iters = 10000
     #* Randomize for warmstart
     player_inputs = dict(zip(input_keys,true_parameters)) #! This won't change unless we're boostrapping so can pull out of for loop for Warm_Start
     switch_delay_expected_rand = np.random.uniform(0,150,size=iters)
@@ -107,9 +107,10 @@ else:
     df_inputs = list(path.glob(f"{EXPERIMENT}_{MODEL_TO_FIT}_warmstart_inputs*"))[-1]
     df_warmstart_results = pd.read_pickle(path / df_results)
     df_warmstart_inputs = pd.read_pickle(path / df_inputs)
-    best_warmstart_inputs = df_warmstart_inputs[df_warmstart_inputs["Loss"] == df_warmstart_inputs["Loss"].min()]
-    iters = participant_ids.shape[1]
-    
+    best_warmstart_inputs = df_warmstart_inputs[df_warmstart_inputs["Loss"] == df_warmstart_inputs["Loss"].min()].iloc[0]
+    iters = participant_ids.shape[0]
+
+print(f"ITERATIONS: {iters}")
 
 
 initial_time = time.time()
@@ -136,7 +137,7 @@ for i in tqdm(range(iters)):
             "guess_switch_delay_expected": best_warmstart_inputs["guess_switch_delay"].squeeze()[1],
             "guess_switch_sd_true": best_warmstart_inputs["guess_switch_sd"].squeeze()[0],
             "guess_switch_sd_expected": best_warmstart_inputs["guess_switch_sd"].squeeze()[1],
-            "timing_sd_expected": best_warmstart_inputs["timing_sd"].squeeze()[1]
+            "timing_sd_expected": best_warmstart_inputs["timing_sd"].squeeze()[1,0]
         }
     model_name = f"model{i}_{datetime.now():%Y_%m_%d_%H_%M_%S}"
 
