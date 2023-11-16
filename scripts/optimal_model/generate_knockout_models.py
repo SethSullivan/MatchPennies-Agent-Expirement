@@ -145,8 +145,8 @@ for parameter in unaccounted_for_parameter:
                             "timing_sd_expected":parameters['timing_sd'],
                             "electromechanical_true":50,
                             "electromechanical_expected":50,
-                            "electromechanical_sd_true":50,
-                            "electromechanical_sd_expected":50,
+                            "electromechanical_sd_true":10,
+                            "electromechanical_sd_expected":10,
                         }
             
         #* Set expected parameter to 1, meaning it's not accounted for
