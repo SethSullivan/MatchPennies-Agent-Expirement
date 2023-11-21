@@ -9,7 +9,7 @@ import numba_scipy  # Needs to be imported so that numba recognizes scipy (speci
 import data_visualization as dv
 from copy import deepcopy 
 from numba_stats import norm
-from functools import cached_property
+# from functools import property
 from functools import lru_cache
 from scipy import optimize
 import time
@@ -266,19 +266,19 @@ class AgentBehavior:
         #*Get agent behavior
         self.cutoff_agent_behavior()
 
-    @cached_property
+    @property
     def prob_agent_has_gone(self):
         # temp = numba_cdf(self.inputs.timesteps,self.inputs.agent_means,self.inputs.agent_sds)
         temp = stats.norm.cdf(self.inputs.timesteps[0], self.inputs.agent_means, self.inputs.agent_sds)
         
         return temp
 
-    @cached_property
+    @property
     def prob_not_making(self):
         ans = 1 - stats.norm.cdf(1500,self.inputs.agent_means + 150,self.inputs.agent_sds)
         return ans
     
-    @cached_property
+    @property
     def prob_making(self):
         ans = stats.norm.cdf(1500,self.inputs.agent_means + 150,self.inputs.agent_sds)
         return ans
@@ -511,7 +511,7 @@ class Results:
         # self.max_exp_reward = np.nanmax(np.round(self.results.exp_reward,3),axis=2)
         # self.last_max_index = np.argwhere(np.round(self.results.exp_reward,3) - self.max_exp_reward == 0)[-1]
     
-    @cached_property
+    @property
     def exp_reward_reaction(self):
         ans = (
             self.score_metrics.prob_win_reaction*self.inputs.win_reward
@@ -519,7 +519,7 @@ class Results:
             + self.score_metrics.prob_indecision_reaction*self.inputs.indecision_cost
         )
         return ans
-    @cached_property
+    @property
     def exp_reward_guess(self):
         ans = (
             self.score_metrics.prob_win_guess*self.inputs.win_reward
@@ -528,7 +528,7 @@ class Results:
         )
         return ans
     
-    @cached_property
+    @property
     def exp_reward(self):
         ans = np.round(
             self.score_metrics.prob_win*self.inputs.win_reward
@@ -656,7 +656,8 @@ class ModelConstructor:
         self.results          = Results(self.inputs,self.score_metrics)
         
     def reset_model(self,skip_agent_behavior=False,**kwargs):
-        self.inputs.reset(**kwargs)
+        self.kwargs = kwargs
+        self.inputs.reset(**self.kwargs)
         if not skip_agent_behavior:
             self.agent_behavior.reset(self.inputs)
         self.player_behavior.reset(self.inputs,self.agent_behavior)
@@ -700,8 +701,8 @@ class ModelFitting:
         self.guess_leave_time_sd_store         = None
         
     def run_model_fit_procedure(self, free_params_init: dict, metric_keys: list, targets: np.ndarray,
-                                method='Nelder-Mead', bnds=None, tol = 0.0000001, niter=100,
-                                drop_condition_from_loss=None, limit_sd=False,):
+                                ftol ,xtol, maxiter=5,maxfev=1000, method='Nelder-Mead', bnds=None, 
+                                drop_condition_from_loss=None,):
         self.loss_store = []
         self.optimal_decision_time_store = [] 
         self.leave_time_store = []
@@ -709,7 +710,6 @@ class ModelFitting:
         self.guess_leave_time_sd_store = []
         self.initial_guess = np.array(list(free_params_init.values())) # Get the free param values from dict and make an array, scipy will flatten it if it's 2D
         self.drop_condition_from_loss = drop_condition_from_loss
-        self.limit_sd = limit_sd
         
         num_params = len(self.initial_guess)
         if bnds is None:
@@ -728,25 +728,34 @@ class ModelFitting:
                 final_param_dict = dict(zip(free_params_init.keys(),out[0]))
                 
         elif method=='basinhopping':
-            out = optimize.basinhopping(self.get_loss, self.initial_guess,niter=niter,
+            out = optimize.basinhopping(self.get_loss, self.initial_guess,niter=maxiter,
                                  minimizer_kwargs={'method':'Powell',
                                                    'args':(metric_keys, targets, free_params_init.keys())},
                                  stepsize=0.05
                                  )
             final_param_dict = dict(zip(free_params_init.keys(),out.x))
         else:
-            out = optimize.minimize(self.get_loss, self.initial_guess, 
-                                args=(metric_keys, targets, free_params_init.keys()), 
-                                method=method, bounds=None, tol = tol)
+            out = optimize.minimize(
+                self.get_loss, self.initial_guess, 
+                args=(metric_keys, targets, free_params_init.keys()), 
+                method=method, bounds=None, 
+                options = {
+                    "ftol": ftol,
+                    "xtol":xtol,
+                    "disp":True,
+                    "maxiter":maxiter,
+                    "maxfev":maxfev,
+                },
+            )
             final_param_dict = dict(zip(free_params_init.keys(),out.x))
         
         #* Update model one last time
         self.update_model(final_param_dict)  
-        self.parameter_arr               = np.array(self.parameter_arr)
-        self.optimal_decision_time_store = np.array(self.optimal_decision_time_store)
-        self.leave_time_store            = np.array(self.leave_time_store)
-        self.leave_time_sd_store         = np.array(self.leave_time_sd_store)
-        self.guess_leave_time_sd_store         = np.array(self.guess_leave_time_sd_store)
+        # self.parameter_arr               = np.array(self.parameter_arr)
+        # self.optimal_decision_time_store = np.array(self.optimal_decision_time_store)
+        # self.leave_time_store            = np.array(self.leave_time_store)
+        # self.leave_time_sd_store         = np.array(self.leave_time_sd_store)
+        # self.guess_leave_time_sd_store   = np.array(self.guess_leave_time_sd_store)
         
         # ans = out.x + np.min(self.inputs.timesteps)
         # ans = out.x#.reshape(self.initial_param_shape)
@@ -754,35 +763,29 @@ class ModelFitting:
     
     def get_loss(self, free_params_values, 
                  metric_keys, targets, 
-                 free_params_keys, decision_type='optimal',):
-        
+                 free_params_keys, decision_type='optimal',
+                 update=True):
         # Create dictionary back
         new_parameters_dict = dict(zip(free_params_keys,free_params_values))
-        
-        # If the standard deviation and mean combo reaches below 0, return a high loss
-        if self.limit_sd:
-            if 'guess_switch_delay' in free_params_keys and 'guess_switch_sd' in free_params_keys:
-                if new_parameters_dict['guess_switch_delay'] - 2*new_parameters_dict['guess_switch_sd']<0:
-                    return 1e3
                 
         for k,v in new_parameters_dict.items():
             #* return big loss if anything is less than 0
-            if v<0 or v>300:
+            if v<0 or v>320:
                 self.loss_store.append(1e3)
-                return 1e3
+                return 1e3 + abs(v)
             #* Return big loss if true is less than expected
             if k.endswith("_true"):
                 expected_key = k.replace("_true","_expected")
                 if v < new_parameters_dict[expected_key]:
                     self.loss_store.append(1e3)
-                    return 1e3
-            if k == ("timing_sd_expected"):
+                    return 1e3 + abs(v)
+            if k == "timing_sd_expected":
                 if v>self.model.inputs.timing_sd[0,0,0]:
-                    return 1e3
-        
-        self.parameter_arr.append(free_params_values)
-        # Get the new arrays from the optimized free parameter inputs
-        self.update_model(new_parameters_dict) 
+                    return 1e3 + abs(v)
+        if update:
+            self.parameter_arr.append(free_params_values)
+            # Get the new arrays from the optimized free parameter inputs
+            self.update_model(new_parameters_dict) 
         # Get each metric from results at that specific decision time
         model_metrics = np.zeros_like(targets)
         for i in range(targets.shape[0]): 
@@ -801,15 +804,15 @@ class ModelFitting:
                 model_metrics[i,:] = self.model.results.get_metric(model_metric, 
                                                                    decision_type=decision_type, 
                                                                    metric_type="true")  # Find the metric at optimal decision time
-                
-        loss = lf.ape_loss(model_metrics, targets, drop_condition_num=self.drop_condition_from_loss)
+        print(model_metrics[0,:])
+        loss = lf.ape_loss(model_metrics, targets,)
         
         self.loss_store.append(loss)
-        self.optimal_decision_time_store.append(self.model.results.optimal_decision_time[self.model.inputs.key]) # index at key bc I want the decision time for either expected or true
-        self.leave_time_store.append(self.model.results.get_metric(self.model.player_behavior.wtd_leave_time,
-                                                                   decision_type=decision_type,metric_type='true'))
-        self.leave_time_sd_store.append(self.model.results.get_metric(self.model.player_behavior.wtd_leave_time_sd,
-                                                                      decision_type=decision_type,metric_type='true'))
+        # self.optimal_decision_time_store.append(self.model.results.optimal_decision_time[self.model.inputs.key]) # index at key bc I want the decision time for either expected or true
+        # self.leave_time_store.append(self.model.results.get_metric(self.model.player_behavior.wtd_leave_time,
+        #                                                            decision_type=decision_type,metric_type='true'))
+        # self.leave_time_sd_store.append(self.model.results.get_metric(self.model.player_behavior.wtd_leave_time_sd,
+        #                                                               decision_type=decision_type,metric_type='true'))
         return loss
     
     def update_model(self, free_param_dict):
@@ -836,6 +839,7 @@ class ModelFitting:
                     self.model.kwargs[k][0] = v
                     self.model.kwargs[k][1] = v
             except TypeError:
+                print("Type Error")
                 self.model.kwargs[k] = v
         # if self.model.kwargs["guess_switch_delay"].squeeze()[1] == self.model.kwargs["guess_switch_sd"].squeeze()[1]:
         #     print([v for v in free_param_dict.values()])
