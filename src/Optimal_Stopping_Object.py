@@ -17,6 +17,7 @@ import multiprocessing as mp
 import loss_functions as lf
 import constants
 import dill
+import nlopt
 wheel = dv.ColorWheel()
 """
 Functions and Classes to generate and fit the optimal model
@@ -701,7 +702,7 @@ class ModelFitting:
         self.guess_leave_time_sd_store         = None
         
     def run_model_fit_procedure(self, free_params_init: dict, metric_keys: list, targets: np.ndarray,
-                                ftol ,xtol, maxiter=5,maxfev=1000, method='Nelder-Mead', bnds=None, 
+                                ftol ,xtol, maxiter=None,maxfev=None, method='Nelder-Mead', bnds=None, 
                                 drop_condition_from_loss=None,):
         self.loss_store = []
         self.optimal_decision_time_store = [] 
@@ -713,7 +714,7 @@ class ModelFitting:
         
         num_params = len(self.initial_guess)
         if bnds is None:
-            bnds = tuple([[0,500]])*num_params
+            bnds = tuple([[0,200]])*num_params
         self.initial_param_shape = self.initial_guess.shape # Used for reshaping the parameter 
         rranges = tuple([slice(0,200,5)]*num_params)
         #* Select fit method
@@ -734,6 +735,12 @@ class ModelFitting:
                                  stepsize=0.05
                                  )
             final_param_dict = dict(zip(free_params_init.keys(),out.x))
+        elif method == "dualannealing":
+            out = optimize.dual_annealing(self.get_loss,bnds,
+                                          args = (metric_keys, targets, free_params_init.keys()),
+                                          maxiter=100,)
+            final_param_dict = dict(zip(free_params_init.keys(),out.x))            
+
         else:
             out = optimize.minimize(
                 self.get_loss, self.initial_guess, 
