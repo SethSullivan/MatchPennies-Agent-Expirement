@@ -804,7 +804,6 @@ class ModelFitting:
                 model_metrics[i,:] = self.model.results.get_metric(model_metric, 
                                                                    decision_type=decision_type, 
                                                                    metric_type="true")  # Find the metric at optimal decision time
-        print(model_metrics[0,:])
         loss = lf.ape_loss(model_metrics, targets,)
         
         self.loss_store.append(loss)
