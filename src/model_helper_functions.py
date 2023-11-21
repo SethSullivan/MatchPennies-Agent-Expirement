@@ -52,14 +52,14 @@ def run_models_from_df(df,EXPERIMENT="Exp1",num_timesteps=1800,expected=True,
 
 
 
-def run_model(model_input_dict, player_inputs, expected, use_agent_behavior_lookup,
+def run_model(player_inputs, expected, use_agent_behavior_lookup,
               num_timesteps=1800,experiment="Exp1",round_num=20):
     model = ModelConstructor(
         experiment=experiment,
         num_blocks=it.num_blocks,
         num_timesteps=num_timesteps,
-        agent_means=np.array([model_input_dict["agent_means"], model_input_dict["agent_means"]])[:, :, np.newaxis],
-        agent_sds=np.array([model_input_dict["agent_sds"], model_input_dict["agent_sds"]])[:, :, np.newaxis],
+        agent_means=np.array([constants.agent_means, constants.agent_means])[:, :, np.newaxis],
+        agent_sds=np.array([constants.agent_sds, constants.agent_sds])[:, :, np.newaxis],
         reaction_time=np.array([player_inputs["rt"], player_inputs["rt"]])[:, np.newaxis, np.newaxis],
         movement_time=np.array([player_inputs["mt"], player_inputs["mt"]])[:, np.newaxis, np.newaxis],
         reaction_sd=np.array([player_inputs["rt_sd"], player_inputs["rt_sd"]])[:, np.newaxis, np.newaxis],  
