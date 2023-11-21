@@ -67,30 +67,32 @@ input_keys = ["rt","rt_sd","mt","mt_sd","timing_sd",]
 print(f" Fit Parameters: {FIT_PARAMETERS}\n Save: {SAVE}\n Model to Fit: {MODEL_TO_FIT}\n Warm Start: {WARM_START}")
 print(f" Fitting: {MODEL_TO_FIT}")
 print(" ")
-#* True Parameters load
-with open(constants.MODEL_INPUT_PATH / 'model_input_dict.pkl','rb') as f:
-    model_input_dict = dill.load(f)
-true_parameters = [np.nanmedian(v) for k,v in model_input_dict.items() if "agent" not in k] 
-#* Bootstrap Load
-with open(constants.MODEL_INPUT_PATH / 'bootstrap_parameter_distribution.pkl','rb') as f:
-    parameter_distribution = dill.load(f)    
-with open(constants.MODEL_INPUT_PATH / 'bootstrap_results.pkl','rb') as f:
-    results = dill.load(f)    
-with open(constants.MODEL_INPUT_PATH / 'participant_ids.pkl','rb') as f:
-    participant_ids = dill.load(f)        
-#* Comparison Targets load
-with open(constants.MODEL_INPUT_PATH / 'participant_median_movement_onset_time.pkl','rb') as f:
-    participant_median_movement_onset_time = dill.load(f)
-with open(constants.MODEL_INPUT_PATH / 'participant_sd_movement_onset_time.pkl','rb') as f:
-    participant_sd_movement_onset_time = dill.load(f)
-with open(constants.MODEL_INPUT_PATH / 'participant_wins.pkl','rb') as f:
-    participant_wins = dill.load(f)  
-with open(constants.MODEL_INPUT_PATH / 'participant_incorrects.pkl','rb') as f:
-    participant_incorrects = dill.load(f)  
-with open(constants.MODEL_INPUT_PATH / 'participant_indecisions.pkl','rb') as f:
-    participant_indecisions = dill.load(f)  
+#* Load parameters, boostrap, and comparison targets
+if True:
+    #* True Parameters load
+    with open(constants.MODEL_INPUT_PATH / 'model_input_dict.pkl','rb') as f:
+        model_input_dict = dill.load(f)
+    true_parameters = [np.nanmedian(v) for k,v in model_input_dict.items() if "agent" not in k] 
+    #* Bootstrap Load
+    with open(constants.MODEL_INPUT_PATH / 'bootstrap_parameter_distribution.pkl','rb') as f:
+        parameter_distribution = dill.load(f)    
+    with open(constants.MODEL_INPUT_PATH / 'bootstrap_results.pkl','rb') as f:
+        results = dill.load(f)    
+    with open(constants.MODEL_INPUT_PATH / 'participant_ids.pkl','rb') as f:
+        participant_ids = dill.load(f)        
+    #* Comparison Targets load
+    with open(constants.MODEL_INPUT_PATH / 'participant_median_movement_onset_time.pkl','rb') as f:
+        participant_median_movement_onset_time = dill.load(f)
+    with open(constants.MODEL_INPUT_PATH / 'participant_sd_movement_onset_time.pkl','rb') as f:
+        participant_sd_movement_onset_time = dill.load(f)
+    with open(constants.MODEL_INPUT_PATH / 'participant_wins.pkl','rb') as f:
+        participant_wins = dill.load(f)  
+    with open(constants.MODEL_INPUT_PATH / 'participant_incorrects.pkl','rb') as f:
+        participant_incorrects = dill.load(f)  
+    with open(constants.MODEL_INPUT_PATH / 'participant_indecisions.pkl','rb') as f:
+        participant_indecisions = dill.load(f)  
  
- 
+#* Run warm_start or boostrap using warmstart 
 if WARM_START:
     print("FINDING INITIAL CONDITIONS")
     iters = 10000
@@ -112,7 +114,6 @@ else:
     iters = participant_ids.shape[0]
 
 print(f"ITERATIONS: {iters}")
-
 
 initial_time = time.time()
 base_input_parameters_for_df = []
@@ -150,13 +151,13 @@ for i in tqdm(range(iters)):
     #* 3. Full optimal, not accounting for fit switch delay and uncertainty, and the expected and true are both fit simultaneously
     
     # Run pure optimal, no switch 
-    optimal_model_no_switch = mhf.run_model(model_input_dict,player_inputs,
+    optimal_model_no_switch = mhf.run_model(player_inputs,
                                             expected=False,use_agent_behavior_lookup=False,
                                             round_num=20)
 
     # Run either optimal or suboptimal    
     if MODEL_TO_FIT == "optimal":
-        fit_model = mhf.run_model(model_input_dict,player_inputs,
+        fit_model = mhf.run_model(player_inputs,
                                   expected=False,use_agent_behavior_lookup=False,
                                   round_num=20)
         #! Not putting _true or _expected makes true == expected
@@ -165,10 +166,12 @@ for i in tqdm(range(iters)):
             "guess_switch_sd": initial_guess['guess_switch_sd_true'],
             }
         specific_name = 'optimal_'
-        
+        assert fit_model.inputs.expected == False
     elif MODEL_TO_FIT == "suboptimal":
-        fit_model = mhf.run_model(model_input_dict,player_inputs,expected=True,
+        fit_model = mhf.run_model(player_inputs,
+                                  expected=True,use_agent_behavior_lookup=False,
                                   round_num=20)
+        assert fit_model.inputs.expected == True
         #* Fit the true and expected separately and see what the model does
         free_params = {
             "guess_switch_delay_true": initial_guess['guess_switch_delay_true'],
@@ -188,7 +191,9 @@ for i in tqdm(range(iters)):
             # "movement_sd_expected":player_inputs["mt_sd"],
         }
         specific_name = 'suboptimal_'
-                    
+        
+    assert fit_model.inputs.round_num == 20     
+    
     #! Need to be in for loop because we're using specific participant_ids if not warmstart
     if WARM_START:
         comparison_targets = np.array(
@@ -224,6 +229,7 @@ for i in tqdm(range(iters)):
         method="Powell",
     )
     print(res)
+    print("-------------------------------------")
     # end_time = time.time()
     # print(f"Time: {end_time - start_time}")
     specific_model_name = specific_name + model_name
