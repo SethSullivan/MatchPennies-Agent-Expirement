@@ -59,9 +59,10 @@ it = InitialThangs(EXPERIMENT)
 #! SET THE SETTINGS BEFORE RUNNING SCRIPT
 print("DID YOU SET THE RIGHT SETTINGS?")
 FIT_PARAMETERS = True
-SAVE = True
-MODEL_TO_FIT = "suboptimal"
-WARM_START = False # If False, that means I'm bootstrapping with the warmstart initial condition 
+SAVE = False
+MODEL_TO_FIT = "optimal"
+WARM_START = True # If False, that means I'm bootstrapping with the warmstart initial condition 
+STORE_BASE_MODEL = True
 input_keys = ["rt","rt_sd","mt","mt_sd","timing_sd",]
 print(f" Fit Parameters: {FIT_PARAMETERS}\n Save: {SAVE}\n Model to Fit: {MODEL_TO_FIT}\n Warm Start: {WARM_START}")
 print(f" Fitting: {MODEL_TO_FIT}")
@@ -114,6 +115,8 @@ print(f"ITERATIONS: {iters}")
 
 
 initial_time = time.time()
+base_input_parameters_for_df = []
+base_results_for_df = []
 input_parameters_for_df = []
 results_for_df = []
 print("Starting Models...")
@@ -147,11 +150,15 @@ for i in tqdm(range(iters)):
     #* 3. Full optimal, not accounting for fit switch delay and uncertainty, and the expected and true are both fit simultaneously
     
     # Run pure optimal, no switch 
-    optimal_model_no_switch = mhf.run_model(model_input_dict,player_inputs,expected=False)
+    optimal_model_no_switch = mhf.run_model(model_input_dict,player_inputs,
+                                            expected=False,use_agent_behavior_lookup=False,
+                                            round_num=20)
 
     # Run either optimal or suboptimal    
     if MODEL_TO_FIT == "optimal":
-        fit_model = deepcopy(optimal_model_no_switch)
+        fit_model = mhf.run_model(model_input_dict,player_inputs,
+                                  expected=False,use_agent_behavior_lookup=False,
+                                  round_num=20)
         #! Not putting _true or _expected makes true == expected
         free_params = {
             "guess_switch_delay": initial_guess['guess_switch_delay_true'],
@@ -160,7 +167,8 @@ for i in tqdm(range(iters)):
         specific_name = 'optimal_'
         
     elif MODEL_TO_FIT == "suboptimal":
-        fit_model = mhf.run_model(model_input_dict,player_inputs,expected=True)
+        fit_model = mhf.run_model(model_input_dict,player_inputs,expected=True,
+                                  round_num=20)
         #* Fit the true and expected separately and see what the model does
         free_params = {
             "guess_switch_delay_true": initial_guess['guess_switch_delay_true'],
@@ -209,12 +217,13 @@ for i in tqdm(range(iters)):
         free_params_init=free_params,
         targets=comparison_targets,
         drop_condition_from_loss=None,  # Drop 1200 50
-        limit_sd=False,
         metric_keys=model_metric_keys,
         bnds=None,
-        tol=0.0001,
+        xtol=1e-6,
+        ftol =1e-6,
         method="Powell",
     )
+    print(res)
     # end_time = time.time()
     # print(f"Time: {end_time - start_time}")
     specific_model_name = specific_name + model_name
@@ -223,6 +232,15 @@ for i in tqdm(range(iters)):
     input_parameters_for_df.append(input_row_dict)
     results_dict   = create_results_row_dict(fit_model,loss,specific_model_name,list(free_params.keys()))
     results_for_df.append(results_dict)
+    if not WARM_START and STORE_BASE_MODEL:
+        base_model_name = "base_" + model_name
+        base_model_fit_object = ModelFitting(model=optimal_model_no_switch)
+        base_model_loss = base_model_fit_object.get_loss(free_params.values(),model_metric_keys,comparison_targets,free_params.keys(),update=False,)
+        
+        base_input_row_dict = create_input_row_dict(optimal_model_no_switch, base_model_loss, base_model_name,list(free_params.keys()))
+        base_input_parameters_for_df.append(base_input_row_dict)
+        base_results_dict   = create_results_row_dict(optimal_model_no_switch,base_model_loss,base_model_name,list(free_params.keys()))
+        base_results_for_df.append(base_results_dict)
         
 df_inputs = pd.DataFrame(input_parameters_for_df)
 df_results = pd.DataFrame(results_for_df)
@@ -230,17 +248,23 @@ df_results = pd.DataFrame(results_for_df)
 if SAVE:
     save_date = datetime.now()
     if WARM_START:
-        # * Save the old model table to a new file
-        with open(constants.MODELS_PATH / "warmstart_models" / f"{EXPERIMENT}_{specific_name}warmstart_inputs_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
-            dill.dump(df_inputs, f)
-        with open(constants.MODELS_PATH / "warmstart_models"/ f"{EXPERIMENT}_{specific_name}warmstart_results_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
-            dill.dump(df_results, f)
+        n = "warmstart"
     else:
-        # * Save the old model table to a new file
-        with open(constants.MODELS_PATH / "bootstrapped_models" / f"{EXPERIMENT}_{specific_name}bootstrapped_inputs_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
-            dill.dump(df_inputs, f)
-        with open(constants.MODELS_PATH / "bootstrapped_models" / f"{EXPERIMENT}_{specific_name}bootstrapped_results_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
-            dill.dump(df_results, f)
+        n = "bootstrapped"
+        #* Save base model if we aren't warmstarting and if we want to
+        if STORE_BASE_MODEL:
+            with open(constants.MODELS_PATH / f"base_models" / f"{EXPERIMENT}_{specific_name}base_inputs_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
+                dill.dump(df_inputs, f)
+            with open(constants.MODELS_PATH / f"base_models" / f"{EXPERIMENT}_{specific_name}base_results_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
+                dill.dump(df_results, f)
+                
+    #* Save either warmstart or bootstrapped
+    with open(constants.MODELS_PATH / f"{n}_models" / f"{EXPERIMENT}_{specific_name}{n}_inputs_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
+        dill.dump(df_inputs, f)
+    with open(constants.MODELS_PATH / f"{n}_models" / f"{EXPERIMENT}_{specific_name}{n}_results_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
+        dill.dump(df_results, f)
+    
+        
 finish_time = time.time()
 total_time = finish_time - initial_time
 print(f"Model generation for {EXPERIMENT} completed")
