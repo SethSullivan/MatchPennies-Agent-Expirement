@@ -9,7 +9,8 @@ it = InitialThangs(experiment="Exp1")
 
     
     
-def run_models_from_df(df,EXPERIMENT="Exp1",num_timesteps=1800,expected=True,) -> dict:
+def run_models_from_df(df,EXPERIMENT="Exp1",num_timesteps=1800,expected=True,
+                       use_agent_behavior_lookup=False) -> dict:
     """Iterate through dataframe rows to generate models
 
     Args:
@@ -42,7 +43,8 @@ def run_models_from_df(df,EXPERIMENT="Exp1",num_timesteps=1800,expected=True,) -
             win_reward=row.win_reward,
             incorrect_cost=row.incorrect_cost,
             indecision_cost=row.indecision_cost,
-            round_num = 20
+            round_num = 20,
+            use_agent_behavior_lookup=use_agent_behavior_lookup,
         )
         models.update({row.Model:model})
     return models
@@ -50,9 +52,8 @@ def run_models_from_df(df,EXPERIMENT="Exp1",num_timesteps=1800,expected=True,) -
 
 
 
-def run_model(model_input_dict, player_inputs, expected, **kwargs):
-    num_timesteps = kwargs.get('num_timesteps',1800)
-    experiment = kwargs.get("experiment","Exp1")
+def run_model(model_input_dict, player_inputs, expected, use_agent_behavior_lookup,
+              num_timesteps=1800,experiment="Exp1",round_num=20):
     model = ModelConstructor(
         experiment=experiment,
         num_blocks=it.num_blocks,
@@ -65,14 +66,16 @@ def run_model(model_input_dict, player_inputs, expected, **kwargs):
         movement_sd=np.array([player_inputs["mt_sd"], player_inputs["mt_sd"]])[:, np.newaxis, np.newaxis],
         timing_sd=np.array([[player_inputs['timing_sd']]*it.num_blocks, 
                             [player_inputs['timing_sd']]*it.num_blocks])[:, :, np.newaxis],
-        guess_switch_delay=np.array([0, 0])[:, np.newaxis, np.newaxis], # These are being FIT, so copied models can just have them as 0
-        guess_switch_sd=np.array([0,0])[:, np.newaxis, np.newaxis],   
-        electromechanical_delay=np.array([50, 50])[:, np.newaxis, np.newaxis],
-        electromechanical_sd = np.array([10,10])[:, np.newaxis, np.newaxis],
+        guess_switch_delay=np.array([0.0, 0.0])[:, np.newaxis, np.newaxis], # These are being FIT, so copied models can just have them as 0
+        guess_switch_sd=np.array([0.0,0.0])[:, np.newaxis, np.newaxis],   
+        electromechanical_delay=np.array([50.0, 50.0],dtype=float)[:, np.newaxis, np.newaxis],
+        electromechanical_sd = np.array([10.0,10.0],dtype=float)[:, np.newaxis, np.newaxis],
         expected=expected,  
         win_reward=1.0,
         incorrect_cost=0.0,  #! These are applied onto the base reward matrix in Optimal Model object
         indecision_cost=0.0,
-        round_num = 20,
+        round_num = round_num,
+        use_agent_behavior_lookup=use_agent_behavior_lookup,
+
     )
     return model
