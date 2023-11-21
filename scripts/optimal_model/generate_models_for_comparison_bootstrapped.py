@@ -227,6 +227,7 @@ for i in tqdm(range(iters)):
         xtol=1e-6,
         ftol =1e-6,
         method="Powell",
+        maxiter=100,
     )
     print(res)
     print("-------------------------------------")
