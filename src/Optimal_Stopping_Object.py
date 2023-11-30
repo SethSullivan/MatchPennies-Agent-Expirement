@@ -749,7 +749,7 @@ class ModelFitting:
                 options = {
                     "ftol": ftol,
                     "xtol":xtol,
-                    "disp":True,
+                    "disp":False,
                     "maxiter":maxiter,
                     "maxfev":maxfev,
                 },
@@ -812,8 +812,11 @@ class ModelFitting:
                                                                    decision_type=decision_type, 
                                                                    metric_type="true")  # Find the metric at optimal decision time
         loss = lf.ape_loss(model_metrics, targets,)
-        
-        self.loss_store.append(loss)
+        try:
+            self.loss_store.append(loss)
+        except AttributeError:
+            pass
+         
         # self.optimal_decision_time_store.append(self.model.results.optimal_decision_time[self.model.inputs.key]) # index at key bc I want the decision time for either expected or true
         # self.leave_time_store.append(self.model.results.get_metric(self.model.player_behavior.wtd_leave_time,
         #                                                            decision_type=decision_type,metric_type='true'))
