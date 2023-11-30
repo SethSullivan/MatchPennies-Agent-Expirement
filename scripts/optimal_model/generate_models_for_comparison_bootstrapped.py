@@ -50,6 +50,27 @@ def create_results_row_dict(model,loss,model_name,free_param_keys):
         "incorrects":model_data[4],
     }
     return results_row
+def base_model_loss(model, metric_keys, targets, decision_type="optimal"):
+    # Get each metric from results at that specific decision time
+    model_metrics = np.zeros_like(targets)
+    for i in range(targets.shape[0]): 
+        if 'leave_time' in metric_keys[i]:
+            model_metric = getattr(model.player_behavior, metric_keys[i])
+            # Find the metric at optimal decision time
+            #! Metric type always being 'true' means that the metric array we're using is ALWAYS the 'true' array. 
+            model_metrics[i,:] = model.results.get_metric(model_metric, 
+                                                                decision_type=decision_type, 
+                                                                metric_type="true")  
+        elif 'decision_time' in metric_keys[i]:
+            model_metric = getattr(model.results,metric_keys[i])
+            model_metrics[i,:] = model_metric
+        else:
+            model_metric = getattr(model.score_metrics, metric_keys[i])
+            model_metrics[i,:] = model.results.get_metric(model_metric, 
+                                                                decision_type=decision_type, 
+                                                                metric_type="true")  # Find the metric at optimal decision time
+    loss = lf.ape_loss(model_metrics, targets,)
+    return loss
 
 #* GLOBAL PARAMETERS
 # Select experiment you'd like to run
@@ -151,9 +172,9 @@ for i in tqdm(range(iters)):
     #* 3. Full optimal, not accounting for fit switch delay and uncertainty, and the expected and true are both fit simultaneously
     
     # Run pure optimal, no switch 
-    # optimal_model_no_switch = mhf.run_model(player_inputs,
-    #                                         expected=False,use_agent_behavior_lookup=False,
-    #                                         round_num=20)
+    optimal_model_no_switch = mhf.run_model(player_inputs,
+                                            expected=False,use_agent_behavior_lookup=False,
+                                            round_num=20)
 
     # Run either optimal or suboptimal    
     if MODEL_TO_FIT == "optimal":
@@ -230,8 +251,6 @@ for i in tqdm(range(iters)):
         maxiter=5,
         maxfev = 300,
     )
-    # end_time = time.time()
-    # print(f"Time: {end_time - start_time}")
     specific_model_name = specific_name + model_name
     loss = model_fit_object.loss_store[-1]
     input_row_dict = create_input_row_dict(fit_model, loss, specific_model_name,list(free_params.keys()))
@@ -240,12 +259,12 @@ for i in tqdm(range(iters)):
     results_for_df.append(results_dict)
     if not WARM_START and STORE_BASE_MODEL:
         base_model_name = "base_" + model_name
-        base_model_fit_object = ModelFitting(model=optimal_model_no_switch)
-        base_model_loss = base_model_fit_object.get_loss(free_params.values(),model_metric_keys,comparison_targets,free_params.keys(),update=False,)
+        # base_model_fit_object = ModelFitting(model=optimal_model_no_switch)
+        base_model_loss = base_model_loss(optimal_model_no_switch, model_metric_keys, comparison_targets)
         
-        base_input_row_dict = create_input_row_dict(optimal_model_no_switch, base_model_loss, base_model_name,list(free_params.keys()))
+        base_input_row_dict = create_input_row_dict(optimal_model_no_switch, base_model_loss, base_model_name, [])
         base_input_parameters_for_df.append(base_input_row_dict)
-        base_results_dict   = create_results_row_dict(optimal_model_no_switch,base_model_loss,base_model_name,list(free_params.keys()))
+        base_results_dict   = create_results_row_dict(optimal_model_no_switch,base_model_loss,base_model_name,[])
         base_results_for_df.append(base_results_dict)
         
 df_inputs = pd.DataFrame(input_parameters_for_df)
@@ -259,10 +278,12 @@ if SAVE:
         n = "bootstrapped"
         #* Save base model if we aren't warmstarting and if we want to
         if STORE_BASE_MODEL:
-            with open(constants.MODELS_PATH / f"{n}_models" / f"{EXPERIMENT}_{specific_name}base_inputs_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
-                dill.dump(df_inputs, f)
-            with open(constants.MODELS_PATH / f"{n}_models" / f"{EXPERIMENT}_{specific_name}base_results_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
-                dill.dump(df_results, f)
+            df_base_inputs = pd.DataFrame(base_input_parameters_for_df)
+            df_base_results = pd.DataFrame(base_results_for_df)
+            with open(constants.MODELS_PATH / f"{n}_models" / f"{EXPERIMENT}_base_bootstrapped_inputs_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
+                dill.dump(df_base_inputs, f)
+            with open(constants.MODELS_PATH / f"{n}_models" / f"{EXPERIMENT}_base_bootstrapped_results_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
+                dill.dump(df_base_results, f)
                 
     #* Save either warmstart or bootstrapped
     with open(constants.MODELS_PATH / f"{n}_models" / f"{EXPERIMENT}_{specific_name}{n}_inputs_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
