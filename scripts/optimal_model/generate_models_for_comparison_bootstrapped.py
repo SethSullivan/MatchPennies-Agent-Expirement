@@ -59,10 +59,10 @@ it = InitialThangs(EXPERIMENT)
 #! SET THE SETTINGS BEFORE RUNNING SCRIPT
 print("DID YOU SET THE RIGHT SETTINGS?")
 FIT_PARAMETERS = True
-SAVE = False
+SAVE = True
 MODEL_TO_FIT = "optimal"
-WARM_START = True # If False, that means I'm bootstrapping with the warmstart initial condition 
-STORE_BASE_MODEL = True
+WARM_START = False # If False, that means I'm bootstrapping with the warmstart initial condition 
+STORE_BASE_MODEL = False
 input_keys = ["rt","rt_sd","mt","mt_sd","timing_sd",]
 print(f" Fit Parameters: {FIT_PARAMETERS}\n Save: {SAVE}\n Model to Fit: {MODEL_TO_FIT}\n Warm Start: {WARM_START}")
 print(f" Fitting: {MODEL_TO_FIT}")
@@ -151,9 +151,9 @@ for i in tqdm(range(iters)):
     #* 3. Full optimal, not accounting for fit switch delay and uncertainty, and the expected and true are both fit simultaneously
     
     # Run pure optimal, no switch 
-    optimal_model_no_switch = mhf.run_model(player_inputs,
-                                            expected=False,use_agent_behavior_lookup=False,
-                                            round_num=20)
+    # optimal_model_no_switch = mhf.run_model(player_inputs,
+    #                                         expected=False,use_agent_behavior_lookup=False,
+    #                                         round_num=20)
 
     # Run either optimal or suboptimal    
     if MODEL_TO_FIT == "optimal":
@@ -230,8 +230,6 @@ for i in tqdm(range(iters)):
         maxiter=5,
         maxfev = 300,
     )
-    print(res)
-    print("-------------------------------------")
     # end_time = time.time()
     # print(f"Time: {end_time - start_time}")
     specific_model_name = specific_name + model_name
@@ -261,9 +259,9 @@ if SAVE:
         n = "bootstrapped"
         #* Save base model if we aren't warmstarting and if we want to
         if STORE_BASE_MODEL:
-            with open(constants.MODELS_PATH / f"base_models" / f"{EXPERIMENT}_{specific_name}base_inputs_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
+            with open(constants.MODELS_PATH / f"{n}_models" / f"{EXPERIMENT}_{specific_name}base_inputs_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
                 dill.dump(df_inputs, f)
-            with open(constants.MODELS_PATH / f"base_models" / f"{EXPERIMENT}_{specific_name}base_results_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
+            with open(constants.MODELS_PATH / f"{n}_models" / f"{EXPERIMENT}_{specific_name}base_results_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
                 dill.dump(df_results, f)
                 
     #* Save either warmstart or bootstrapped
