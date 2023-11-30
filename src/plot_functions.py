@@ -164,12 +164,15 @@ def multiple_models_boxplot(ax,data,model_data,labels,
                             show_boxplot=True,show_models=True,
                             **kwargs):
     pk = PlottingKwargs(**kwargs)
-    
+    model_data = np.array(model_data)
     w, h = plt.gcf().get_size_inches()
     if pk.reorder_xaxis:
         pk.xticklabels = pk.xticklabels[::2] + pk.xticklabels[1::2]
         data = data[:,[0,2,4,1,3,5]]
-        model_data = np.array(model_data)[:,[0,2,4,1,3,5]]
+        if model_data.ndim == 1:
+            model_data = np.array(model_data)[[0,2,4,1,3,5]]
+        elif model_data.ndim == 2:
+            model_data = np.array(model_data)[:,[0,2,4,1,3,5]]
 
     if show_boxplot:
         # ax,bp = multi_boxplot(ax,data,pk.xlocs,box_width = pk.bw,
@@ -223,7 +226,7 @@ def multiple_models_boxplot(ax,data,model_data,labels,
               fontsize=pk.legend_fontsize, ncol=ncol, columnspacing=1,linewidth=pk.legend_linewidth)
     
     
-def plot_stats(ax, statistics:list[dict],combos:list[str], 
+def plot_stats(ax, statistics:list[dict], combos:list[str], 
                ypos:list[int], xpositions:list[list[float,float]], 
                show_effectsize=False, **kwargs):
     '''
@@ -238,11 +241,40 @@ def plot_stats(ax, statistics:list[dict],combos:list[str],
             kwargs.update({'cles':statistics[1][combos[i]]})
         else:
             kwargs.update({'cles':None})
-        dv.stat_annotation(ax,xpositions[i][0],xpositions[i][1],y=ypos[i], 
+        dv.stat_annotation(ax,xpositions[i][0],xpositions[i][1],y=ypos[i],
                            p_val= statistics[0][combos[i]], **kwargs)
-        
-         
+
+def plot_boostrapped_model_results(ax, x, y, percentiles, color, horizontal_lw = 0.2, markersize=10):
+    left = x - horizontal_lw/2
+    right = x + horizontal_lw/2
+    top = percentiles[0]
+    bottom = percentiles[1]
+    ax.plot([x, x], [top, bottom], color=color)
+    ax.plot([left, right], [top, top], color=color)
+    ax.plot([left, right], [bottom, bottom], color=color)
+    ax.plot(x, y, 'o', color=color, markersize=markersize)
     
+def plot_models(ax, xlocs, data, line_colors, linestyles, bw, 
+                markersize, legend_labels, legend_linewidth, 
+                legend_loc="best", legend_fontsize=10, 
+                ncol=1, columnspacing=1, legend=True):
+    '''
+    data can have multiple models in it
+    '''
+    legend_colors = []
+    legend_linestyles = []
+    if len(data)==1:
+        offset = np.zeros(len(data))
+    else:
+        offset = np.linspace(-bw/5,bw/5,len(data))[::-1]
+    for i in range(len(data)):
+        ax.plot(xlocs+offset[i], data[i], c=line_colors[i], marker='o',
+                markersize=markersize, zorder=200, ls=linestyles[i], clip_on=False)
+        legend_colors.append(line_colors[i])
+        legend_linestyles.append(linestyles[i])
+    if legend:
+        dv.legend(ax,legend_labels,legend_colors,ls = legend_linestyles,loc=legend_loc,
+                fontsize=legend_fontsize, ncol=ncol, columnspacing=columnspacing, linewidth=legend_linewidth)
     
 #! Legacy for Optimal_Stopping_Model_With_Data_Group
 #! v2 is a much more concise implementation and is better
