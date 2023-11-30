@@ -17,6 +17,7 @@ xticklabel_colors_means = [wheel.rak_blue, wheel.rak_red, wheel.rak_orange,
 xticklabel_colors_sd = [wheel.rak_blue, wheel.dark_blue_hc, 
                         wheel.rak_red, wheel.lighten_color(wheel.rak_red,1.5),
                         wheel.rak_orange,wheel.burnt_orange,]
+xticklabels = ["(1000, 50)", "(1100, 50)", "(1200, 50)", "(1000, 150)", "(1100, 150)", "(1200, 150)"]
 
 MODELS_PATH = find_parent(Path.cwd(),"MatchPennies-Agent-Expirement") / "results" / "models"
 MODEL_INPUT_PATH = find_parent(Path.cwd(),"MatchPennies-Agent-Expirement") / "results" / "model_inputs"
@@ -29,3 +30,4 @@ input_keys = ["rt","rt_sd","mt","mt_sd","timing_sd",]
 
 agent_means = np.array([1000.0,1000.0,1100.0,1100.0,1200.0,1200.0])
 agent_sds = np.array([50.0,150.0,50.0,150.0,50.0,150.0])
+
