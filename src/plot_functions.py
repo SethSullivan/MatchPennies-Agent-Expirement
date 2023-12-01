@@ -4,6 +4,113 @@ import data_visualization as dv
 from scipy import stats
 from copy import deepcopy
 wheel = dv.ColorWheel()
+import matplotlib.transforms as mtransforms
+from string import ascii_uppercase
+
+class NewFigure:
+    def __init__(self, mosaic, figsize = (6.5,4), dpi=150, layout="constrained", sharex=False,sharey=False,
+                 ):
+        self.fig, self.axes = plt.subplot_mosaic(mosaic, 
+                                                 dpi=dpi,
+                                                layout=layout,
+                                                figsize=figsize,
+                                                sharex=sharex,
+                                                sharey=sharey,
+                                                )
+        
+        self.figw,self.figh = self.fig.get_size_inches()
+        # Create axmain box for visualization of the bounds and coordinates
+        self.axmain  = self.fig.add_axes((0,0,1,1))
+        self.axmain.set_xlim(0,self.figw)
+        self.axmain.set_ylim(0,self.figh)
+        for spine in ['top','right','bottom','left']:
+            self.axmain.spines[spine].set_visible(True)
+        self.axmain.set_xlim(0,figsize[0])
+        self.axmain.set_ylim(0,figsize[1])
+        
+        self.letters = []
+                
+    def pad_fig(self, w_pad, h_pad, w_space, h_space):
+        self.fig.get_layout_engine().set(w_pad=w_pad/self.figw, 
+                                         h_pad=h_pad/self.figh, 
+                                         wspace=w_space/self.figw,
+                                         hspace=h_space/self.figh)
+    def ax_dim(self,ax):
+        bbox = ax.get_window_extent().transformed(self.fig.dpi_scale_trans.inverted())
+        return bbox.width, bbox.height
+    
+    def ax_loc(self,ax):
+        bbox = ax.get_window_extent().transformed(self.fig.dpi_scale_trans.inverted())
+        return bbox.x0,bbox.y0
+        
+    def set_position(self, ax, loc):
+        self.fig.canvas.draw()
+        x,y = loc
+        w,h = self.ax_dim(ax)
+        self.fig.set_layout_engine('none')
+
+        ax.set_position((x/self.figw, y/self.figh, w/self.figw, h/self.figh))
+
+    def adjust_position(self, ax, adjustment):
+        self.fig.canvas.draw()
+
+        dx,dy = adjustment
+        w,h = self.ax_dim(ax)
+        x,y = self.ax_loc(ax)
+        self.fig.set_layout_engine('none')
+        ax.set_position(((x+dx)/self.figw, (y+dy)/self.figh, w/self.figw, h/self.figh))
+        
+    def set_size(self, ax, size):
+        self.fig.canvas.draw()
+        w,h = size
+        x,y = self.ax_loc(ax)
+        self.fig.set_layout_engine('none')
+        ax.set_position((x/self.figw, y/self.figh, w/self.figw, h/self.figh))
+        
+    def adjust_size(self, ax, adjustment):
+        self.fig.canvas.draw()
+        dw,dh = adjustment
+        w,h = self.ax_dim(ax)
+        x,y = self.ax_loc(ax)
+        self.fig.set_layout_engine('none')
+        ax.set_position((x/self.figw, y/self.figh, (w+dw)/self.figw, (h+dh)/self.figh))
+
+    def add_all_letters_old(self, xy = (0,1), ax=None, fontsize=12,
+                        va="top",ha='center',fontfamily="sans-serif",fontweight="bold"):
+        for i,(label, ax) in enumerate(self.axes.items()):
+            # label physical distance to the left and up:
+            letter = ascii_uppercase[i]
+            # trans = mtransforms.ScaledTranslation(-20/72, 7/72, self.fig.dpi_scale_trans)
+            ax.text(xy[0], xy[1], letter, transform=ax.transAxes,
+                    fontsize=fontsize, va=va,ha=ha, fontfamily=fontfamily, 
+                    fontweight=fontweight)
+    def add_all_letters(self, xy = (0,1), ax=None, fontsize=12,
+                        va="top",ha='left',fontfamily="sans-serif",fontweight="bold"):
+        for i,(label, ax) in enumerate(self.axes.items()):
+            ax_bbox = ax.get_tightbbox().transformed(self.axmain.transData.inverted())
+            # label physical distance to the left and up:
+            letter = ascii_uppercase[i]
+            # trans = mtransforms.ScaledTranslation(-20/72, 7/72, self.fig.dpi_scale_trans)
+            ax.text(ax_bbox.x0, ax_bbox.y1, letter, transform=self.axmain.transData,
+                    fontsize=fontsize, va=va,ha=ha, fontfamily=fontfamily, 
+                    fontweight=fontweight)
+    def add_letter(self, ax, x, y, letter = None, fontsize = 12, 
+                   ha = "left", va = "top", color = "black", zorder = 20):
+        if letter == None:
+            letter_to_add = ascii_uppercase[len(self.letters)]
+        else:
+            letter_to_add = letter
+        
+        self.letters.append(letter_to_add)
+        self.axmain.text(x, y, letter_to_add, ha = ha, va = va, fontweight = "bold", color = color, fontsize = fontsize, zorder = zorder)
+    
+    def remove_figure_borders(self):
+        # for spine in ['top','right','bottom','left']:
+        self.axmain.axis("off")
+        
+    def savefig(self,path,dpi=300):
+        self.remove_figure_borders()
+        self.fig.savefig(path,dpi=dpi)
 
 class PlottingKwargs:
     def __init__(self,**kwargs):
