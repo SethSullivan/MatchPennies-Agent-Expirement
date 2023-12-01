@@ -50,7 +50,7 @@ def create_results_row_dict(model,loss,model_name,free_param_keys):
         "incorrects":model_data[4],
     }
     return results_row
-def base_model_loss(model, metric_keys, targets, decision_type="optimal"):
+def get_base_model_loss(model, metric_keys, targets, decision_type="optimal"):
     # Get each metric from results at that specific decision time
     model_metrics = np.zeros_like(targets)
     for i in range(targets.shape[0]): 
@@ -83,9 +83,9 @@ FIT_PARAMETERS = True
 SAVE = True
 MODEL_TO_FIT = "optimal"
 WARM_START = False # If False, that means I'm bootstrapping with the warmstart initial condition 
-STORE_BASE_MODEL = False
+STORE_BASE_MODEL = True
 input_keys = ["rt","rt_sd","mt","mt_sd","timing_sd",]
-print(f" Fit Parameters: {FIT_PARAMETERS}\n Save: {SAVE}\n Model to Fit: {MODEL_TO_FIT}\n Warm Start: {WARM_START}")
+print(f" Fit Parameters: {FIT_PARAMETERS}\n Save: {SAVE}\n Model to Fit: {MODEL_TO_FIT}\n Warm Start: {WARM_START}\n Store Base Model: {STORE_BASE_MODEL}")
 print(f" Fitting: {MODEL_TO_FIT}")
 print(" ")
 #* Load parameters, boostrap, and comparison targets
@@ -213,7 +213,7 @@ for i in tqdm(range(iters)):
         }
         specific_name = 'suboptimal_'
         
-    assert fit_model.inputs.round_num == 20     
+    assert fit_model.inputs.round_num == 20
     
     #! Need to be in for loop because we're using specific participant_ids if not warmstart
     if WARM_START:
@@ -237,38 +237,38 @@ for i in tqdm(range(iters)):
             ]   
         )      
     model_metric_keys = ['wtd_leave_time','wtd_leave_time_sd','prob_win','prob_incorrect','prob_indecision']
-    model_fit_object = ModelFitting(model=fit_model)
-    # start_time = time.time()
-    res = model_fit_object.run_model_fit_procedure(
-        free_params_init=free_params,
-        targets=comparison_targets,
-        drop_condition_from_loss=None,  # Drop 1200 50
-        metric_keys=model_metric_keys,
-        bnds=None,
-        xtol=1e-6,
-        ftol =1e-6,
-        method="Powell",
-        maxiter=5,
-        maxfev = 300,
-    )
-    specific_model_name = specific_name + model_name
-    loss = model_fit_object.loss_store[-1]
-    input_row_dict = create_input_row_dict(fit_model, loss, specific_model_name,list(free_params.keys()))
-    input_parameters_for_df.append(input_row_dict)
-    results_dict   = create_results_row_dict(fit_model,loss,specific_model_name,list(free_params.keys()))
-    results_for_df.append(results_dict)
+    # model_fit_object = ModelFitting(model=fit_model)
+    # # start_time = time.time()
+    # res = model_fit_object.run_model_fit_procedure(
+    #     free_params_init=free_params,
+    #     targets=comparison_targets,
+    #     drop_condition_from_loss=None,  # Drop 1200 50
+    #     metric_keys=model_metric_keys,
+    #     bnds=None,
+    #     xtol=1e-6,
+    #     ftol =1e-6,
+    #     method="Powell",
+    #     maxiter=5,
+    #     maxfev = 300,
+    # )
+    # specific_model_name = specific_name + model_name
+    # loss = model_fit_object.loss_store[-1]
+    # input_row_dict = create_input_row_dict(fit_model, loss, specific_model_name,list(free_params.keys()))
+    # input_parameters_for_df.append(input_row_dict)
+    # results_dict   = create_results_row_dict(fit_model,loss,specific_model_name,list(free_params.keys()))
+    # results_for_df.append(results_dict)
     if not WARM_START and STORE_BASE_MODEL:
         base_model_name = "base_" + model_name
         # base_model_fit_object = ModelFitting(model=optimal_model_no_switch)
-        base_model_loss = base_model_loss(optimal_model_no_switch, model_metric_keys, comparison_targets)
+        base_model_loss = get_base_model_loss(optimal_model_no_switch, model_metric_keys, comparison_targets)
         
         base_input_row_dict = create_input_row_dict(optimal_model_no_switch, base_model_loss, base_model_name, [])
         base_input_parameters_for_df.append(base_input_row_dict)
         base_results_dict   = create_results_row_dict(optimal_model_no_switch,base_model_loss,base_model_name,[])
         base_results_for_df.append(base_results_dict)
         
-df_inputs = pd.DataFrame(input_parameters_for_df)
-df_results = pd.DataFrame(results_for_df)
+# df_inputs = pd.DataFrame(input_parameters_for_df)
+# df_results = pd.DataFrame(results_for_df)
 
 if SAVE:
     save_date = datetime.now()
@@ -285,11 +285,11 @@ if SAVE:
             with open(constants.MODELS_PATH / f"{n}_models" / f"{EXPERIMENT}_base_bootstrapped_results_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
                 dill.dump(df_base_results, f)
                 
-    #* Save either warmstart or bootstrapped
-    with open(constants.MODELS_PATH / f"{n}_models" / f"{EXPERIMENT}_{specific_name}{n}_inputs_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
-        dill.dump(df_inputs, f)
-    with open(constants.MODELS_PATH / f"{n}_models" / f"{EXPERIMENT}_{specific_name}{n}_results_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
-        dill.dump(df_results, f)
+    # #* Save either warmstart or bootstrapped
+    # with open(constants.MODELS_PATH / f"{n}_models" / f"{EXPERIMENT}_{specific_name}{n}_inputs_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
+    #     dill.dump(df_inputs, f)
+    # with open(constants.MODELS_PATH / f"{n}_models" / f"{EXPERIMENT}_{specific_name}{n}_results_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
+    #     dill.dump(df_results, f)
     
         
 finish_time = time.time()
