@@ -9,13 +9,15 @@ from string import ascii_uppercase
 
 class NewFigure:
     def __init__(self, mosaic, figsize = (6.5,4), dpi=150, layout="constrained", sharex=False,sharey=False,
-                 ):
+                 hspace = None, wspace = None):
+        
         self.fig, self.axes = plt.subplot_mosaic(mosaic, 
                                                  dpi=dpi,
                                                 layout=layout,
                                                 figsize=figsize,
                                                 sharex=sharex,
                                                 sharey=sharey,
+                                                gridspec_kw={'wspace':wspace,"hspace":hspace}
                                                 )
         
         self.figw,self.figh = self.fig.get_size_inches()
@@ -84,16 +86,26 @@ class NewFigure:
             ax.text(xy[0], xy[1], letter, transform=ax.transAxes,
                     fontsize=fontsize, va=va,ha=ha, fontfamily=fontfamily, 
                     fontweight=fontweight)
+            
     def add_all_letters(self, xy = (0,1), ax=None, fontsize=12,
                         va="top",ha='left',fontfamily="sans-serif",fontweight="bold"):
+        # for i,(label, ax) in enumerate(self.axes.items()):
+        #     ax_bbox = ax.get_tightbbox().transformed(self.axmain.transData.inverted())
+        #     # label physical distance to the left and up:
+        #     letter = ascii_uppercase[i]
+        #     # trans = mtransforms.ScaledTranslation(-20/72, 7/72, self.fig.dpi_scale_trans)
+        #     self.axmain.text(ax_bbox.x0, ax_bbox.y1, letter,
+        #             fontsize=fontsize, va=va,ha=ha, fontfamily=fontfamily, 
+        #             fontweight=fontweight)
         for i,(label, ax) in enumerate(self.axes.items()):
-            ax_bbox = ax.get_tightbbox().transformed(self.axmain.transData.inverted())
-            # label physical distance to the left and up:
+            # label physical distance in and down:
             letter = ascii_uppercase[i]
-            # trans = mtransforms.ScaledTranslation(-20/72, 7/72, self.fig.dpi_scale_trans)
-            ax.text(ax_bbox.x0, ax_bbox.y1, letter, transform=self.axmain.transData,
-                    fontsize=fontsize, va=va,ha=ha, fontfamily=fontfamily, 
-                    fontweight=fontweight)
+            trans = mtransforms.ScaledTranslation(-30/72, 16/72, self.fig.dpi_scale_trans)
+            ax.text(0.0, 1.0, letter, transform=ax.transAxes + trans,
+                    fontsize=fontsize, verticalalignment='top',ha='right',
+                    fontfamily=fontfamily, fontweight="bold",
+            )               
+            
     def add_letter(self, ax, x, y, letter = None, fontsize = 12, 
                    ha = "left", va = "top", color = "black", zorder = 20):
         if letter == None:
