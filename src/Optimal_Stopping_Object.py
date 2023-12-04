@@ -777,18 +777,18 @@ class ModelFitting:
                 
         for k,v in new_parameters_dict.items():
             #* return big loss if anything is less than 0
-            if v<0 or v>320:
+            if v<0:
                 self.loss_store.append(1e3)
                 return 1e3 + abs(v)
             #* Return big loss if true is less than expected
-            if k.endswith("_true"):
-                expected_key = k.replace("_true","_expected")
-                if v < new_parameters_dict[expected_key]:
-                    self.loss_store.append(1e3)
-                    return 1e3 + abs(v)
-            if k == "timing_sd_expected":
-                if v>self.model.inputs.timing_sd[0,0,0]:
-                    return 1e3 + abs(v)
+            # if k.endswith("_true"):
+            #     expected_key = k.replace("_true","_expected")
+            #     if v < new_parameters_dict[expected_key]:
+            #         self.loss_store.append(1e3)
+            #         return 1e3 + abs(v)
+            # if k == "timing_sd_expected":
+            #     if v>self.model.inputs.timing_sd[0,0,0]:
+            #         return 1e3 + abs(v)
         if update:
             self.parameter_arr.append(free_params_values)
             # Get the new arrays from the optimized free parameter inputs
