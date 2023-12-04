@@ -81,8 +81,8 @@ it = InitialThangs(EXPERIMENT)
 print("DID YOU SET THE RIGHT SETTINGS?")
 FIT_PARAMETERS = True
 SAVE = True
-MODEL_TO_FIT = "optimal"
-WARM_START = False # If False, that means I'm bootstrapping with the warmstart initial condition 
+MODEL_TO_FIT = "optimal" # OPTIONS: "optimal", "suboptimal_partial", "suboptimal_none"
+WARM_START = True # If False, that means I'm bootstrapping with the warmstart initial condition 
 STORE_BASE_MODEL = True
 input_keys = ["rt","rt_sd","mt","mt_sd","timing_sd",]
 print(f" Fit Parameters: {FIT_PARAMETERS}\n Save: {SAVE}\n Model to Fit: {MODEL_TO_FIT}\n Warm Start: {WARM_START}\n Store Base Model: {STORE_BASE_MODEL}")
@@ -119,11 +119,11 @@ if WARM_START:
     iters = 10000
     #* Randomize for warmstart
     player_inputs = dict(zip(input_keys,true_parameters)) #! This won't change unless we're boostrapping so can pull out of for loop for Warm_Start
-    switch_delay_expected_rand = np.random.uniform(0,150,size=iters)
-    switch_delay_true_rand = switch_delay_expected_rand + np.random.uniform(0,75,size=iters)
+    switch_delay_expected_rand = np.random.uniform(0,200,size=iters)
+    switch_delay_true_rand = np.random.uniform(0,200,size=iters)
     switch_sd_expected_rand = np.random.uniform(0,200,size=iters)
-    switch_sd_true_rand = switch_sd_expected_rand + np.random.uniform(0,75,size=iters)
-    timing_sd_expected_rand = np.random.uniform(0,np.max(player_inputs['timing_sd']),size=iters)
+    switch_sd_true_rand = np.random.uniform(0,200,size=iters)
+    # timing_sd_expected_rand = np.random.uniform(0,np.max(player_inputs['timing_sd']),size=iters)
 else:
     print("BOOTSTRAPPING MODEL FITS USING WARMSTART")
     path = constants.MODELS_PATH / "warmstart_models"
@@ -150,7 +150,7 @@ for i in tqdm(range(iters)):
             "guess_switch_delay_expected": switch_delay_expected_rand[i],
             "guess_switch_sd_true": switch_sd_true_rand[i],
             "guess_switch_sd_expected": switch_sd_expected_rand[i],
-            "timing_sd_expected": timing_sd_expected_rand[i]
+            # "timing_sd_expected": timing_sd_expected_rand[i]
         }
     else: 
         # Player inputs are bootstrapped
@@ -162,7 +162,7 @@ for i in tqdm(range(iters)):
             "guess_switch_delay_expected": best_warmstart_inputs["guess_switch_delay"].squeeze()[1],
             "guess_switch_sd_true": best_warmstart_inputs["guess_switch_sd"].squeeze()[0],
             "guess_switch_sd_expected": best_warmstart_inputs["guess_switch_sd"].squeeze()[1],
-            "timing_sd_expected": best_warmstart_inputs["timing_sd"].squeeze()[1,0]
+            # "timing_sd_expected": best_warmstart_inputs["timing_sd"].squeeze()[1,0]
         }
     model_name = f"model{i}_{datetime.now():%Y_%m_%d_%H_%M_%S}"
 
@@ -186,12 +186,11 @@ for i in tqdm(range(iters)):
             "guess_switch_delay": initial_guess['guess_switch_delay_true'],
             "guess_switch_sd": initial_guess['guess_switch_sd_true'],
             }
-        specific_name = 'optimal_'
         assert fit_model.inputs.expected == False
-    elif MODEL_TO_FIT == "suboptimal":
+    elif MODEL_TO_FIT == "suboptimal_partial":
         fit_model = mhf.run_model(player_inputs,
                                   expected=True,use_agent_behavior_lookup=False,
-                                  round_num=20)
+                                  round_num=20,)
         assert fit_model.inputs.expected == True
         #* Fit the true and expected separately and see what the model does
         free_params = {
@@ -199,19 +198,17 @@ for i in tqdm(range(iters)):
             "guess_switch_delay_expected": initial_guess['guess_switch_delay_expected'],
             "guess_switch_sd_true": initial_guess['guess_switch_sd_true'],
             "guess_switch_sd_expected": initial_guess['guess_switch_sd_expected'],
-            "timing_sd_expected": initial_guess['timing_sd_expected']
-            # "timing_sd_true":player_inputs["timing_sd"],
-            # "timing_sd_expected":player_inputs["timing_sd"],
-            # "reaction_time_true":player_inputs["rt"],
-            # "reaction_time_expected":player_inputs["rt"],
-            # "reaction_sd_true":player_inputs["rt_sd"],
-            # "reaction_sd_expected":player_inputs["rt_sd"],
-            # "movement_time_true":player_inputs["mt"],
-            # "movement_time_expected":player_inputs["mt"],
-            # "movement_sd_true":player_inputs["mt_sd"],
-            # "movement_sd_expected":player_inputs["mt_sd"],
         }
-        specific_name = 'suboptimal_'
+    elif MODEL_TO_FIT == "suboptimal_none":
+        #! 12/4/23 - Also want to just fit the true and holding the expected at zero
+        # Switch delay and sd are automatically set to zero in the run_model function 
+        fit_model = mhf.run_model(player_inputs,
+                                  expected=True,use_agent_behavior_lookup=False,
+                                  round_num=20,)
+        free_params = {
+            "guess_switch_delay_true": initial_guess['guess_switch_delay_true'],
+            "guess_switch_sd_true": initial_guess['guess_switch_sd_true'],
+        }
         
     assert fit_model.inputs.round_num == 20
     
@@ -237,38 +234,37 @@ for i in tqdm(range(iters)):
             ]   
         )      
     model_metric_keys = ['wtd_leave_time','wtd_leave_time_sd','prob_win','prob_incorrect','prob_indecision']
-    # model_fit_object = ModelFitting(model=fit_model)
-    # # start_time = time.time()
-    # res = model_fit_object.run_model_fit_procedure(
-    #     free_params_init=free_params,
-    #     targets=comparison_targets,
-    #     drop_condition_from_loss=None,  # Drop 1200 50
-    #     metric_keys=model_metric_keys,
-    #     bnds=None,
-    #     xtol=1e-6,
-    #     ftol =1e-6,
-    #     method="Powell",
-    #     maxiter=5,
-    #     maxfev = 300,
-    # )
-    # specific_model_name = specific_name + model_name
-    # loss = model_fit_object.loss_store[-1]
-    # input_row_dict = create_input_row_dict(fit_model, loss, specific_model_name,list(free_params.keys()))
-    # input_parameters_for_df.append(input_row_dict)
-    # results_dict   = create_results_row_dict(fit_model,loss,specific_model_name,list(free_params.keys()))
-    # results_for_df.append(results_dict)
+    model_fit_object = ModelFitting(model=fit_model)
+    # start_time = time.time()
+    res = model_fit_object.run_model_fit_procedure(
+        free_params_init=free_params,
+        targets=comparison_targets,
+        drop_condition_from_loss=None,  # Drop 1200 50
+        metric_keys=model_metric_keys,
+        bnds=None,
+        xtol=1e-6,
+        ftol =1e-6,
+        method="Powell",
+        maxiter=5,
+        maxfev = 300,
+    )
+    specific_model_name = MODEL_TO_FIT + "_" + model_name
+    loss = model_fit_object.loss_store[-1]
+    input_row_dict = create_input_row_dict(fit_model, loss, specific_model_name,list(free_params.keys()))
+    input_parameters_for_df.append(input_row_dict)
+    results_dict   = create_results_row_dict(fit_model,loss,specific_model_name,list(free_params.keys()))
+    results_for_df.append(results_dict)
     if not WARM_START and STORE_BASE_MODEL:
         base_model_name = "base_" + model_name
         # base_model_fit_object = ModelFitting(model=optimal_model_no_switch)
         base_model_loss = get_base_model_loss(optimal_model_no_switch, model_metric_keys, comparison_targets)
-        
         base_input_row_dict = create_input_row_dict(optimal_model_no_switch, base_model_loss, base_model_name, [])
         base_input_parameters_for_df.append(base_input_row_dict)
         base_results_dict   = create_results_row_dict(optimal_model_no_switch,base_model_loss,base_model_name,[])
         base_results_for_df.append(base_results_dict)
         
-# df_inputs = pd.DataFrame(input_parameters_for_df)
-# df_results = pd.DataFrame(results_for_df)
+df_inputs = pd.DataFrame(input_parameters_for_df)
+df_results = pd.DataFrame(results_for_df)
 
 if SAVE:
     save_date = datetime.now()
@@ -285,11 +281,11 @@ if SAVE:
             with open(constants.MODELS_PATH / f"{n}_models" / f"{EXPERIMENT}_base_bootstrapped_results_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
                 dill.dump(df_base_results, f)
                 
-    # #* Save either warmstart or bootstrapped
-    # with open(constants.MODELS_PATH / f"{n}_models" / f"{EXPERIMENT}_{specific_name}{n}_inputs_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
-    #     dill.dump(df_inputs, f)
-    # with open(constants.MODELS_PATH / f"{n}_models" / f"{EXPERIMENT}_{specific_name}{n}_results_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
-    #     dill.dump(df_results, f)
+    #* Save either warmstart or bootstrapped
+    with open(constants.MODELS_PATH / f"{n}_models" / f"{EXPERIMENT}_{MODEL_TO_FIT}_{n}_inputs_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
+        dill.dump(df_inputs, f)
+    with open(constants.MODELS_PATH / f"{n}_models" / f"{EXPERIMENT}_{MODEL_TO_FIT}_{n}_results_{save_date:%Y_%m_%d_%H_%M_%S}.pkl", "wb") as f:
+        dill.dump(df_results, f)
     
         
 finish_time = time.time()
