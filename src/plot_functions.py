@@ -298,7 +298,7 @@ def multiple_models_boxplot(ax,data,model_data,labels,
         #                       one_color=pk.one_box_color,colors=pk.box_colors, 
         #                       include_means=pk.include_means)
         for i in range(len(pk.xlocs)):
-            dv.boxplot(ax,pk.xlocs[i],data[:,i],color = pk.box_colors[i],data_color=pk.box_colors[i], **pk.__dict__)
+            dv.boxplot(ax,pk.xlocs[i],data=data[:,i],color = pk.box_colors[i],data_color=pk.box_colors[i], **pk.__dict__)
         
         if pk.jitter:
             if pk.jitter_color is None:
@@ -366,11 +366,12 @@ def plot_stats(ax, statistics:list[dict], combos:list[str],
 def plot_boostrapped_model_results(ax, x, y, percentiles, color, horizontal_lw = 0.2, markersize=10):
     left = x - horizontal_lw/2
     right = x + horizontal_lw/2
-    top = percentiles[0]
-    bottom = percentiles[1]
-    ax.plot([x, x], [top, bottom], color=color)
-    ax.plot([left, right], [top, top], color=color)
-    ax.plot([left, right], [bottom, bottom], color=color)
+    if percentiles is not None:
+        top = percentiles[0]
+        bottom = percentiles[1]
+        ax.plot([x, x], [top, bottom], color=color)
+        ax.plot([left, right], [top, top], color=color)
+        ax.plot([left, right], [bottom, bottom], color=color)
     ax.plot(x, y, 'o', color=color, markersize=markersize)
     
 def plot_models(ax, xlocs, data, line_colors, linestyles, bw, 
