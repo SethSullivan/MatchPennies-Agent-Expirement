@@ -2,7 +2,7 @@ import numpy as np
 
 def ape_loss(pred: np.ndarray, targets: np.ndarray, ):
     '''
-    Absolute Percent Error
+    12/07/23 -   Absolute Percent Error
     
     '''
     if isinstance(pred, list):
@@ -20,7 +20,7 @@ def ape_loss(pred: np.ndarray, targets: np.ndarray, ):
     #         pred = np.delete(pred, drop_condition_num, 0)
     #         targets = np.delete(targets, drop_condition_num, 0)
         
-    abs_error     = (targets - pred)**2 / targets**2
+    abs_error     = np.abs((targets - pred) / targets)
     sum_abs_error = np.sum(abs_error)
     # ape_loss     = (sum_abs_error / targets.size) * 100
     return sum_abs_error
