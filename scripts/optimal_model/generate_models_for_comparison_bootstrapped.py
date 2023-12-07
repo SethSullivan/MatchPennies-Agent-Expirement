@@ -81,9 +81,9 @@ it = InitialThangs(EXPERIMENT)
 print("DID YOU SET THE RIGHT SETTINGS?")
 FIT_PARAMETERS = True
 SAVE = True
-MODEL_TO_FIT = "optimal" # OPTIONS: "optimal", "suboptimal_partial", "suboptimal_none"
+MODEL_TO_FIT = "suboptimal_all" # OPTIONS: "optimal", "suboptimal_partial", "suboptimal_none"
 WARM_START = True # If False, that means I'm bootstrapping with the warmstart initial condition 
-STORE_BASE_MODEL = True
+STORE_BASE_MODEL = False
 input_keys = ["rt","rt_sd","mt","mt_sd","timing_sd",]
 print(f" Fit Parameters: {FIT_PARAMETERS}\n Save: {SAVE}\n Model to Fit: {MODEL_TO_FIT}\n Warm Start: {WARM_START}\n Store Base Model: {STORE_BASE_MODEL}")
 print(f" Fitting: {MODEL_TO_FIT}")
@@ -116,13 +116,30 @@ if True:
 #* Run warm_start or boostrap using warmstart 
 if WARM_START:
     print("FINDING INITIAL CONDITIONS")
-    iters = 10000
-    #* Randomize for warmstart
-    player_inputs = dict(zip(input_keys,true_parameters)) #! This won't change unless we're boostrapping so can pull out of for loop for Warm_Start
-    switch_delay_expected_rand = np.random.uniform(0,200,size=iters)
-    switch_delay_true_rand = np.random.uniform(0,200,size=iters)
-    switch_sd_expected_rand = np.random.uniform(0,200,size=iters)
-    switch_sd_true_rand = np.random.uniform(0,200,size=iters)
+    if MODEL_TO_FIT != "suboptimal_all":
+        iters = 10000
+        #* Randomize for warmstart
+        player_inputs = dict(zip(input_keys,true_parameters)) #! This won't change unless we're boostrapping so can pull out of for loop for Warm_Start
+        switch_delay_expected_rand = np.random.uniform(0,200,size=iters)
+        switch_delay_true_rand = np.random.uniform(0,200,size=iters)
+        switch_sd_expected_rand = np.random.uniform(0,200,size=iters)
+        switch_sd_true_rand = np.random.uniform(0,200,size=iters)
+    else:
+        iters = 1000
+        #* Randomize for warmstart
+        player_inputs = dict(zip(input_keys,true_parameters)) #! This won't change unless we're boostrapping so can pull out of for loop for Warm_Start
+        switch_delay_true_rand = np.random.uniform(0,200,size=iters)
+        switch_delay_expected_rand = np.random.uniform(0,200,size=iters)
+        switch_sd_true_rand = np.random.uniform(0,250,size=iters)
+        switch_sd_expected_rand = np.random.uniform(0,250,size=iters)
+        reaction_time_expected_rand = np.random.uniform(0,player_inputs["rt"]*1.5,size=iters)
+        reaction_time_sd_expected_rand = np.random.uniform(0,player_inputs["rt_sd"]*1.5,size=iters)
+        movement_time_expected_rand = np.random.uniform(0,player_inputs["mt"]*1.5,size=iters)
+        movement_time_sd_expected_rand = np.random.uniform(0,player_inputs["mt_sd"]*1.5,size=iters)
+        timing_sd_expected_rand = np.random.uniform(0,player_inputs["timing_sd"]*1.5,size=iters)
+        eletromechanical_delay_expected_rand = np.random.uniform(0,50*1.5,size=iters)
+        eletromechanical_sd_expected_rand = np.random.uniform(0,10*1.5,size=iters)
+        
     # timing_sd_expected_rand = np.random.uniform(0,np.max(player_inputs['timing_sd']),size=iters)
 else:
     print("BOOTSTRAPPING MODEL FITS USING WARMSTART")
@@ -143,15 +160,31 @@ input_parameters_for_df = []
 results_for_df = []
 print("Starting Models...")
 for i in tqdm(range(iters)):
-    if WARM_START:        
-        # Optimal/Suboptimal handles the initial guess to free params mapping
-        initial_guess = {
-            "guess_switch_delay_true": switch_delay_true_rand[i],
-            "guess_switch_delay_expected": switch_delay_expected_rand[i],
-            "guess_switch_sd_true": switch_sd_true_rand[i],
-            "guess_switch_sd_expected": switch_sd_expected_rand[i],
-            # "timing_sd_expected": timing_sd_expected_rand[i]
+    if WARM_START:
+        if MODEL_TO_FIT != "suboptimal_all":        
+            # Optimal/Suboptimal handles the initial guess to free params mapping
+            initial_guess = {
+                "guess_switch_delay_true": switch_delay_true_rand[i],
+                "guess_switch_delay_expected": switch_delay_expected_rand[i],
+                "guess_switch_sd_true": switch_sd_true_rand[i],
+                "guess_switch_sd_expected": switch_sd_expected_rand[i],
+                # "timing_sd_expected": timing_sd_expected_rand[i]
+            }
+        else:
+            initial_guess = {
+                "guess_switch_delay_true": switch_delay_true_rand[i],
+                "guess_switch_delay_expected": switch_delay_expected_rand[i],
+                "guess_switch_sd_true": switch_sd_true_rand[i],
+                "guess_switch_sd_expected": switch_sd_expected_rand[i],
+                "timing_sd_expected": timing_sd_expected_rand[i],
+                "reaction_time_expected":reaction_time_expected_rand[i],
+                "reaction_sd_expected":reaction_time_sd_expected_rand[i],
+                "movement_time_expected":movement_time_expected_rand[i],
+                "movement_sd_expected":movement_time_sd_expected_rand[i],
+                "electromechanical_delay_expected":eletromechanical_delay_expected_rand[i],
+                "electromechanical_sd_expected":eletromechanical_sd_expected_rand[i],
         }
+            
     else: 
         # Player inputs are bootstrapped
         player_inputs = dict(zip(input_keys,parameter_distribution[i,:]))
@@ -208,6 +241,24 @@ for i in tqdm(range(iters)):
         free_params = {
             "guess_switch_delay_true": initial_guess['guess_switch_delay_true'],
             "guess_switch_sd_true": initial_guess['guess_switch_sd_true'],
+        }
+    elif MODEL_TO_FIT == "suboptimal_all":
+        # Switch delay and sd are automatically set to zero in the run_model function 
+        fit_model = mhf.run_model(player_inputs,
+                                  expected=True,use_agent_behavior_lookup=False,
+                                  round_num=20,)
+        free_params = {
+            "guess_switch_delay_true": initial_guess['guess_switch_delay_true'],
+            "guess_switch_delay_expected": initial_guess['guess_switch_delay_expected'],
+            "guess_switch_sd_true": initial_guess['guess_switch_sd_true'],
+            "guess_switch_sd_expected": initial_guess['guess_switch_sd_expected'],
+            "timing_sd_expected": initial_guess['timing_sd_expected'],
+            "reaction_time_expected":initial_guess["reaction_time_expected"],
+            "reaction_sd_expected":initial_guess["reaction_sd_expected"],
+            "movement_time_expected":initial_guess["movement_time_expected"],
+            "movement_sd_expected":initial_guess["movement_sd_expected"],
+            "electromechanical_delay_expected":initial_guess["electromechanical_delay_expected"],
+            "electromechanical_sd_expected":initial_guess["electromechanical_sd_expected"],
         }
         
     assert fit_model.inputs.round_num == 20
