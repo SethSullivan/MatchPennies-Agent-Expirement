@@ -14,8 +14,8 @@ wheel = dv.ColorWheel()
 
 
 # * Create dataframe function
-def generate_dataframe(group, EXPERIMENT="Exp1", DROP_SUBJECT_NUM=13):
-    def perc(metric, num_trials=80):
+def generate_dataframe(group, EXPERIMENT="Exp1", DROP_SUBJECT_NUM=13, num_trials=80):
+    def perc(metric,):
         return (metric / num_trials) * 100
 
     it = InitialThangs(EXPERIMENT)
@@ -307,12 +307,16 @@ class Bootstrap:
         combos = get_combos(condition_nums, self.inputs.experiment)
         alternative_dict = _get_alternative_dict(combos)
         used_combos = alternative_dict.keys()
+        if self.collapse:
+            final_combos = combos
+        else:
+            final_combos = used_combos
         # if self.experiment == 'Exp1':
         pvals = {}
         cles1 = {}
         cles2 = {}
         c = -1
-        for combo in used_combos:
+        for combo in final_combos:
             c += 1
             i = int(combo[0])
             j = int(combo[1])
