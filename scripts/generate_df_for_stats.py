@@ -2,12 +2,13 @@ import numpy as np
 import pandas as pd
 import dill
 from pathlib import Path
+from scipy.stats import iqr
 from initializer import InitialThangs
 import read_data_functions as rdf
 
 
 
-def generate_dataframe(group, EXPERIMENT="Exp1", DROP_SUBJECT_NUM=13, num_trials=80):
+def generate_exp1_stats_dataframe(group, EXPERIMENT="Exp1", DROP_SUBJECT_NUM=None, num_trials=80):
     def perc(metric,):
         return (metric / num_trials) * 100
 
@@ -90,7 +91,45 @@ def generate_dataframe(group, EXPERIMENT="Exp1", DROP_SUBJECT_NUM=13, num_trials
     print(f"!! DROPPING SUBJECT {DROP_SUBJECT_NUM} !! ")
     return df
 
+def generate_exp2_stats_dataframe(group2):
+    it2 = InitialThangs("Exp2")
+
+    react_mixed_median  = np.nanmedian(group2.movement_metrics.exp2_react_guess_reaction_time_split('react','mixed'),axis=1)
+    react_only_median   = np.nanmedian(group2.movement_metrics.exp2_react_guess_reaction_time_split('react','only'),axis=1)
+    guess_mixed_median = np.nanmedian(group2.movement_metrics.exp2_react_guess_reaction_time_split('guess','mixed'),axis=1)
+    guess_only_median  = np.nanmedian(group2.movement_metrics.exp2_react_guess_reaction_time_split('guess','only'),axis=1)
+    reaction_time_median = np.vstack((react_mixed_median,guess_mixed_median,react_only_median,guess_only_median)).T.flatten()
+
+    react_mixed_sd  = np.nanstd(group2.movement_metrics.exp2_react_guess_reaction_time_split('react','mixed'),axis=1)
+    react_only_sd   = np.nanstd(group2.movement_metrics.exp2_react_guess_reaction_time_split('react','only'),axis=1)
+    guess_mixed_sd = np.nanstd(group2.movement_metrics.exp2_react_guess_reaction_time_split('guess','mixed'),axis=1)
+    guess_only_sd  = np.nanstd(group2.movement_metrics.exp2_react_guess_reaction_time_split('guess','only'),axis=1)
+    reaction_time_sd    = np.vstack((react_mixed_sd,guess_mixed_sd,react_only_sd,guess_only_sd)).T.flatten()
+
+    react_mixed_iqr  = iqr(group2.movement_metrics.exp2_react_guess_reaction_time_split('react','mixed'),axis=1,nan_policy='omit')
+    react_only_iqr   = iqr(group2.movement_metrics.exp2_react_guess_reaction_time_split('react','only'),axis=1,nan_policy='omit')
+    guess_mixed_iqr = iqr(group2.movement_metrics.exp2_react_guess_reaction_time_split('guess','mixed'),axis=1,nan_policy='omit')
+    guess_only_iqr  = iqr(group2.movement_metrics.exp2_react_guess_reaction_time_split('guess','only'),axis=1,nan_policy='omit')
+    reaction_time_iqr    = np.vstack((react_mixed_iqr,guess_mixed_iqr,react_only_iqr,guess_only_iqr)).T.flatten()
+
+    subject_number = np.repeat(np.arange(1, it2.num_subjects + 1, 1, dtype=int), 4)
+    condition = np.tile(np.arange(1, 4 + 1, 1, dtype=int), it2.num_subjects)    
+    factor1 = np.tile(["React","Guess"], it2.num_subjects*2)
+    factor2 = np.tile(["Mixed", "Mixed","Only","Only"], it2.num_subjects)
+
+    df_metrics = pd.DataFrame(np.array([reaction_time_median,reaction_time_sd, reaction_time_iqr]).T,
+                            columns=["Reaction_Time_Median","Reaction_Time_SD","Reaction_Time_IQR"])
+    df_conditions = pd.DataFrame(np.array([subject_number, condition, factor1, factor2]).T, 
+                                columns=["Subject", "Condition", "Factor_1", "Factor_2"])
+
+    df2 = pd.concat([df_conditions, df_metrics], axis=1)
+    return df2
+    
+
 def generate_exp2_reaction_dataframe(group):
+    '''
+    THIS creates the raw data df, not the summary (like medians, sd, iqr)
+    '''
     it = InitialThangs("Exp2")
     num_conditions = 3
     num_trials = 100
@@ -109,9 +148,12 @@ def generate_exp2_reaction_dataframe(group):
                     
     })
     results_path = Path(r'D:\OneDrive - University of Delaware - o365\Desktop\MatchPennies-Agent-Expirement\results\participant_data')
-    with open(results_path/ "Exp2_reaction_time_df.pkl", "wb") as f:
-        dill.dump(df,f)
+    with open(results_path / "Exp2_reaction_time_df.pkl", "wb") as f:
+        dill.dump(df,f)        
+    
     return df
+
+
 
 SAVE_PATH = Path(r"D:\OneDrive - University of Delaware - o365\Desktop\MatchPennies-Agent-Expirement\results\participant_data")
 EXPERIMENT = "Exp1"
@@ -128,8 +170,11 @@ else:
     if group2.exp_info.experiment != "Exp2":  # This means i changed experiment and need to run again
         group2 = rdf.generate_subject_object_v3("Exp2", "All Trials")
 
-df1 = generate_dataframe(group, EXPERIMENT, DROP_SUBJECT_NUM=None)
-df2 = generate_exp2_reaction_dataframe(group2)
+df1 = generate_exp1_stats_dataframe(group, EXPERIMENT, DROP_SUBJECT_NUM=None)
+df2 = generate_exp2_stats_dataframe(group2)
+
+# Create raw dataframe if I want to use later for side analyses
+generate_exp2_reaction_dataframe(group2)
 with open(SAVE_PATH / f"{EXPERIMENT}_stats_df.pkl", "wb") as f:
     dill.dump(df1,f)
 with open(SAVE_PATH / f"Exp2_stats_df.pkl", "wb") as f:
