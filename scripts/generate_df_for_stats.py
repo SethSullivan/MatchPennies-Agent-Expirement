@@ -162,13 +162,13 @@ if "group" not in locals():
     group = rdf.generate_subject_object_v3(EXPERIMENT, "All Trials", movement_metric_type='velocity')
 else:
     if group.exp_info.experiment != EXPERIMENT:  # This means i changed experiment and need to run again
-        group = rdf.generate_subject_object_v3(EXPERIMENT, "All Trials")
+        group = rdf.generate_subject_object_v3(EXPERIMENT, "All Trials", movement_metric_type='velocity')
 
 if "group2" not in locals():
     group2 = rdf.generate_subject_object_v3("Exp2", "All Trials", movement_metric_type='velocity')
 else:
     if group2.exp_info.experiment != "Exp2":  # This means i changed experiment and need to run again
-        group2 = rdf.generate_subject_object_v3("Exp2", "All Trials")
+        group2 = rdf.generate_subject_object_v3("Exp2", "All Trials", movement_metric_type='velocity')
 
 df1 = generate_exp1_stats_dataframe(group, EXPERIMENT, DROP_SUBJECT_NUM=None)
 df2 = generate_exp2_stats_dataframe(group2)
