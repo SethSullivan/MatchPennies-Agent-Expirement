@@ -33,7 +33,7 @@ it = InitialThangs(EXPERIMENT)
 
 # * Get group data
 if "group" not in locals():
-    group = rdf.generate_subject_object_v3(EXPERIMENT, "All Trials")
+    group = rdf.generate_subject_object_v3(EXPERIMENT, "All Trials", movement_metric_type="velocity")
 
 #* Get raw input data
     
