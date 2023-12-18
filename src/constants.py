@@ -17,8 +17,9 @@ xticklabel_colors_means = [wheel.rak_blue, wheel.rak_red, wheel.rak_orange,
 xticklabel_colors_sd = [wheel.rak_blue, wheel.dark_blue_hc, 
                         wheel.rak_red, wheel.lighten_color(wheel.rak_red,1.5),
                         wheel.rak_orange,wheel.burnt_orange,]
-xticklabels = ["(1000, 50)", "(1100, 50)", "(1200, 50)", "(1000, 150)", "(1100, 150)", "(1200, 150)"]
-
+# xticklabels = ["(1000, 50)", "(1100, 50)", "(1200, 50)", "(1000, 150)", "(1100, 150)", "(1200, 150)"]
+xticklabels = ["Early\nLow", "Middle\nLow", "Late\nLow",
+               "Early\nHigh", "Middle\nHigh", "Late\nHigh"]
 MODELS_PATH = find_parent(Path.cwd(),"MatchPennies-Agent-Expirement") / "results" / "models"
 MODEL_INPUT_PATH = find_parent(Path.cwd(),"MatchPennies-Agent-Expirement") / "results" / "model_inputs"
 
