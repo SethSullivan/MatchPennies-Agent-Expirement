@@ -19,7 +19,7 @@ class NewFigure:
                                                 sharey=sharey,
                                                 gridspec_kw={'wspace':wspace,"hspace":hspace}
                                                 )
-        
+        self.num_axes = len(self.axes.values())
         self.figw,self.figh = self.fig.get_size_inches()
         # Create axmain box for visualization of the bounds and coordinates
         self.axmain  = self.fig.add_axes((0,0,1,1))
@@ -31,6 +31,15 @@ class NewFigure:
         self.axmain.set_ylim(0,figsize[1])
         
         self.letters = []
+        
+    def fig_data_to_axis_transform(self,ax):
+        '''
+        Transformation for figure data coordinates (aka axmain) to ax coordinates desired
+        '''
+        return self.axmain.transData + ax.transAxes.inverted()
+    
+    def axis_to_fig_data_transform(self,ax):
+        return ax.transAxes + self.axmain.transData.inverted()
                 
     def pad_fig(self, w_pad, h_pad, w_space, h_space):
         self.fig.get_layout_engine().set(w_pad=w_pad/self.figw, 
@@ -77,34 +86,46 @@ class NewFigure:
         self.fig.set_layout_engine('none')
         ax.set_position((x/self.figw, y/self.figh, (w+dw)/self.figw, (h+dh)/self.figh))
 
-    def add_all_letters_old(self, xy = (0,1), ax=None, fontsize=12,
-                        va="top",ha='center',fontfamily="sans-serif",fontweight="bold"):
-        for i,(label, ax) in enumerate(self.axes.items()):
-            # label physical distance to the left and up:
-            letter = ascii_uppercase[i]
-            # trans = mtransforms.ScaledTranslation(-20/72, 7/72, self.fig.dpi_scale_trans)
-            ax.text(xy[0], xy[1], letter, transform=ax.transAxes,
-                    fontsize=fontsize, va=va,ha=ha, fontfamily=fontfamily, 
-                    fontweight=fontweight)
+    # def add_all_letters_v2(self, xy = (0,1), ax=None, fontsize=12,
+    #                     va="top",ha='left',fontfamily="sans-serif",fontweight="bold",
+    #                     verticalshift=0, horizontalshift=0):
+    #     if not isinstance(verticalshift, list):
+    #         verticalshift = np.array([verticalshift]*self.num_axes)
+    #     if not isinstance(horizontalshift, list):
+    #         horizontalshift = np.array([horizontalshift]*self.num_axes)
             
-    def add_all_letters(self, xy = (0,1), ax=None, fontsize=12,
-                        va="top",ha='left',fontfamily="sans-serif",fontweight="bold"):
-        # for i,(label, ax) in enumerate(self.axes.items()):
-        #     ax_bbox = ax.get_tightbbox().transformed(self.axmain.transData.inverted())
-        #     # label physical distance to the left and up:
-        #     letter = ascii_uppercase[i]
-        #     # trans = mtransforms.ScaledTranslation(-20/72, 7/72, self.fig.dpi_scale_trans)
-        #     self.axmain.text(ax_bbox.x0, ax_bbox.y1, letter,
-        #             fontsize=fontsize, va=va,ha=ha, fontfamily=fontfamily, 
-        #             fontweight=fontweight)
+    #     for i,(label, ax) in enumerate(self.axes.items()):
+    #         # label physical distance in and down:
+    #         ax.get_tightbbox()
+    #         letter = ascii_uppercase[i]
+    #         trans = self.fig_data_to_axis_transform(ax)
+    #         ax.text(-0.15 + horizontalshift[i], 1.1 + verticalshift[i], letter, transform=ax.transAxes,
+    #                 fontsize=fontsize, verticalalignment=va, ha=ha,
+    #                 fontfamily=fontfamily, fontweight="bold",
+    #         )
+            
+    def add_all_letters(self, xy = (0,1), fontsize=12,
+                        va="top",ha='left',fontfamily="sans-serif",fontweight="bold",
+                        verticalshift=0, horizontalshift=0):
+        default_start = (-0,1.0)
+        if not isinstance(verticalshift, list):
+            verticalshift = np.array([verticalshift]*self.num_axes)
+        if not isinstance(horizontalshift, list):
+            horizontalshift = np.array([horizontalshift]*self.num_axes)
+        
+        shift = np.vstack((horizontalshift, verticalshift))
+        
         for i,(label, ax) in enumerate(self.axes.items()):
+            transfig_loc = self.axis_to_fig_data_transform(ax).transform(default_start) + shift[:,i]
+            transax_loc = self.fig_data_to_axis_transform(ax).transform(transfig_loc)
             # label physical distance in and down:
             letter = ascii_uppercase[i]
-            trans = mtransforms.ScaledTranslation(-30/72, 16/72, self.fig.dpi_scale_trans)
-            ax.text(0.0, 1.0, letter, transform=ax.transAxes + trans,
-                    fontsize=fontsize, verticalalignment='top',ha='right',
+            trans = self.fig_data_to_axis_transform(ax)
+            ax.text(transax_loc[0], transax_loc[1], letter, transform=ax.transAxes,
+                    fontsize=fontsize, verticalalignment=va, ha=ha,
                     fontfamily=fontfamily, fontweight="bold",
-            )               
+            )
+                   
             
     def add_letter(self, ax, x, y, letter = None, fontsize = 12, 
                    ha = "left", va = "top", color = "black", zorder = 20):
@@ -114,15 +135,16 @@ class NewFigure:
             letter_to_add = letter
         
         self.letters.append(letter_to_add)
-        self.axmain.text(x, y, letter_to_add, ha = ha, va = va, fontweight = "bold", color = color, fontsize = fontsize, zorder = zorder)
+        self.axmain.text(x, y, letter_to_add, ha = ha, va = va, 
+                         fontweight = "bold", color = color, fontsize = fontsize, zorder = zorder)
     
     def remove_figure_borders(self):
         # for spine in ['top','right','bottom','left']:
         self.axmain.axis("off")
         
-    def savefig(self,path,dpi=300):
+    def savefig(self,path,dpi=300, transparent = True):
         self.remove_figure_borders()
-        self.fig.savefig(path,dpi=dpi)
+        self.fig.savefig(path,dpi=dpi,transparent=transparent)
 
 class PlottingKwargs:
     def __init__(self,**kwargs):
