@@ -6,6 +6,7 @@
 \usepackage{fontspec} %XeLatex
 \usepackage{soul,xcolor}
 \usepackage{graphicx,wrapfig}
+\usepackage{float}
 \graphicspath{ {./figures/} }
 % \usepackage[backend=biber]{biblatex}
 \usepackage[paper=letterpaper,
@@ -22,16 +23,34 @@
     ItalicFont = AvenirLTProBookOblique.otf,
     BoldItalicFont = AvenirLTProHeavyOblique.otf
 ]
+\newcommand{\SethCaption}[2]{\noindent\textbf{\textcolor{black}{#1}} {#2}}
+\newcommand{\SectionHeader}[1]{\noindent\textbf{\Large{\textcolor{black}{#1}}}\normalsize }
+\newcommand{\SubSectionHeader}[1]{\noindent\Large{\textcolor{black}{#1}}\normalsize }
+
+
 % \definecolor{myudblue}{RGB}{0, 83, 159}
 \begin{document}
-HELLOOOOOOOOO
+\SectionHeader{Main Figures}
 
-aw;lesfajfp 8uyf
-
-\begin{figure}
+\begin{figure}[H]
     \centering
-    \includegraphics{test.png}
+    \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{figures/exp1_experimental_design.png}
+    
+    \SethCaption{Figure 1.}{Experimental Design}
 \end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[scale =1]{figures/exp1_movement_onset_panel.png}
+    
+    \SethCaption{Figure 2.}{Data}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[scale = 1]{figures/exp1_score_metrics_panel.png}
+    
+    \SethCaption{Figure 3.}{Data}
+\end{figure}
+
 
 
 \end{document}
