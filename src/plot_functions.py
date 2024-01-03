@@ -9,7 +9,7 @@ from string import ascii_uppercase
 
 class NewFigure:
     def __init__(self, mosaic, figsize = (6.5,4), dpi=150, layout="constrained", sharex=False,sharey=False,
-                 hspace = None, wspace = None):
+                 hspace = None, wspace = None, height_ratios=None, width_ratios=None):
         
         self.fig, self.axes = plt.subplot_mosaic(mosaic, 
                                                  dpi=dpi,
@@ -17,7 +17,9 @@ class NewFigure:
                                                 figsize=figsize,
                                                 sharex=sharex,
                                                 sharey=sharey,
-                                                gridspec_kw={'wspace':wspace,"hspace":hspace}
+                                                gridspec_kw={'wspace':wspace,"hspace":hspace},
+                                                height_ratios=height_ratios,
+                                                width_ratios=width_ratios,
                                                 )
         self.num_axes = len(self.axes.values())
         self.figw,self.figh = self.fig.get_size_inches()
@@ -135,8 +137,8 @@ class NewFigure:
             letter_to_add = letter
         
         self.letters.append(letter_to_add)
-        self.axmain.text(x, y, letter_to_add, ha = ha, va = va, 
-                         fontweight = "bold", color = color, fontsize = fontsize, zorder = zorder)
+        ax.text(x, y, letter_to_add, ha = ha, va = va, transform=ax.transAxes,
+                fontweight = "bold", color = color, fontsize = fontsize, zorder = zorder)
     
     def remove_figure_borders(self):
         # for spine in ['top','right','bottom','left']:
@@ -482,8 +484,11 @@ def plot_stats_v2(ax, pvals:list[dict],cles, combos:list[str],
             kwargs.update({'cles':cles.iloc[0][combos[i]]})
         else:
             kwargs.update({'cles':None})
+        pval = pvals.iloc[0][combos[i]]
+        if pval>1.0:
+            pval = 1.0
         dv.stat_annotation(ax,xlocs[i][0],xlocs[i][1],y=ypos[i],
-                           p_val= pvals.iloc[0][combos[i]], **kwargs)
+                           p_val= pval, **kwargs)
 
 def plot_stats(ax, statistics:list[dict], combos:list[str], 
                ypos:list[int], xpositions:list[list[float,float]], 
