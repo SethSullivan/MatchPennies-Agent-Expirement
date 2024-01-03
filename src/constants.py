@@ -18,8 +18,18 @@ xticklabel_colors_sd = [wheel.rak_blue, wheel.dark_blue_hc,
                         wheel.rak_red, wheel.lighten_color(wheel.rak_red,1.5),
                         wheel.rak_orange,wheel.burnt_orange,]
 # xticklabels = ["(1000, 50)", "(1100, 50)", "(1200, 50)", "(1000, 150)", "(1100, 150)", "(1200, 150)"]
-xticklabels = ["Early\nLow", "Middle\nLow", "Late\nLow",
-               "Early\nHigh", "Middle\nHigh", "Late\nHigh"]
+# xticklabels = [r"Early $\mathbf{\mu}$"+"\n"+r"Low $\mathbf{\sigma}$", 
+#                r"Middle $\mathbf{\mu}$"+"\n"+r"Low $\mathbf{\sigma}$", 
+#                r"Late $\mathbf{\mu}$"+"\n"+r"Low $\mathbf{\sigma}$",
+#                r"Early $\mathbf{\mu}$"+"\n"+r"High $\mathbf{\sigma}$", 
+#                r"Middle $\mathbf{\mu}$"+"\n"+r"High $\mathbf{\sigma}$", 
+#                r"Late $\mathbf{\mu}$"+"\n"+r"High $\mathbf{\sigma}$"]
+xticklabels = [r"Early Mean"+"\n"+r"Low Variance", 
+               r"Middle Mean"+"\n"+r"Low Variance", 
+               r"Late Mean"+"\n"+r"Low Variance",
+               r"Early Mean"+"\n"+r"High Variance", 
+               r"Middle Mean"+"\n"+r"High Variance", 
+               r"Late Mean"+"\n"+r"High Variance"]
 MODELS_PATH = find_parent(Path.cwd(),"MatchPennies-Agent-Expirement") / "results" / "models"
 MODEL_INPUT_PATH = find_parent(Path.cwd(),"MatchPennies-Agent-Expirement") / "results" / "model_inputs"
 
