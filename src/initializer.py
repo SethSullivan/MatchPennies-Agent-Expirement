@@ -14,7 +14,8 @@ class InitialThangs:
             self.tp7_title = r'(1200,50)'
             self.tp8_title = r'(1200,150)'
             self.trial_block_titles = [self.tp3_title, self.tp4_title, self.tp5_title,self.tp6_title, self.tp7_title, self.tp8_title]
-            self.xlabel = r'Agent $\it{N}\mathbf{(\mu,\sigma)}$ Movement Onset Time (ms)'
+            # self.xlabel = r'Agent $\it{N}\mathbf{(\mu,\sigma)}$ Movement Onset Time (ms)'
+            self.xlabel = r'Agent Movement Onset Time'
             self.num_subjects = 20
             self.num_blocks = len(self.trial_block_titles)
             self.num_trials = 80
