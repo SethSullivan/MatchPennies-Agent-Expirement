@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 import dill
 import model_helper_functions as mhf
+import tqdm as tqdm
+from Optimal_Stopping_Object import ModelConstructor
 
 '''
 This script is for adding on any metrics I need from the fit models
@@ -37,6 +39,35 @@ def create_results_row_dict(model,loss,model_name,free_param_keys):
     }
     return results_row
 
+def rerun_models_save_output(model_df, old_model_results):
+    new_rows = []
+    for index,row in tqdm(model_df.iterrows()):
+        model  = ModelConstructor(
+            experiment=row.experiment,
+            num_blocks=row.num_blocks,
+            num_timesteps=row.num_timesteps,
+            agent_means=row.agent_means,
+            agent_sds=row.agent_sds,
+            reaction_time=row.reaction_time,
+            movement_time=row.movement_time,
+            reaction_sd=row.reaction_sd, 
+            movement_sd=row.movement_sd,
+            timing_sd=row.timing_sd,
+            guess_switch_delay=row.guess_switch_delay, 
+            guess_switch_sd=row.guess_switch_sd, 
+            electromechanical_delay=row.electromechanical_delay,
+            expected=row.expected,
+            win_reward=row.win_reward,
+            incorrect_cost=row.incorrect_cost,
+            indecision_cost=row.indecision_cost,
+            round_num = 20,
+            use_agent_behavior_lookup=False,
+        )
+        model_name = row.Model
+        old_results_row = old_model_results.query("Model == @model_name")
+        new_rows.append(create_results_row_dict(model, old_results_row.iloc[0]['Loss'], old_results_row.iloc[0]["Model"], old_results_row.iloc[0]["fit_parameters"]))
+    return new_rows
+
 EXPERIMENT = "Exp1"
 path = constants.MODELS_PATH / f"bootstrapped_models"
 model_names = ["Base","Optimal","Suboptimal_All"]
@@ -44,19 +75,16 @@ model_results = []
 model_inputs = []
 for model in model_names:
     # Load models
-    model_results = pd.DataFrame()
     inputs_path = list(path.glob(f"{EXPERIMENT}_{model.lower()}_bootstrapped_inputs*"))[-1]
-    model_df = pd.read_pickle(path / inputs_path)
-    models_dict = mhf.run_models_from_df(model_df.iloc[:10])
-
-    
-    
-    
-# #* Run through each model using model_inputs
-# model_object_dicts = []
-# for i,model_df in enumerate(model_inputs):
-#     for model_name, model in models_dict.keys():
-        
-#     break
+    print(inputs_path)
+    old_model_inputs = pd.read_pickle(path / inputs_path)
+    results_path = list(path.glob(f"{EXPERIMENT}_{model.lower()}_bootstrapped_results*"))[-1]
+    old_model_results = pd.read_pickle(path / results_path)
+    new_rows = []
+    new_rows = mhf.rerun_models_save_output(old_model_inputs, old_model_results)
+    new_model_results = pd.DataFrame(new_rows)
+    with open(results_path.as_posix()[:-4] + "_new.pkl", "wb") as f:
+        dill.dump(new_model_results, f)
+    print("model done")
 
         

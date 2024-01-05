@@ -3,6 +3,7 @@ from Optimal_Stopping_Object import ModelConstructor
 import constants
 import dill
 import numpy as np
+from tqdm import tqdm
 
 from initializer import InitialThangs
 it = InitialThangs(experiment="Exp1")
@@ -24,7 +25,7 @@ def run_models_from_df(df,EXPERIMENT="Exp1",num_timesteps=1800,expected=True,
         and values being the model itself
     """
     models = {}
-    for index,row in df.iterrows():
+    for index,row in tqdm(df.iterrows()):
         model  = ModelConstructor(
             experiment=EXPERIMENT,
             num_blocks=row.num_blocks,
@@ -49,6 +50,30 @@ def run_models_from_df(df,EXPERIMENT="Exp1",num_timesteps=1800,expected=True,
         models.update({row.Model:model})
     return models
 
+def create_results_row_dict(model,loss,model_name,free_param_keys):
+    get_metric = model.results.get_metric
+    model_data = [
+        model.results.optimal_decision_time,
+        get_metric(model.player_behavior.wtd_reach_time,metric_type='true',decision_type='optimal'),
+        get_metric(model.player_behavior.wtd_reach_time_sd,metric_type='true',decision_type='optimal'),
+        get_metric(model.player_behavior.wtd_leave_time,metric_type='true',decision_type='optimal'),
+        get_metric(model.player_behavior.wtd_leave_time_sd,metric_type='true',decision_type='optimal'),
+        get_metric(model.score_metrics.prob_indecision,metric_type='true',decision_type='optimal')*100,
+        get_metric(model.score_metrics.prob_win,metric_type='true',decision_type='optimal')*100,
+        get_metric(model.score_metrics.prob_incorrect,metric_type='true',decision_type='optimal')*100,
+    ]
+    results_row = {
+        "Model":model_name,"Loss":loss,"fit_parameters":free_param_keys,
+        "decision_times":model_data[0],
+        "target_reach_times":model_data[1],
+        "target_reach_times_sd":model_data[2],
+        "median_movement_onset_time":model_data[3],
+        "sd_movement_onset_time":model_data[4],
+        "indecisions":model_data[5],
+        "wins":model_data[6],
+        "incorrects":model_data[7],
+    }
+    return results_row
 
 
 
