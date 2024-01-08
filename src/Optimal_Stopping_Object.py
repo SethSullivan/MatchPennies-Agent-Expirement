@@ -17,7 +17,6 @@ import multiprocessing as mp
 import loss_functions as lf
 import constants
 import dill
-import nlopt
 wheel = dv.ColorWheel()
 """
 Functions and Classes to generate and fit the optimal model
