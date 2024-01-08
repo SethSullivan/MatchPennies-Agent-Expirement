@@ -140,6 +140,13 @@ class NewFigure:
         ax.text(x, y, letter_to_add, ha = ha, va = va, transform=ax.transAxes,
                 fontweight = "bold", color = color, fontsize = fontsize, zorder = zorder)
     
+    @property
+    def alphabetic_axes(self) -> list:
+        sorted_keys = sorted(self.axes)
+        return {k:self.axes[k] for k in sorted_keys}
+        
+        
+        
     def remove_figure_borders(self):
         # for spine in ['top','right','bottom','left']:
         self.axmain.axis("off")
