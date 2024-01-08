@@ -30,6 +30,12 @@ xticklabels = [r"Early Mean"+"\n"+r"Low Variance",
                r"Early Mean"+"\n"+r"High Variance", 
                r"Middle Mean"+"\n"+r"High Variance", 
                r"Late Mean"+"\n"+r"High Variance"]
+xticklabels_sd = [r"Early Mean"+"\n"+r"Low Variance", 
+               r"Early Mean"+"\n"+r"High Variance", 
+               r"Middle Mean"+"\n"+r"Low Variance",
+               r"Middle Mean"+"\n"+r"High Variance", 
+               r"Late Mean"+"\n"+r"Low Variance", 
+               r"Late Mean"+"\n"+r"High Variance"]
 MODELS_PATH = find_parent(Path.cwd(),"MatchPennies-Agent-Expirement") / "results" / "models"
 MODEL_INPUT_PATH = find_parent(Path.cwd(),"MatchPennies-Agent-Expirement") / "results" / "model_inputs"
 
