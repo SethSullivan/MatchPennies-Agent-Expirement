@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import dill
 import model_helper_functions as mhf
-import tqdm as tqdm
+from tqdm import tqdm
 from Optimal_Stopping_Object import ModelConstructor
 
 '''
@@ -20,23 +20,35 @@ def create_results_row_dict(model,loss,model_name,free_param_keys):
         model.results.optimal_decision_time,
         get_metric(model.player_behavior.wtd_reach_time,metric_type='true',decision_type='optimal'),
         get_metric(model.player_behavior.wtd_reach_time_sd,metric_type='true',decision_type='optimal'),
+        get_metric(model.player_behavior.guess_reach_time,metric_type='true',decision_type='optimal'),
+        model.player_behavior.guess_reach_time_sd.squeeze(),
+        get_metric(model.player_behavior.reaction_reach_time,metric_type='true',decision_type='optimal'),
+        get_metric(model.player_behavior.reaction_reach_time_sd,metric_type='true',decision_type='optimal'),
+        get_metric(model.player_behavior.prob_selecting_guess,metric_type='true',decision_type='optimal'),
+        get_metric(model.player_behavior.prob_selecting_reaction,metric_type='true',decision_type='optimal'),
         get_metric(model.player_behavior.wtd_leave_time,metric_type='true',decision_type='optimal'),
         get_metric(model.player_behavior.wtd_leave_time_sd,metric_type='true',decision_type='optimal'),
         get_metric(model.score_metrics.prob_indecision,metric_type='true',decision_type='optimal')*100,
         get_metric(model.score_metrics.prob_win,metric_type='true',decision_type='optimal')*100,
         get_metric(model.score_metrics.prob_incorrect,metric_type='true',decision_type='optimal')*100,
     ]
-    results_row = {
-        "Model":model_name,"Loss":loss,"fit_parameters":free_param_keys,
-        "decision_times":model_data[0],
-        "target_reach_times":model_data[1],
-        "target_reach_times_sd":model_data[2],
-        "median_movement_onset_time":model_data[3],
-        "sd_movement_onset_time":model_data[4],
-        "indecisions":model_data[5],
-        "wins":model_data[6],
-        "incorrects":model_data[7],
-    }
+    results_keys = [
+        "decision_times",
+        "target_reach_times",
+        "target_reach_times_sd",
+        "target_reach_times_guess",
+        "target_reach_times_guess_sd",
+        "target_reach_times_react",
+        "target_reach_times_react_sd",
+        "prob_selecting_guess",
+        "prob_selecting_reaction",
+        "median_movement_onset_time",
+        "sd_movement_onset_time",
+        "indecisions",
+        "wins",
+        "incorrects",
+        ]
+    results_row = {"Model":model_name,"Loss":loss,"fit_parameters":free_param_keys} | dict(zip(results_keys, model_data))
     return results_row
 
 def rerun_models_save_output(model_df, old_model_results):
@@ -81,7 +93,7 @@ for model in model_names:
     results_path = list(path.glob(f"{EXPERIMENT}_{model.lower()}_bootstrapped_results*"))[-1]
     old_model_results = pd.read_pickle(path / results_path)
     new_rows = []
-    new_rows = mhf.rerun_models_save_output(old_model_inputs, old_model_results)
+    new_rows = rerun_models_save_output(old_model_inputs, old_model_results)
     new_model_results = pd.DataFrame(new_rows)
     with open(results_path.as_posix()[:-4] + "_new.pkl", "wb") as f:
         dill.dump(new_model_results, f)
