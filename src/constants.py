@@ -48,3 +48,4 @@ input_keys = ["rt","rt_sd","mt","mt_sd","timing_sd",]
 agent_means = np.array([1000.0,1000.0,1100.0,1100.0,1200.0,1200.0])
 agent_sds = np.array([50.0,150.0,50.0,150.0,50.0,150.0])
 
+model_colors = [wheel.light_grey, wheel.dark_grey, wheel.black]
