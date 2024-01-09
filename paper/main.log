@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999993 (MiKTeX 21.2) (preloaded format=xelatex 2022.1.4)  18 DEC 2023 14:51
+This is XeTeX, Version 3.141592653-2.6-0.999993 (MiKTeX 21.2) (preloaded format=xelatex 2022.1.4)  9 JAN 2024 14:42
 entering extended mode
 **"d:/OneDrive - University of Delaware - o365/Desktop/MatchPennies-Agent-Expir
 ement/paper/main.tex"
@@ -401,14 +401,22 @@ File: figures/exp1_score_metrics_panel.png Graphic file (type bmp)
 <figures/exp1_score_metrics_panel.png>
 [1
 
-] [2] (main.aux) ) 
+]
+File: figures/model_diagram.png Graphic file (type bmp)
+<figures/model_diagram.png>
+
+Overfull \hbox (3.61348pt too wide) in paragraph at lines 56--57
+ [][] 
+ []
+
+[2] [3] (main.aux) ) 
 Here is how much of TeX's memory you used:
- 5645 strings out of 411700
- 127287 string characters out of 2839605
+ 5651 strings out of 411700
+ 127441 string characters out of 2839605
  479666 words of memory out of 3000000
- 25599 multiletter control sequences out of 15000+200000
+ 25604 multiletter control sequences out of 15000+200000
  403831 words of font info for 39 fonts, out of 3000000 for 9000
  1348 hyphenation exceptions out of 8191
  81i,5n,89p,340b,259s stack positions out of 5000i,500n,10000p,200000b,50000s
 
-Output written on main.pdf (2 pages).
+Output written on main.pdf (3 pages).
