@@ -48,4 +48,5 @@ input_keys = ["rt","rt_sd","mt","mt_sd","timing_sd",]
 agent_means = np.array([1000.0,1000.0,1100.0,1100.0,1200.0,1200.0])
 agent_sds = np.array([50.0,150.0,50.0,150.0,50.0,150.0])
 
-model_colors = [wheel.light_grey, wheel.dark_grey, wheel.black]
+model_colors = [wheel.grey, wheel.lighten_color(wheel.dark_grey,1.15), wheel.black]
+model_names = ["No Switch Time Model", "Known Switch Time Model", "Unknown Switch Time Model"]
