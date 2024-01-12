@@ -154,7 +154,81 @@ class NewFigure:
     def savefig(self,path,dpi=300, transparent = True):
         self.remove_figure_borders()
         self.fig.savefig(path,dpi=dpi,transparent=transparent)
-
+class PrettyTable:
+    def __init__(self, ax, table_values: np.ndarray, 
+                 text_xshift=0.5, line_yshift=0, ha='center',va='center', fontsize=9, fontweight='light', 
+                 vertical_ls='-', horizontal_ls='-',inner_line_color = 'grey', inner_lw=1, border_color='grey',
+                 border_fill=None, border_lw=1, border_ls='-'):
+        self.ax = ax
+        self.table_values = table_values
+        self.num_rows, self.num_cols = table_values.shape 
+        
+        self.ax.set_alpha(0)
+        self.ax.patch.set_alpha(0)
+        self.ax.set_xlim(0,self.num_cols)
+        self.ax.set_ylim(0,self.num_rows)
+        self.ax.invert_yaxis()
+        
+        
+        if isinstance(ha,str):
+            self.ha = np.full_like(table_values, ha, dtype=object)
+        elif isinstance(ha,(list,np.ndarray)):
+            self.ha = ha
+        else:
+            raise ValueError("'ha' should be a string (left, right, center) or an array of strings with the same shape as table_values")
+        
+        if isinstance(va,str):
+            self.va = np.full_like(table_values, va, dtype=object)
+        elif isinstance(va,(list,np.ndarray)):
+            self.va = va
+        else:
+            raise ValueError("'ha' should be a string (left, right, center) or an array of strings with the same shape as table_values")
+            
+        self._plot_table_values(text_xshift, fontsize, fontweight)
+        self._plot_table_lines(line_yshift, vertical_ls=vertical_ls, horizontal_ls=horizontal_ls, inner_line_color=inner_line_color, inner_lw=inner_lw)
+        self._plot_table_boundary(line_yshift, border_color=border_color, border_fill=border_fill, border_lw=border_lw)
+        
+    def _plot_table_values(self, text_xshift, fontsize, fontweight):
+        self.text_store = []
+        for i,row in enumerate(self.table_values):
+            for j, element in enumerate(row):
+                t = self.ax.text(x=j+text_xshift, y=i+0.5, s=element, ha=self.ha[i,j], va=self.va[i,j], transform=self.ax.transData, 
+                        fontsize=fontsize,fontweight=fontweight)        
+                self.text_store.append(t)
+    
+    
+    def _plot_table_lines(self, line_yshift, vertical_ls, horizontal_ls, inner_line_color, inner_lw):
+        for i in range(1, self.table_values.shape[0]):
+            self.ax.plot([0,self.num_cols],
+                         [i+line_yshift, i+line_yshift],
+                         ls=horizontal_ls,
+                         lw=inner_lw,
+                         c=inner_line_color,
+                         transform=self.ax.transData)
+            
+        for j in range(1,self.table_values.shape[1]):
+            self.ax.plot([j,j],
+                         [0+line_yshift, self.num_rows+line_yshift],
+                         ls=vertical_ls,
+                         lw=inner_lw,
+                         c=inner_line_color,
+                         transform=self.ax.transData)
+            
+    def _plot_table_boundary(self,line_yshift, border_color, border_fill, border_lw):
+        rect = mpl.patches.Rectangle((0,0),width = self.num_cols, height=self.num_rows+abs(line_yshift), 
+                                     fill=border_fill, edgecolor=border_color,lw=border_lw)
+        self.ax.add_patch(rect)
+                
+    def fill_cells(self, cell_indices, facecolor, 
+                   alpha=0.5, edgecolor=None):
+        '''
+        t.set_bbox(dict(facecolor='red', alpha=0.5, edgecolor='red'))
+        '''
+        if not isinstance(cell_indices,list):
+            cell_indices = [cell_indices]
+            
+        for cell_index in cell_indices:
+            self.text_store[cell_index].set_bbox(dict(facecolor=facecolor, edgecolor=edgecolor, alpha=alpha))            
 class PlottingKwargs:
     def __init__(self,**kwargs):
         self.bw            = kwargs.get('box_width',0.75)
