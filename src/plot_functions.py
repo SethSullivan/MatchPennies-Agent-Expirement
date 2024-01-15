@@ -3,6 +3,7 @@ import numpy as np
 import data_visualization as dv
 from scipy import stats
 from copy import deepcopy
+import matplotlib as mpl
 wheel = dv.ColorWheel()
 import matplotlib.transforms as mtransforms
 from string import ascii_uppercase
@@ -155,12 +156,20 @@ class NewFigure:
         self.remove_figure_borders()
         self.fig.savefig(path,dpi=dpi,transparent=transparent)
 class PrettyTable:
-    def __init__(self, ax, table_values: np.ndarray, 
-                 text_xshift=0.5, line_yshift=0, ha='center',va='center', fontsize=9, fontweight='light', 
-                 vertical_ls='-', horizontal_ls='-',inner_line_color = 'grey', inner_lw=1, border_color='grey',
-                 border_fill=None, border_lw=1, border_ls='-'):
-        self.ax = ax
+    def __init__(self, ax, table_values: np.ndarray,
+                 text_xshift=0.5, line_yshift=0, ha='center',va='center', fontsize=9, fontweight='light', fontcolor=wheel.grey,
+                inner_ls='-',inner_line_color = 'grey', inner_lw=1, border_color='grey',
+                 border_fill=None, border_lw=1, border_ls='-', bold_first_row=False, bold_first_column=False):
         self.table_values = table_values
+        
+        self.ha = self._check_kwargs(ha, "ha", str)
+        self.va = self._check_kwargs(va, "va", str)
+        fontweight = self._check_kwargs(fontweight, "fontweight", str)
+        fontsize = self._check_kwargs(fontsize, "fontsize", (float, int))
+        fontcolor = self._check_kwargs(fontcolor, "fontcolor", str)
+        inner_ls = self._check_kwargs(inner_ls, "inner_ls", str)
+        
+        self.ax = ax
         self.num_rows, self.num_cols = table_values.shape 
         
         self.ax.set_alpha(0)
@@ -169,47 +178,49 @@ class PrettyTable:
         self.ax.set_ylim(0,self.num_rows)
         self.ax.invert_yaxis()
         
-        
-        if isinstance(ha,str):
-            self.ha = np.full_like(table_values, ha, dtype=object)
-        elif isinstance(ha,(list,np.ndarray)):
-            self.ha = ha
-        else:
-            raise ValueError("'ha' should be a string (left, right, center) or an array of strings with the same shape as table_values")
-        
-        if isinstance(va,str):
-            self.va = np.full_like(table_values, va, dtype=object)
-        elif isinstance(va,(list,np.ndarray)):
-            self.va = va
-        else:
-            raise ValueError("'ha' should be a string (left, right, center) or an array of strings with the same shape as table_values")
+        if bold_first_row:
+            fontweight[0,:] = "bold"
+        if bold_first_column:
+            fontweight[:,0] = "bold"
             
-        self._plot_table_values(text_xshift, fontsize, fontweight)
-        self._plot_table_lines(line_yshift, vertical_ls=vertical_ls, horizontal_ls=horizontal_ls, inner_line_color=inner_line_color, inner_lw=inner_lw)
-        self._plot_table_boundary(line_yshift, border_color=border_color, border_fill=border_fill, border_lw=border_lw)
-        
-    def _plot_table_values(self, text_xshift, fontsize, fontweight):
-        self.text_store = []
+        self._plot_table_values(text_xshift, fontsize, fontweight, fontcolor=fontcolor)
+        self._plot_table_lines(line_yshift, inner_ls=inner_ls,
+                               inner_line_color=inner_line_color, inner_lw=inner_lw)
+        self._plot_table_boundary(line_yshift, border_color=border_color, 
+                                  border_fill=border_fill, border_lw=border_lw)
+    
+    def _check_kwargs(self, kwarg, kwarg_name, dtype):
+        if isinstance(kwarg,dtype):
+            kwarg = np.full_like(self.table_values, kwarg, dtype=object)
+        elif isinstance(kwarg,(list, np.ndarray)):
+            kwarg = kwarg
+        else:
+            raise ValueError(f"'{kwarg_name}' should be a {dtype} or an array of {dtype} with the same shape as 'table_values'")
+        return kwarg
+    
+    def _plot_table_values(self, text_xshift, fontsize, fontweight, fontcolor):
+        self.coordinate_store = []
         for i,row in enumerate(self.table_values):
             for j, element in enumerate(row):
                 t = self.ax.text(x=j+text_xshift, y=i+0.5, s=element, ha=self.ha[i,j], va=self.va[i,j], transform=self.ax.transData, 
-                        fontsize=fontsize,fontweight=fontweight)        
-                self.text_store.append(t)
+                        fontsize=fontsize[i,j],fontweight=fontweight[i,j], color=fontcolor[i,j])        
+                self.coordinate_store.append((i,j, i+(1/self.num_cols), j+(1/self.num_rows)))
     
-    
-    def _plot_table_lines(self, line_yshift, vertical_ls, horizontal_ls, inner_line_color, inner_lw):
+    def _plot_table_lines(self, line_yshift, inner_ls, inner_line_color, inner_lw):
+        horizontal_ls = inner_ls[:,0] 
         for i in range(1, self.table_values.shape[0]):
             self.ax.plot([0,self.num_cols],
                          [i+line_yshift, i+line_yshift],
-                         ls=horizontal_ls,
+                         ls=horizontal_ls[i-1],
                          lw=inner_lw,
                          c=inner_line_color,
                          transform=self.ax.transData)
             
+        vertical_ls = inner_ls[0,:]
         for j in range(1,self.table_values.shape[1]):
             self.ax.plot([j,j],
                          [0+line_yshift, self.num_rows+line_yshift],
-                         ls=vertical_ls,
+                         ls=vertical_ls[j-1],
                          lw=inner_lw,
                          c=inner_line_color,
                          transform=self.ax.transData)
