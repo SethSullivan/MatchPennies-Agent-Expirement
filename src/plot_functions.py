@@ -158,7 +158,7 @@ class NewFigure:
 class PrettyTable:
     def __init__(self, ax, table_values: np.ndarray,
                  text_xshift=0.5, line_yshift=0, ha='center',va='center', fontsize=9, fontweight='light', fontcolor=wheel.grey,
-                inner_ls='-',inner_line_color = 'grey', inner_lw=1, border_color='grey',
+                inner_horizontal_ls='-', inner_vertical_ls='-', inner_line_color = 'grey', inner_lw=1, border_color='grey',
                  border_fill=None, border_lw=1, border_ls='-', bold_first_row=False, bold_first_column=False):
         self.table_values = table_values
         
@@ -167,7 +167,8 @@ class PrettyTable:
         fontweight = self._check_kwargs(fontweight, "fontweight", str)
         fontsize = self._check_kwargs(fontsize, "fontsize", (float, int))
         fontcolor = self._check_kwargs(fontcolor, "fontcolor", str)
-        inner_ls = self._check_kwargs(inner_ls, "inner_ls", str)
+        inner_horizontal_ls = self._check_kwargs(inner_horizontal_ls, "inner_horizontal_ls", str)
+        inner_vertical_ls = self._check_kwargs(inner_vertical_ls, "inner_vertical_ls", str)
         
         self.ax = ax
         self.num_rows, self.num_cols = table_values.shape 
@@ -184,7 +185,7 @@ class PrettyTable:
             fontweight[:,0] = "bold"
             
         self._plot_table_values(text_xshift, fontsize, fontweight, fontcolor=fontcolor)
-        self._plot_table_lines(line_yshift, inner_ls=inner_ls,
+        self._plot_table_lines(line_yshift, inner_horizontal_ls=inner_horizontal_ls, inner_vertical_ls=inner_vertical_ls,
                                inner_line_color=inner_line_color, inner_lw=inner_lw)
         self._plot_table_boundary(line_yshift, border_color=border_color, 
                                   border_fill=border_fill, border_lw=border_lw)
@@ -206,28 +207,28 @@ class PrettyTable:
                         fontsize=fontsize[i,j],fontweight=fontweight[i,j], color=fontcolor[i,j])        
                 self.coordinate_store.append((i,j, i+(1/self.num_cols), j+(1/self.num_rows)))
     
-    def _plot_table_lines(self, line_yshift, inner_ls, inner_line_color, inner_lw):
-        horizontal_ls = inner_ls[:,0] 
+    def _plot_table_lines(self, line_yshift, inner_horizontal_ls,inner_vertical_ls, inner_line_color, inner_lw):
         for i in range(1, self.table_values.shape[0]):
             self.ax.plot([0,self.num_cols],
                          [i+line_yshift, i+line_yshift],
-                         ls=horizontal_ls[i-1],
+                         ls=inner_horizontal_ls[i-1],
                          lw=inner_lw,
                          c=inner_line_color,
-                         transform=self.ax.transData)
+                         transform=self.ax.transData, 
+                         clip_on=False)
             
-        vertical_ls = inner_ls[0,:]
         for j in range(1,self.table_values.shape[1]):
             self.ax.plot([j,j],
                          [0+line_yshift, self.num_rows+line_yshift],
-                         ls=vertical_ls[j-1],
+                         ls=inner_vertical_ls[j-1],
                          lw=inner_lw,
                          c=inner_line_color,
-                         transform=self.ax.transData)
+                         transform=self.ax.transData,
+                         clip_on=False)
             
     def _plot_table_boundary(self,line_yshift, border_color, border_fill, border_lw):
         rect = mpl.patches.Rectangle((0,0),width = self.num_cols, height=self.num_rows+abs(line_yshift), 
-                                     fill=border_fill, edgecolor=border_color,lw=border_lw)
+                                     fill=border_fill, edgecolor=border_color,lw=border_lw, clip_on=False)
         self.ax.add_patch(rect)
                 
     def fill_cells(self, cell_indices, facecolor, 
