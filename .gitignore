@@ -5,7 +5,6 @@ Model Objects/
 figures/
 results/
 fonts/
-paper/
 __pycache__/
 src.egg-info/
 *.png
