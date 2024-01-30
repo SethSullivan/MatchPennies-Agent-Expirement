@@ -7,7 +7,7 @@ import matplotlib as mpl
 wheel = dv.ColorWheel()
 import matplotlib.transforms as mtransforms
 from string import ascii_uppercase
-
+import functools
 class NewFigure:
     def __init__(self, mosaic, figsize = (6.5,4), dpi=150, layout="constrained", sharex=False,sharey=False,
                  hspace = None, wspace = None, height_ratios=None, width_ratios=None):
@@ -131,14 +131,16 @@ class NewFigure:
                    
             
     def add_letter(self, ax, x, y, letter = None, fontsize = 12, 
-                   ha = "left", va = "top", color = "black", zorder = 20):
+                   ha = "left", va = "top", color = "black", zorder = 20, transform = None):
         if letter == None:
             letter_to_add = ascii_uppercase[len(self.letters)]
         else:
             letter_to_add = letter
+        if transform is None:
+            transform = ax.transAxes
         
         self.letters.append(letter_to_add)
-        ax.text(x, y, letter_to_add, ha = ha, va = va, transform=ax.transAxes,
+        ax.text(x, y, letter_to_add, ha = ha, va = va, transform=transform,
                 fontweight = "bold", color = color, fontsize = fontsize, zorder = zorder)
     
     @property
@@ -167,8 +169,10 @@ class PrettyTable:
         fontweight = self._check_kwargs(fontweight, "fontweight", str)
         fontsize = self._check_kwargs(fontsize, "fontsize", (float, int))
         fontcolor = self._check_kwargs(fontcolor, "fontcolor", str)
-        inner_horizontal_ls = self._check_kwargs(inner_horizontal_ls, "inner_horizontal_ls", str)
-        inner_vertical_ls = self._check_kwargs(inner_vertical_ls, "inner_vertical_ls", str)
+        inner_horizontal_ls = self._check_kwargs(inner_horizontal_ls, "inner_horizontal_ls", str, 
+                                                 fill_function=functools.partial(np.full_like, a=self.table_values[:,0]))
+        inner_vertical_ls = self._check_kwargs(inner_vertical_ls, "inner_vertical_ls", str, 
+                                                 fill_function=functools.partial(np.full_like, a=self.table_values[0,:]))
         
         self.ax = ax
         self.num_rows, self.num_cols = table_values.shape 
@@ -190,9 +194,12 @@ class PrettyTable:
         self._plot_table_boundary(line_yshift, border_color=border_color, 
                                   border_fill=border_fill, border_lw=border_lw)
     
-    def _check_kwargs(self, kwarg, kwarg_name, dtype):
+    def _check_kwargs(self, kwarg, kwarg_name, dtype, fill_function=None):
+        if fill_function is None:
+            fill_function = functools.partial(np.full_like, a=self.table_values)
+            
         if isinstance(kwarg,dtype):
-            kwarg = np.full_like(self.table_values, kwarg, dtype=object)
+            kwarg = fill_function(fill_value=kwarg, dtype=object)
         elif isinstance(kwarg,(list, np.ndarray)):
             kwarg = kwarg
         else:
@@ -461,41 +468,41 @@ def scatter_with_correlation(ax,xdata,ydata,**kwargs):
             
     return ax,spear_r
 
-def unity_optimal_plot(axs,xdata,ydata,it,**kwargs):
-    pk = PlottingKwargs(**kwargs)
-    ax0,ax1 = axs
-    for i in range(pk.xlocs):
-        ax0.scatter(xdata[:,i], ydata[:,i])
-        ax0.plot(pk.xlocs,pk.ylocs, color = wheel.dark_grey)
-        ax0.set_xlim(pk.xlocs[0],pk.xlocs[-1])
-        ax0.set_ylim(pk.ylocs[0],pk.ylocs[-1])
-        ax0.set_xlabel('Optimal Mean Decision Time (ms)')
-        ax0.set_ylabel('Participant Mean Decision Time (ms)')
-        ax0.set_title(f'Optimal Simulation vs. Participant Mean Decision Time\nCondition: {it.trial_block_titles[i]}')
+# def unity_optimal_plot(axs,xdata,ydata,it,**kwargs):
+#     pk = PlottingKwargs(**kwargs)
+#     ax0,ax1 = axs
+#     for i in range(pk.xlocs):
+#         ax0.scatter(xdata[:,i], ydata[:,i])
+#         ax0.plot(pk.xlocs,pk.ylocs, color = wheel.dark_grey)
+#         ax0.set_xlim(pk.xlocs[0],pk.xlocs[-1])
+#         ax0.set_ylim(pk.ylocs[0],pk.ylocs[-1])
+#         ax0.set_xlabel('Optimal Mean Decision Time (ms)')
+#         ax0.set_ylabel('Participant Mean Decision Time (ms)')
+#         ax0.set_title(f'Optimal Simulation vs. Participant Mean Decision Time\nCondition: {it.trial_block_titles[i]}')
 
 
-        diff = data_metric[:,i] - all_subjects_sim_results_dict[metric][:,i] 
-        ax1.scatter(ax1_xlocs,diff)
-        ax1.axhline(zorder=0,linestyle='--')
-        max_diff = np.max(abs(diff))
+#         diff = data_metric[:,i] - all_subjects_sim_results_dict[metric][:,i] 
+#         ax1.scatter(ax1_xlocs,diff)
+#         ax1.axhline(zorder=0,linestyle='--')
+#         max_diff = np.max(abs(diff))
 
-        arrow_length = max_diff 
-        head_length = 0.2*arrow_length
-        arrow_x_init = -0.25
-        arrow_y_init = max_diff/10
+#         arrow_length = max_diff 
+#         head_length = 0.2*arrow_length
+#         arrow_x_init = -0.25
+#         arrow_y_init = max_diff/10
         
-        text_y1 = arrow_length/2 + arrow_y_init
-        text_y2 = -arrow_length/2 - arrow_y_init
+#         text_y1 = arrow_length/2 + arrow_y_init
+#         text_y2 = -arrow_length/2 - arrow_y_init
         
-        ax1.arrow(arrow_x_init,arrow_y_init,0, arrow_length, width = 0.05, length_includes_head = False, head_length = head_length,head_width=0.15,shape = 'left',color=wheel.grey)
-        ax1.text(arrow_x_init/2,text_y1,'Greater Mean\nDecision Time',rotation = 90, fontweight='bold',ha='center',va='center',fontsize=9)
-        ax1.arrow(arrow_x_init,-arrow_y_init,0,-arrow_length, width = 0.05, length_includes_head = False, head_length = head_length,head_width=0.15,shape = 'right',color=wheel.grey)
-        ax1.text(arrow_x_init/2,text_y2,'Lesser Mean\nDecision Time',rotation = 90, fontweight='bold',ha='center',va='center',fontsize = 9)
+#         ax1.arrow(arrow_x_init,arrow_y_init,0, arrow_length, width = 0.05, length_includes_head = False, head_length = head_length,head_width=0.15,shape = 'left',color=wheel.grey)
+#         ax1.text(arrow_x_init/2,text_y1,'Greater Mean\nDecision Time',rotation = 90, fontweight='bold',ha='center',va='center',fontsize=9)
+#         ax1.arrow(arrow_x_init,-arrow_y_init,0,-arrow_length, width = 0.05, length_includes_head = False, head_length = head_length,head_width=0.15,shape = 'right',color=wheel.grey)
+#         ax1.text(arrow_x_init/2,text_y2,'Lesser Mean\nDecision Time',rotation = 90, fontweight='bold',ha='center',va='center',fontsize = 9)
         
-        ax1.set_ylim(-max_diff-(1/2)*max_diff,max_diff+(1/2)*max_diff)
-        ax1.set_xlim(-0.3,1.2)
-        ax1.set_xticks([])
-        ax1.spines.bottom.set_visible(False)
+#         ax1.set_ylim(-max_diff-(1/2)*max_diff,max_diff+(1/2)*max_diff)
+#         ax1.set_xlim(-0.3,1.2)
+#         ax1.set_xticks([])
+#         ax1.spines.bottom.set_visible(False)
 
 def multiple_models_boxplot(ax,data,model_data,labels,
                             show_boxplot=True,show_models=True,
