@@ -33,6 +33,9 @@ with open(constants.MODEL_INPUT_PATH / 'model_input_dict.pkl','wb') as f:
 participant_median_movement_onset_time = np.nanmedian(group.movement_metrics.movement_onset_times("task"), axis=2)
 with open(constants.MODEL_INPUT_PATH / 'participant_median_movement_onset_time.pkl','wb') as f:
     dill.dump(participant_median_movement_onset_time,f)
+participant_mean_movement_onset_time = np.nanmean(group.movement_metrics.movement_onset_times("task"), axis=2)
+with open(constants.MODEL_INPUT_PATH / 'participant_mean_movement_onset_time.pkl','wb') as f:
+    dill.dump(participant_mean_movement_onset_time,f)
 participant_sd_movement_onset_time = np.nanstd(group.movement_metrics.movement_onset_times("task"), axis=2)
 with open(constants.MODEL_INPUT_PATH / 'participant_sd_movement_onset_time.pkl','wb') as f:
     dill.dump(participant_sd_movement_onset_time,f)
