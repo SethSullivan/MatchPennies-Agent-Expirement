@@ -125,11 +125,13 @@ def pairwise_bootstrap(data, combos, alternative ="two-sided", M=1e6, test="mean
 
 EXPERIMENT = "Exp2"
 print(EXPERIMENT)
+
+# Load dataframe of data to use for stats
 with open(rf'D:\OneDrive - University of Delaware - o365\Desktop\MatchPennies-Agent-Expirement\results\participant_data\{EXPERIMENT}_stats_df.pkl', "rb") as f:
     df = dill.load(f)
 it = InitialThangs(EXPERIMENT)
 if EXPERIMENT == "Exp1":
-    column_names = ["Median_Movement_Onset_Time", "SD_Movement_Onset_Time","Wins","Incorrects","Indecisions"]
+    column_names = ["Mean_Movement_Onset_Time", "Median_Movement_Onset_Time", "SD_Movement_Onset_Time","Wins","Incorrects","Indecisions"]
     condition_nums = ["0", "1", "2", "3", "4", "5"]
     # Only care about mean comparisons, and then 01 and 12 for the collapse
     all_combos = ["01", "12", '02', '04', '13', '15', '24', '35']
