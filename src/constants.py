@@ -11,12 +11,18 @@ def find_parent(path: Path, target_parent: str) -> Path | None:
 
 
 ELECTROMECHANICAL_DELAY = 50
-xticklabel_colors_means = [wheel.rak_blue, wheel.rak_red, wheel.rak_orange,
-                           wheel.dark_blue_hc, wheel.lighten_color(wheel.rak_red,1.5), wheel.burnt_orange,]
+xticklabel_colors_means = [wheel.rak_blue, wheel.rak_orange, wheel.rak_red,
+                           wheel.dark_blue_hc,wheel.burnt_orange,wheel.lighten_color(wheel.rak_red,1.5)]
 
 xticklabel_colors_sd = [wheel.rak_blue, wheel.dark_blue_hc, 
+                        wheel.rak_orange,wheel.burnt_orange,
                         wheel.rak_red, wheel.lighten_color(wheel.rak_red,1.5),
-                        wheel.rak_orange,wheel.burnt_orange,]
+                        ]
+collapse_colors = [
+    wheel.blend_colors(xticklabel_colors_means[0],xticklabel_colors_means[3]),
+    wheel.blend_colors(xticklabel_colors_means[1],xticklabel_colors_means[4]),
+    wheel.blend_colors(xticklabel_colors_means[2],xticklabel_colors_means[5])
+]
 # xticklabels = ["(1000, 50)", "(1100, 50)", "(1200, 50)", "(1000, 150)", "(1100, 150)", "(1200, 150)"]
 # xticklabels = [r"Early $\mathbf{\mu}$"+"\n"+r"Low $\mathbf{\sigma}$", 
 #                r"Middle $\mathbf{\mu}$"+"\n"+r"Low $\mathbf{\sigma}$", 
@@ -48,5 +54,5 @@ input_keys = ["rt","rt_sd","mt","mt_sd","timing_sd",]
 agent_means = np.array([1000.0,1000.0,1100.0,1100.0,1200.0,1200.0])
 agent_sds = np.array([50.0,150.0,50.0,150.0,50.0,150.0])
 
-model_colors = [wheel.grey, wheel.lighten_color(wheel.dark_grey,1.15), wheel.black]
+model_colors = [wheel.grey, wheel.lighten_color(wheel.dark_grey,1.25), wheel.black]
 model_names = ["No Switch Time Model", "Known Switch Time Model", "Unknown Switch Time Model"]
