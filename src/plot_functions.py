@@ -4,10 +4,10 @@ import data_visualization as dv
 from scipy import stats
 from copy import deepcopy
 import matplotlib as mpl
-wheel = dv.ColorWheel()
 import matplotlib.transforms as mtransforms
 from string import ascii_uppercase
-import functools
+from functools import partial
+wheel = dv.ColorWheel()
 class NewFigure:
     def __init__(self, mosaic, figsize = (6.5,4), dpi=150, layout="constrained", sharex=False,sharey=False,
                  hspace = None, wspace = None, height_ratios=None, width_ratios=None):
@@ -159,9 +159,14 @@ class NewFigure:
         self.fig.savefig(path,dpi=dpi,transparent=transparent)
 class PrettyTable:
     def __init__(self, ax, table_values: np.ndarray,
-                 text_xshift=0.5, line_yshift=0, ha='center',va='center', fontsize=9, fontweight='light', fontcolor=wheel.grey,
-                inner_horizontal_ls='-', inner_vertical_ls='-', inner_line_color = 'grey', inner_lw=1, border_color='grey',
-                 border_fill=None, border_lw=1, border_ls='-', bold_first_row=False, bold_first_column=False):
+                 text_xshift=0.5, line_yshift=0, ha='center',va='center', 
+                 fontsize=9, fontweight='light', fontcolor=wheel.grey,
+                 inner_horizontal_ls='-', inner_vertical_ls='-', 
+                 inner_vertical_lw=1,inner_horizontal_lw=1, 
+                 inner_line_color = 'grey', border_color='grey',
+                 border_fill=None, border_lw=1, 
+                 border_ls='-', bold_first_row=False, 
+                 bold_first_column=False):
         self.table_values = table_values
         
         self.ha = self._check_kwargs(ha, "ha", str)
@@ -170,9 +175,22 @@ class PrettyTable:
         fontsize = self._check_kwargs(fontsize, "fontsize", (float, int))
         fontcolor = self._check_kwargs(fontcolor, "fontcolor", str)
         inner_horizontal_ls = self._check_kwargs(inner_horizontal_ls, "inner_horizontal_ls", str, 
-                                                 fill_function=functools.partial(np.full_like, a=self.table_values[:,0]))
+                                                 fill_function=partial(np.full_like, 
+                                                                                 a=self.table_values[:,0])
+                                                 )
         inner_vertical_ls = self._check_kwargs(inner_vertical_ls, "inner_vertical_ls", str, 
-                                                 fill_function=functools.partial(np.full_like, a=self.table_values[0,:]))
+                                                 fill_function=partial(np.full_like, 
+                                                                                 a=self.table_values[0,:])
+                                                 )
+        
+        inner_horizontal_lw = self._check_kwargs(inner_horizontal_lw, "inner_horizontal_lw", str, 
+                                                 fill_function=partial(np.full_like, 
+                                                                                 a=self.table_values[:,0])
+                                                 )
+        inner_vertical_lw = self._check_kwargs(inner_vertical_lw, "inner_vertical_lw", str, 
+                                                 fill_function=partial(np.full_like, 
+                                                                                 a=self.table_values[0,:])
+                                                 )
         
         self.ax = ax
         self.num_rows, self.num_cols = table_values.shape 
@@ -189,14 +207,21 @@ class PrettyTable:
             fontweight[:,0] = "bold"
             
         self._plot_table_values(text_xshift, fontsize, fontweight, fontcolor=fontcolor)
-        self._plot_table_lines(line_yshift, inner_horizontal_ls=inner_horizontal_ls, inner_vertical_ls=inner_vertical_ls,
-                               inner_line_color=inner_line_color, inner_lw=inner_lw)
+        self._plot_table_lines(line_yshift, inner_horizontal_ls=inner_horizontal_ls,
+                               inner_vertical_ls=inner_vertical_ls,
+                               inner_line_color=inner_line_color, 
+                               inner_horizontal_lw=inner_horizontal_lw, 
+                               inner_vertical_lw=inner_vertical_lw,)
         self._plot_table_boundary(line_yshift, border_color=border_color, 
                                   border_fill=border_fill, border_lw=border_lw)
     
     def _check_kwargs(self, kwarg, kwarg_name, dtype, fill_function=None):
+        '''
+        Checks if it's the right type and if it's not an array, creates an array
+        '''
+        
         if fill_function is None:
-            fill_function = functools.partial(np.full_like, a=self.table_values)
+            fill_function = partial(np.full_like, a=self.table_values)
             
         if isinstance(kwarg,dtype):
             kwarg = fill_function(fill_value=kwarg, dtype=object)
@@ -214,12 +239,14 @@ class PrettyTable:
                         fontsize=fontsize[i,j],fontweight=fontweight[i,j], color=fontcolor[i,j])        
                 self.coordinate_store.append((i,j, i+(1/self.num_cols), j+(1/self.num_rows)))
     
-    def _plot_table_lines(self, line_yshift, inner_horizontal_ls,inner_vertical_ls, inner_line_color, inner_lw):
+    def _plot_table_lines(self, line_yshift, inner_horizontal_ls,
+                          inner_vertical_ls, inner_line_color, 
+                          inner_horizontal_lw, inner_vertical_lw):
         for i in range(1, self.table_values.shape[0]):
             self.ax.plot([0,self.num_cols],
                          [i+line_yshift, i+line_yshift],
                          ls=inner_horizontal_ls[i-1],
-                         lw=inner_lw,
+                         lw=inner_horizontal_lw[i-1],
                          c=inner_line_color,
                          transform=self.ax.transData, 
                          clip_on=False)
@@ -228,7 +255,7 @@ class PrettyTable:
             self.ax.plot([j,j],
                          [0+line_yshift, self.num_rows+line_yshift],
                          ls=inner_vertical_ls[j-1],
-                         lw=inner_lw,
+                         lw=inner_vertical_lw[j-1],
                          c=inner_line_color,
                          transform=self.ax.transData,
                          clip_on=False)
