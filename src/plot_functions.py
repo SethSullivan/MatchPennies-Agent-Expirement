@@ -33,7 +33,7 @@ class NewFigure:
         self.axmain.set_xlim(0,figsize[0])
         self.axmain.set_ylim(0,figsize[1])
         
-        self.letters = []
+        self.letters = []  
         
     def fig_data_to_axis_transform(self,ax):
         '''
@@ -183,13 +183,13 @@ class PrettyTable:
                                                                                  a=self.table_values[0,:])
                                                  )
         
-        inner_horizontal_lw = self._check_kwargs(inner_horizontal_lw, "inner_horizontal_lw", str, 
+        inner_horizontal_lw = self._check_kwargs(inner_horizontal_lw, "inner_horizontal_lw", float, 
                                                  fill_function=partial(np.full_like, 
-                                                                                 a=self.table_values[:,0])
+                                                                        a=self.table_values[:,0])
                                                  )
-        inner_vertical_lw = self._check_kwargs(inner_vertical_lw, "inner_vertical_lw", str, 
+        inner_vertical_lw = self._check_kwargs(inner_vertical_lw, "inner_vertical_lw", float, 
                                                  fill_function=partial(np.full_like, 
-                                                                                 a=self.table_values[0,:])
+                                                                        a=self.table_values[0,:])
                                                  )
         
         self.ax = ax
