@@ -162,7 +162,7 @@ class PrettyTable:
                  text_xshift=0.5, line_yshift=0, ha='center',va='center', 
                  fontsize=9, fontweight='light', fontcolor=wheel.grey,
                  inner_horizontal_ls='-', inner_vertical_ls='-', 
-                 inner_vertical_lw=1,inner_horizontal_lw=1, 
+                 inner_vertical_lw=1.0,inner_horizontal_lw=1.0, 
                  inner_line_color = 'grey', border_color='grey',
                  border_fill=None, border_lw=1, 
                  border_ls='-', bold_first_row=False, 
@@ -644,7 +644,7 @@ def plot_boostrapped_model_results(ax, x, y, percentiles, color, horizontal_lw =
         ax.plot([x, x], [top, bottom], color=color)
         ax.plot([left, right], [top, top], color=color)
         ax.plot([left, right], [bottom, bottom], color=color)
-    ax.plot(x, y, 'o', color=color, markersize=markersize)
+    ax.plot(x, y, 'o', color=color, markersize=markersize, zorder=99, clip_on=False)
     
 def plot_models(ax, xlocs, data, line_colors, linestyles, bw, 
                 markersize, legend_labels, legend_linewidth, 
