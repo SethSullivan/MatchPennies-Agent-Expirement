@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999993 (MiKTeX 21.2) (preloaded format=xelatex 2022.1.4)  16 JAN 2024 16:56
+This is XeTeX, Version 3.141592653-2.6-0.999993 (MiKTeX 21.2) (preloaded format=xelatex 2022.1.4)  8 FEB 2024 10:09
 entering extended mode
 **"d:/OneDrive - University of Delaware - o365/Desktop/MatchPennies-Agent-Expir
 ement/paper/main.tex"
@@ -404,9 +404,14 @@ File: figures/exp1_score_metrics_panel.png Graphic file (type bmp)
 ]
 File: figures/model_diagram.png Graphic file (type bmp)
 <figures/model_diagram.png>
+
+Overfull \hbox (3.61348pt too wide) in paragraph at lines 56--57
+ [][] 
+ []
+
 File: figures/exp1_data_panel_with_models.png Graphic file (type bmp)
 <figures/exp1_data_panel_with_models.png>
- [2] [3]
+[2] [3]
 Overfull \vbox (17.37967pt too high) has occurred while \output is active []
 
 
@@ -425,14 +430,24 @@ Overfull \hbox (3.61348pt too wide) in paragraph at lines 76--77
  [][] 
  []
 
-[5] (main.aux) ) 
+[5]
+File: figures/reaction_guess_decisions.png Graphic file (type bmp)
+<figures/reaction_guess_decisions.png>
+
+Overfull \hbox (3.61348pt too wide) in paragraph at lines 85--86
+ [][] 
+ []
+
+File: figures/model_losses.png Graphic file (type bmp)
+<figures/model_losses.png>
+[6] [7] (main.aux) ) 
 Here is how much of TeX's memory you used:
- 5669 strings out of 411700
- 128011 string characters out of 2839605
+ 5681 strings out of 411700
+ 128379 string characters out of 2839605
  479666 words of memory out of 3000000
- 25619 multiletter control sequences out of 15000+200000
+ 25629 multiletter control sequences out of 15000+200000
  403831 words of font info for 39 fonts, out of 3000000 for 9000
  1348 hyphenation exceptions out of 8191
  81i,5n,89p,340b,259s stack positions out of 5000i,500n,10000p,200000b,50000s
 
-Output written on main.pdf (5 pages).
+Output written on main.pdf (7 pages).
