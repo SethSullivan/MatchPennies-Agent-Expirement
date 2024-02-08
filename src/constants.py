@@ -56,3 +56,6 @@ agent_sds = np.array([50.0,150.0,50.0,150.0,50.0,150.0])
 
 model_colors = [wheel.grey, wheel.lighten_color(wheel.dark_grey,1.25), wheel.black]
 model_names = ["No Switch Time Model", "Known Switch Time Model", "Unknown Switch Time Model"]
+
+agent_color = wheel.lighten_color(wheel.yellow, 1.75)
+player_color = wheel.purple
