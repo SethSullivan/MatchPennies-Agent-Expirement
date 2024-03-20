@@ -1,14 +1,16 @@
 \documentclass[12pt,letterpaper]{article}
-\usepackage[utf8]{inputenc}
+\usepackage{inputenc}
 \usepackage{amsmath}
 \usepackage{amsfonts}
 \usepackage{amssymb}
+\usepackage{bbm}
 \usepackage{fontspec} %XeLatex
 \usepackage{soul,xcolor}
 \usepackage{graphicx,wrapfig}
 \usepackage{float}
+\usepackage{caption}
 \graphicspath{ {./figures/} }
-% \usepackage[backend=biber]{biblatex}
+\usepackage[backend=biber]{biblatex}
 \usepackage[paper=letterpaper,
             %includefoot, % Uncomment to put page number above margin
             marginparwidth=0.0in,     % Length of section titles
@@ -23,6 +25,12 @@
     ItalicFont = AvenirLTProBookOblique.otf,
     BoldItalicFont = AvenirLTProHeavyOblique.otf
 ]
+% Set caption styles
+% \DeclareCaptionLabelFormat{table}{1-2}
+\captionsetup[table]{labelfont=bf,labelsep=period}
+\captionsetup[figure]{labelfont=bf,labelsep=period}
+
+
 \newcommand{\SethCaption}[2]{\noindent\textbf{\textcolor{black}{#1}} {#2}}
 \newcommand{\SectionHeader}[1]{\noindent\textbf{\Large{\textcolor{black}{#1}}}\normalsize }
 \newcommand{\SubSectionHeader}[1]{\noindent\Large{\textcolor{black}{#1}}\normalsize }
@@ -30,69 +38,175 @@
 
 % \definecolor{myudblue}{RGB}{0, 83, 159}
 \begin{document}
-\SectionHeader{Main Figures} 
+% \SectionHeader{Main Figures}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{figures/exp1_experimental_design.png}
-    
-    \SethCaption{Figure 1.}{Experimental Design}
-\end{figure}
-\begin{figure}[H]
-    \centering
-    \includegraphics[scale =1]{figures/exp1_movement_onset_panel.png}
-    
-    \SethCaption{Figure 2.}{Data}
-\end{figure}
-\begin{figure}[H]
-    \centering
-    \includegraphics[scale = 1]{figures/exp1_score_metrics_panel.png}
-    
-    \SethCaption{Figure 3.}{Data}
-\end{figure}
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{figures/exp1_experimental_design.png}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[scale = 1]{figures/model_diagram.png}
-    
-    \SethCaption{Figure 4.}{Data}
-\end{figure}
-\begin{figure}[H]
-    \centering
-    \includegraphics[scale = 1]{figures/exp1_data_panel_with_models.png}
-    
-    \SethCaption{Figure 5.}{Data w/ models}
-\end{figure}
+%     \SethCaption{Figure 1.}{Experimental Design}
+% \end{figure}
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[scale =1]{figures/exp1_movement_onset_panel.png}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[scale = 1]{figures/exp2_design.png}
-    
-    \SethCaption{Figure 6.}{Experiment 2 Design}
-\end{figure}
+%     \SethCaption{Figure 2.}{Data}
+% \end{figure}
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[scale = 1]{figures/exp1_score_metrics_panel.png}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[scale = 1]{figures/exp2_reaction_panel.png}
-    
-    \SethCaption{Figure 7.}{React or Guess panel}
-\end{figure}
+%     \SethCaption{Figure 3.}{Data}
+% \end{figure}
 
-\SectionHeader{Supplementary Figures} 
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[scale = 1]{figures/model_diagram.png}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[scale = 1]{figures/reaction_guess_decisions.png}
-    
-    \SethCaption{Supplementary Figure 1.}{Reaction and Guess Decisions}
-\end{figure}
+%     \SethCaption{Figure 4.}{Data}
+% \end{figure}
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[scale = 1]{figures/exp1_data_panel_with_models.png}
 
-\begin{figure}[H]
+%     \SethCaption{Figure 5.}{Data w/ models}
+% \end{figure}
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[scale = 1]{figures/exp2_design.png}
+
+%     \SethCaption{Figure 6.}{Experiment 2 Design}
+% \end{figure}
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[scale = 1]{figures/exp2_reaction_panel.png}
+
+%     \SethCaption{Figure 7.}{React or Guess panel}
+% \end{figure}
+
+% \SectionHeader{Supplementary Figures} 
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[scale = 1]{figures/reaction_guess_decisions.png}
+
+%     \SethCaption{Supplementary Figure 1.}{Reaction and Guess Decisions}
+% \end{figure}
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[scale = 1]{figures/model_losses.png}
+
+%     \SethCaption{Supplementary Figure 2.}{Model Loss Comparison}
+% \end{figure}
+
+\SectionHeader{Methods}
+\begin{table}[h]
     \centering
-    \includegraphics[scale = 1]{figures/model_losses.png}
-    
-    \SethCaption{Supplementary Figure 2.}{Model Loss Comparison}
-\end{figure}
+    \begin{tabular}{|l | c|}
+        \hline
+        Agent Movement Onset Time Mean        & $\mu_{A}$         \\
+        Agent Movement Onset Time Uncertainty & $\sigma_{A}$      \\
+        Reaction Time Mean                    & $\mu_{RT}$        \\
+        Reaction Time Uncertainty             & $\sigma_{RT}$     \\
+        Movement Time Mean                    & $\mu_{MT}$        \\
+        Movement Time Uncertainty             & $\sigma_{MT}$     \\
+        Neuromechanical Delay Mean            & $\mu_{NMD}$       \\
+        Neuromechanical Delay Uncertainty     & $\sigma_{NMD}$    \\
+        Stopping Time Uncertainty             & $\sigma_{\tau}$   \\
+        Switch Time Mean                      & $\mu_{switch}$    \\
+        Switch Time Uncertainty               & $\sigma_{switch}$ \\
+        \hline
+    \end{tabular}
+    \caption[]{Inputs to the model}
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|l | c|}
+        \hline
+        Reaction Time Delay       & $\mathcal{N}(\mu_{RT},\sigma_{RT})$         \\
+        Movement Time Delay       & $\mathcal{N}(\mu_{MT},\sigma_{MT})$         \\
+        Neuromechanical Delay     & $\mathcal{N}(\mu_{NMD},\sigma_{NMD})$       \\
+        Stopping Time Uncertainty & $\sigma_{\tau}$                             \\
+        Switch Time Delay         & $\mathcal{N}(\mu_{switch},\sigma_{switch})$ \\
+        Agent Movement Onset Time & $\mathcal{N}(\mu_{A},\sigma_{A})$           \\
+        \hline
+    \end{tabular}
+    \caption[]{Inputs to the model}
+\end{table}
+
+
+
+% Define pdf and cdf
+\begin{equation}
+    f(t) = \frac{1}{\sigma\sqrt{2\pi}}e^{-\frac{1}{2}(\frac{t-\mu}{\sigma})^2}
+\end{equation}
+\begin{equation}
+    F(t) = P(T\leq t) = \int_{-\infty}^{t} f(t)dt
+\end{equation}
+\begin{equation}
+    t \in [0,1500]
+\end{equation}
+\begin{equation}
+    T\sim\mathcal{N}(\mu,\sigma)
+\end{equation}
+
+% Define prob react and guess
+\begin{equation}
+    P(React|\tau) = P(\tau>\mu_{A}; \sigma_{tau}, \sigma_{A})
+\end{equation}
+\begin{equation}
+    P(Guess|\tau) = P(\tau<\mu_{A}; \sigma_{tau}, \sigma_{A})
+\end{equation}
+
+% Define expected value
+\begin{equation}
+    \mu_{X} = \sum_{i = -\infty}^{\infty}x_{i}f(x_{i};\mu_{X}, \sigma_{X})
+\end{equation}
+   
+% Define indicator function
+\begin{equation}
+    \mathbbm{1}_{a_{i},t_{i} \in S} = 
+    \begin{cases}
+        1, & \text{if } a_{i},t_{i} \in S \\
+        0, & \text{if }  a_{i},t_{i} \notin S
+    \end{cases}    
+\end{equation}
+
+% Define 
+
+
+% Movement Onset times
+\begin{equation}
+    \mu_{RMO} = \mu_{A_{cutoff}} + \mu_{RT}
+\end{equation}
+\begin{equation}
+    \sigma_{RMO} = \sqrt{\sigma_{A_{cutoff}}^2 + \sigma_{RT}^2}
+\end{equation}
+\begin{equation}
+    \mu_{GMO} = \\tau +  \mu_{NMD} + \mu_{switch}
+\end{equation}
+\begin{equation}
+    \sigma_{GMO} = \sqrt{\sigma_{\tau}^2 + \sigma_{NMD}^2 + \sigma_{switch}^2}
+\end{equation}
+
+% Scores 
+
+\begin{equation}
+    R_{win} = 1
+\end{equation}
+\begin{equation}
+    R_{indecision} = 0
+\end{equation}
+\begin{equation}
+    R_{incorrect} = 0
+\end{equation}
+
+
+
 
 \end{document}
 
