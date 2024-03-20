@@ -13,4 +13,8 @@ src.egg-info/
 *.fdb_latexmk
 *.fls
 *.log
+*.bbl
+*.bcf
+*.blg
+*.xml
 *.synctex.gz
