@@ -75,10 +75,16 @@ def get_moments(timesteps:np.ndarray, time_means:np.ndarray, time_sds:np.ndarray
             #* Looping over possible mean decision times
             for k in nb.prange(time_means.shape[0]):
                 # mu_y = time_means[k] # Put the timing mean in an easy to use variable,
+                #* y_integrated is the stopping time distribution for every timestep
+                #* Instead of the double integral, I figured out that the this integral can be simplified to the cdf so I didn't have to double loop
+                #* See pg 83 in grid notebook where I pull out the integral for p(y) aka p(t_i) from -inf to +inf
+                #* It's 1 - norm.cdf bc the integral is from the current timestep k (aka time_means[k]) to +inf (pg 84 says integral is from x to inf)
                 y_integrated = 1 - norm.cdf(timesteps, time_means[k], time_sds[i,j]) # For ALL timesteps, what's the probabilit for every timing mean (from 0 to 2000) that the timing mean is greater than that current timestep
                 # y_inverse_integrated = 1 - y_integrated
                 if prob_agent_less_player[i,j,k]!=0:
                     # integral_sum_R = nb_sum(timesteps*agent_pdf[i,j,:]*y_integrated)*dx
+                    #* Remember, timesteps here is all the possible values of a_{i} aka the realization of the agent's random variable
+                    #* so it's a_i*p(a_i)*P(T)/P(A<T) 
                     EX_R[i,j,k] = nb_sum(timesteps*agent_pdf[i,j,:]*y_integrated)*dx/prob_agent_less_player[i,j,k]
                     # SECOND CENTRAL MOMENT = VARIANCE
                     # integral_sum2_R = nb_sum((timesteps - EX_R[i,j,k])**2*agent_pdf[i,j,:]*y_integrated)*dx
