@@ -28,8 +28,9 @@
 % Set caption styles
 % \DeclareCaptionLabelFormat{table}{1-2}
 \captionsetup[table]{labelfont=bf,labelsep=period}
-\captionsetup[figure]{labelfont=bf,labelsep=period}
+% \captionsetup[figure]{labelfont=bf,labelsep=period}
 
+\DeclareMathOperator*{\argmax}{arg\,max} % thin space, limits underneath in displays
 
 \newcommand{\SethCaption}[2]{\noindent\textbf{\textcolor{black}{#1}} {#2}}
 \newcommand{\SectionHeader}[1]{\noindent\textbf{\Large{\textcolor{black}{#1}}}\normalsize }
@@ -107,14 +108,14 @@
     \centering
     \begin{tabular}{|l | c|}
         \hline
-        Agent Movement Onset Time Mean        & $\mu_{A}$         \\
-        Agent Movement Onset Time Uncertainty & $\sigma_{A}$      \\
-        Reaction Time Mean                    & $\mu_{RT}$        \\
-        Reaction Time Uncertainty             & $\sigma_{RT}$     \\
-        Movement Time Mean                    & $\mu_{MT}$        \\
-        Movement Time Uncertainty             & $\sigma_{MT}$     \\
-        Neuromechanical Delay Mean            & $\mu_{NMD}$       \\
-        Neuromechanical Delay Uncertainty     & $\sigma_{NMD}$    \\
+        Agent Movement Onset Time Mean        & $\mu_{a}$         \\
+        Agent Movement Onset Time Uncertainty & $\sigma_{a}$      \\
+        Reaction Time Mean                    & $\mu_{rt}$        \\
+        Reaction Time Uncertainty             & $\sigma_{rt}$     \\
+        Movement Time Mean                    & $\mu_{mt}$        \\
+        Movement Time Uncertainty             & $\sigma_{mt}$     \\
+        Neuromechanical Delay Mean            & $\mu_{nmd}$       \\
+        Neuromechanical Delay Uncertainty     & $\sigma_{nmd}$    \\
         Stopping Time Uncertainty             & $\sigma_{\tau}$   \\
         Switch Time Mean                      & $\mu_{switch}$    \\
         Switch Time Uncertainty               & $\sigma_{switch}$ \\
@@ -127,12 +128,12 @@
     \centering
     \begin{tabular}{|l | c|}
         \hline
-        Reaction Time Delay       & $\mathcal{N}(\mu_{RT},\sigma_{RT})$         \\
-        Movement Time Delay       & $\mathcal{N}(\mu_{MT},\sigma_{MT})$         \\
-        Neuromechanical Delay     & $\mathcal{N}(\mu_{NMD},\sigma_{NMD})$       \\
-        Stopping Time Uncertainty & $\sigma_{\tau}$                             \\
-        Switch Time Delay         & $\mathcal{N}(\mu_{switch},\sigma_{switch})$ \\
+        Reaction Time             & $\mathcal{N}(\mu_{rt},\sigma_{rt})$         \\
+        Movement Time             & $\mathcal{N}(\mu_{mt},\sigma_{mt})$         \\
+        Neuromechanical Delay     & $\mathcal{N}(\mu_{nmd},\sigma_{nmd})$       \\
+        Switch Time               & $\mathcal{N}(\mu_{switch},\sigma_{switch})$ \\
         Agent Movement Onset Time & $\mathcal{N}(\mu_{A},\sigma_{A})$           \\
+        Stopping Time Uncertainty & $\sigma_{\tau}$                             \\
         \hline
     \end{tabular}
     \caption[]{Inputs to the model}
@@ -142,59 +143,75 @@
 
 % Define pdf and cdf
 \begin{equation}
-    f(t) = \frac{1}{\sigma\sqrt{2\pi}}e^{-\frac{1}{2}(\frac{t-\mu}{\sigma})^2}
+    f_{X}(x; \mu, \sigma) = \frac{1}{\sigma\sqrt{2\pi}}e^{-\frac{1}{2}(\frac{x-\mu}{\sigma})^2}
 \end{equation}
 \begin{equation}
-    F(t) = P(T\leq t) = \int_{-\infty}^{t} f(t)dt
+    P(u\leq X\leq v) = \int_{u}^{v} f_{X}(x; \mu, \sigma)dt
 \end{equation}
+% \begin{equation}
+%     t \in [0,1500]
+% \end{equation}
 \begin{equation}
-    t \in [0,1500]
-\end{equation}
-\begin{equation}
-    T\sim\mathcal{N}(\mu,\sigma)
+    X\sim\mathcal{N}(\mu,\sigma)
 \end{equation}
 
-% Define prob react and guess
-\begin{equation}
-    P(React|\tau) = P(\tau>\mu_{A}; \sigma_{tau}, \sigma_{A})
-\end{equation}
-\begin{equation}
-    P(Guess|\tau) = P(\tau<\mu_{A}; \sigma_{tau}, \sigma_{A})
-\end{equation}
+% % Define prob react and guess
+% \begin{equation}
+%     P(React|\tau) = P(\tau>\mu_{A}; \sigma_{\tau}, \sigma_{A})
+% \end{equation}
+% \begin{equation}
+%     P(Guess|\tau) = P(\tau<\mu_{A}; \sigma_{\tau}, \sigma_{A})
+% \end{equation}
 
+% Define random variables A and T
 % Define expected value
 \begin{equation}
-    \mu_{X} = \sum_{i = -\infty}^{\infty}x_{i}f(x_{i};\mu_{X}, \sigma_{X})
-\end{equation}
-   
-% Define indicator function
-\begin{equation}
-    \mathbbm{1}_{a_{i},t_{i} \in S} = 
-    \begin{cases}
-        1, & \text{if } a_{i},t_{i} \in S \\
-        0, & \text{if }  a_{i},t_{i} \notin S
-    \end{cases}    
+    \mu_{A} = \mathbb{E}[A] = \int_{-\infty}^{\infty}a \cdot f_{A}(a)dx
 \end{equation}
 
-% Define 
+\begin{align}
+    A & \sim\mathcal{N}(\mu_{A},\sigma_{A}) \\
+    T & \sim\mathcal{N}(\tau,\sigma_{\tau})
+\end{align}
+
+
+
+% Define indicator function and the set S
+\begin{align}
+     & \mathbbm{1}_{a \in S} =
+    \begin{cases}
+        1, & \text{if } a \in S     \\
+        0, & \text{if }  a \notin S
+    \end{cases}                                                             \\
+     & \text{\emph{where} } S = \{a \mid a < t; \hspace{2pt} a,t \in \mathbb{R}\} \nonumber
+\end{align}
+
+% Define Cutoff react mean 
+\begin{equation}
+    \mu_{A_{react}} = \dfrac{\int_{-\infty}^{\infty}  \int_{-\infty}^{\infty} a \cdot p(a) \cdot p(t) \cdot \mathbbm{1}_{a \in S} \ dxdt} {P(A<T) }
+\end{equation}
+
+\begin{equation}
+    \sigma^2_{A_{react}} = \dfrac{\int_{-\infty}^{\infty}  \int_{-\infty}^{\infty} (a - \mu_{A_{react}})^2 \cdot p(a) \cdot p(t_{j}) \cdot \mathbbm{1}_{a \in S} \ dx \ dt}{P(A<T)}
+\end{equation}
+
 
 
 % Movement Onset times
 \begin{equation}
-    \mu_{RMO} = \mu_{A_{cutoff}} + \mu_{RT}
+    \mu_{mo_{react}} = \mu_{A_{react}} + \mu_{rt}
 \end{equation}
 \begin{equation}
-    \sigma_{RMO} = \sqrt{\sigma_{A_{cutoff}}^2 + \sigma_{RT}^2}
+    \sigma_{mo_{react}} = \sqrt{\sigma_{A_{react}}^2 + \sigma_{rt}^2}
 \end{equation}
 \begin{equation}
-    \mu_{GMO} = \\tau +  \mu_{NMD} + \mu_{switch}
+    \mu_{mo_{guess}} = \tau +  \mu_{nmd} + \mu_{switch}
 \end{equation}
 \begin{equation}
-    \sigma_{GMO} = \sqrt{\sigma_{\tau}^2 + \sigma_{NMD}^2 + \sigma_{switch}^2}
+    \sigma_{mo_{guess}} = \sqrt{\sigma_{\tau}^2 + \sigma_{nmd}^2 + \sigma_{switch}^2}
 \end{equation}
 
 % Scores 
-
 \begin{equation}
     R_{win} = 1
 \end{equation}
@@ -205,8 +222,99 @@
     R_{incorrect} = 0
 \end{equation}
 
+% Prob React and Guess
+\begin{align}
+    P(React)             & = P(A<T) \nonumber                                      \\
+                         & = P(A-T<0) \nonumber                                    \\
+                         & = P(Z<0)                                                \\
+    \text{\emph{where} } & Z\sim \mathcal{N}(\mu_{z}, \sigma_{z})   \nonumber      \\
+                         & \mu_z = \mu_A - \mu_\tau                 \nonumber      \\
+                         & \sigma_z = \sqrt{\sigma_{A}^2 + \sigma_{T}^2} \nonumber
+\end{align}
+
+\begin{align}
+    P(G) = 1 - P(React)
+\end{align}
+
+% Target Reach Time 
+\begin{align}
+    \mu_{reach_{react}} =\mu_{mo_{react}} + \mu_{mt}                      \\
+    \sigma_{reach_{react}} = \sqrt{\sigma_{mo_{react}}^2 + \sigma_{mt}^2} \\
+    \mu_{reach_{guess}} =\mu_{mo_{guess}} + \mu_{mt}                      \\
+    \sigma_{reach_{guess}} = \sqrt{\sigma_{mo_{guess}}^2 + \sigma_{mt}^2}
+\end{align}
+
+% Probability of Reaching Target
+\begin{align}
+    P(Reach|React) = P(X_{reach_{react}} < 1500) \\
+    \text{\emph{where} } X_{reach_{react}} \sim \mathcal{N}(\mu_{reach_{react}}, \sigma_{reach_{react}}) \nonumber
+\end{align}
+\begin{align}
+    P(Reach|Guess) = P(X_{reach_{guess}} < 1500) \\
+    \text{\emph{where} } X_{reach_{guess}} \sim \mathcal{N}(\mu_{reach_{guess}}, \sigma_{reach_{guess}}) \nonumber
+\end{align}
+
+% Probability of being correct
+\begin{equation}
+    P(Correct|React) = 1.0
+\end{equation}
+\begin{equation}
+    P(Correct|Guess) = 0.5
+\end{equation}
 
 
+% Probability of winning sequence
+\begin{equation}
+    P(Win|React) = P(Reach|React) \cdot P(Correct|React)
+\end{equation}
+\begin{equation}
+    P(Win|Guess) = P(Reach|Guess) \cdot P(Correct|Guess)
+\end{equation}
+\begin{equation}
+    P(Win) = P(React) \cdot P(Win|React) + P(Guess) \cdot P(Win|Guess) 
+\end{equation}
+
+% Probability of incorrect sequence 
+\begin{equation}
+    P(Incorrect|React) = P(Reach|React) \cdot (1 - P(Correct|React))
+\end{equation}
+\begin{equation}
+    P(Incorrect|Guess) = P(Reach|Guess) \cdot (1 - P(Correct|Guess))
+\end{equation}
+\begin{equation}
+    P(Incorrect) = P(React) \cdot P(Incorrect|React) + P(Guess) \cdot P(Incorrect|Guess) 
+\end{equation}
+
+% Probability of incorrect sequence 
+\begin{equation}
+    P(Indecision|React) = 1 - P(Reach|React)
+\end{equation}
+\begin{equation}
+    P(Indecision|Guess) = 1 - P(Reach|Guess)
+\end{equation}
+\begin{equation}
+    P(Indecision) = P(React) \cdot P(Indecision|React) + P(Guess) \cdot P(Indecision|Guess) 
+\end{equation}
+
+% Expected Reward
+\begin{equation}
+    R_{win} = 1
+\end{equation}
+\begin{equation}
+    R_{indecision} = 0
+\end{equation}
+\begin{equation}
+    R_{incorrect} = 0
+\end{equation}
+
+\begin{align}
+    \mathbb{E}[R] = & P(Win) \cdot R_{Win} + P(Incorrect) \cdot R_{Incorrect} + P(Indecision) \cdot R_{Indecision}
+\end{align}
+
+% Maximize expected reward with tau
+\begin{equation}
+    \tau = \underset{\tau \in [0,2000]}{argmax}(\mathbb{E}[R])
+\end{equation}
 
 \end{document}
 
