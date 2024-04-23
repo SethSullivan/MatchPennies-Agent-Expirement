@@ -27,64 +27,80 @@
 ]
 % Set caption styles
 % \DeclareCaptionLabelFormat{table}{1-2}
-\captionsetup[table]{labelfont=bf,labelsep=period}
-% \captionsetup[figure]{labelfont=bf,labelsep=period}
+\captionsetup[table]{labelfont=bf, labelsep=period}
+\captionsetup[figure]{labelfont=bf, labelsep=colon, font=footnotesize, justification=justified}
 
 \DeclareMathOperator*{\argmax}{arg\,max} % thin space, limits underneath in displays
 
-\newcommand{\SethCaption}[2]{\noindent\textbf{\textcolor{black}{#1}} {#2}}
+\newcommand{\SuppCaption}[2]{\noindent\textbf{\textcolor{black}{#1}} {#2}}
 \newcommand{\SectionHeader}[1]{\noindent\textbf{\Large{\textcolor{black}{#1}}}\normalsize }
 \newcommand{\SubSectionHeader}[1]{\noindent\Large{\textcolor{black}{#1}}\normalsize }
+
+% Condition variables
+\def\emlv{\emph{early mean low variance}}
+\def\emhv{\emph{early mean high variance}}
+\def\mmlv{\emph{middle mean low variance}}
+\def\mmhv{\emph{middle mean high variance}}
+\def\lmlv{\emph{late mean low variance}}
+\def\lmhv{\emph{late mean high variance}}
 
 
 % \definecolor{myudblue}{RGB}{0, 83, 159}
 \begin{document}
-% \SectionHeader{Main Figures}
+\SectionHeader{Main Figures}
 
 % \begin{figure}[H]
 %     \centering
 %     \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{figures/exp1_experimental_design.png}
 
-%     \SethCaption{Figure 1.}{Experimental Design}
+%     \caption{\textbf{Experimental Design.} \textbf{A)} Participants grasped the handle of a robotic manipulandum and made reaching movements in the horizontal plane. An LCD projected images (start position, targets) onto a semi-silvered mirror that occluded vision of the hand and upper arm. Participants began each trial by moving their cursor (purple) into the start position (solid white circle). They then heard a tone and saw two targets (white rings) and a timing bar (white rectangle) appear on the screen. During each trial, an agent (yellow) would move quickly in a straight line to one of the two targets. Participants were instructed to reach the same target as the agent within a time constraint of 1500ms. This time constraint was visually represented with a timing bar (white rectangle) that decreased in width according to the elapsed time. \textbf{B)} A trial was considered a win and the participant received one point if they successfully reached the same target as the agent within the time constraint. A trial was considered incorrect and the participant received zero points if they reached the opposite target as the agent within the time constraint. A trial was considered an indecision and the participant received 0 points if they failed to reach a target within the time constraint. \textbf{C)} Agent movement onset time on each trial was randomly drawn from a specific probability distribution in each condition. Using a within experimental design, we manipulated the mean and standard deviation of the agent movement onset time probability distribution for each of the following six conditions: 1) early mean low variance, 2) middle mean low variance, 3) late mean low variance, 4) early mean high variance, 5) middle mean high variance, 6) late mean high variance.
+%     }
 % \end{figure}
 % \begin{figure}[H]
 %     \centering
 %     \includegraphics[scale =1]{figures/exp1_movement_onset_panel.png}
 
-%     \SethCaption{Figure 2.}{Data}
+%     \caption{\textbf{Timing Behaviour.} \textbf{A)} Average participant movement onset time (y-axis) for each of the six experimental conditions (x-axis). \textbf{B)} Corresponding participant movement onset time (y-axis) for the three different mean onset times (x-axis) when collapsed across variance. During the early mean conditions, participants had a high probability of reacting to the agent and reaching a target within the time constraint. For the middle mean conditions, participants often waited longer to react and had a later guess than the early mean conditions. Waiting longer to react and/or late guessing led to longer movement onset times. In the late mean condition participants either guessed early to avoid a late reaction to the agent, or waited to react but ended up producing a late guess. The combination of early and late guesses led to an early movement onset time compared to the middle mean condition. For both the middle mean and late mean conditions, late guessing often led to indecisions (see Fig. 3A). \textbf{C)} Participant movement onset time standard deviation (y-axis) for each of the six experimental conditions (x-axis). \textbf{D)} Corresponding participant movement onset time standard deviation (y-axis) for the three different mean onset times (x-axis), when collapsed across variance. In the late mean conditions, the combination of early and late guesses led to a larger participant movement onset time standard deviation compared to the early mean and middle mean conditions. Box and whisker plots display the 25th, 50th, and 75th percentiles. Open gray circles and connecting lines represent individual data. }
 % \end{figure}
 % \begin{figure}[H]
 %     \centering
 %     \includegraphics[scale = 1]{figures/exp1_score_metrics_panel.png}
 
-%     \SethCaption{Figure 3.}{Data}
+%     \caption{\textbf{Trial Outcomes.} \textbf{A)} Indecisions (\%) \textbf{B)} Wins (\%), and \textbf{C)} Incorrects (\%) for each condition. \textbf{A)} We found that the middle mean low variance and late mean low variance conditions had a significantly greater number of indecisions compared to the early mean low variance condition. That is, in the middle mean low variance and late mean low variance conditions, participants often waited to react to the agent but ended up guessing late. These late guesses often led to indecisions. \textbf{B)} Interestingly, we also found that the average win percentage (4X.X\%) was significantly below the 50\% chance level (p < 0.001) in the late mean low variance condition, clearly demonstrating suboptimal behaviour. Critically, participants would have earned more points if they had simply guessed early on all trials, rather than attempting to react to the agent. Collectively, these results show that participants were suboptimal decision makers that led to excessively indecisive behaviour.}
 % \end{figure}
 
 % \begin{figure}[H]
 %     \centering
 %     \includegraphics[scale = 1]{figures/model_diagram.png}
 
-%     \SethCaption{Figure 4.}{Data}
+%     \caption{\textbf{Models.} \textbf{A)} Predicted target reach times from three models: No Switch Time Model (light gray), Known Switch Time Model (dark gray), and Unknown Switch Time Model (black). Agent movement onset time is shown in pink, which corresponds to the late mean low variance condition.  The time constraint on the task is shown in purple. Predicted indecision proportion is the area shown in dark blue. The Unknown Switch Time Model (black) is the only model that predicts indecisions for the late mean low variance condition, aligning with the data (see Figure 5C). \textbf{B)} Each model has inputs that represent the delays and uncertainties inherent to the sensorimotor system and the agent movement onset distribution. The decision policy finds the stopping time that maximizes reward. Given that the agent has not yet moved, the stopping time represents the time that participants transition from reacting to guessing. It is important to note that each model will react to the agent if it moves prior to the stopping time. The decision policy accounts for only the known inputs to determine stopping time. The decision policy is unaware of the unknown inputs when determining the stopping time, but these unknown inputs still influence the model outputs. The No Switch Time Model (light gray) has knowledge of all its model inputs. However, it does not consider the potential delay and uncertainties associated with switching from reaching to guessing, which we term ‘switch time’. The Known Switch Time Model (dark gray) has knowledge of all model inputs, including the switch time. Finally, the Unknown Switch Time Model (black) has knowledge of several of the model inputs, but is unaware of decision uncertainty and the switch time. \textbf{C)} Outputs for each of the models.}
 % \end{figure}
-% \begin{figure}[H]
-%     \centering
-%     \includegraphics[scale = 1]{figures/exp1_data_panel_with_models.png}
 
-%     \SethCaption{Figure 5.}{Data w/ models}
+% % Figure 5 Model Outputs
+% \begin{figure}[H]
+%     \begin{minipage}[c]{0.67\textwidth}
+
+%         \includegraphics[scale = 1]{figures/exp1_data_panel_with_models.png}
+%     \end{minipage}\hfill
+%     \begin{minipage}[c]{0.3\textwidth}
+%         \caption{
+%             Model Outputs: Here we show model fits for the No Switch Time Model (light gray circles), Known Switch Time Model (dark gray circles), and the Unknown Switch Time Model (black circles) for \textbf{A)} participant movement onset time, \textbf{B)} participant movement onset time standard deviation, \textbf{C)} indecisions, \textbf{D)} wins, and \textbf{E)} incorrects for each condition. The No Switch Time Model and Known Switch Time Model poorly predict the participant data across all five metrics for the late mean low variance and late mean high variance conditions. Conversely, the Unknown Switch Time Model (black) is able to accurately predict the participant data for all conditions across all metrics. As a reminder, the Unknown Switch time Model does not account for the delay and uncertainties associated with switching from reacting to guessing. Critically, in \textbf{C)} the Unknown Switch Time Model (black) predicts participant indecisions in the late mean low variance condition, whereas the other two models predict zero indecisions for that condition. Further, in \textbf{D)} the Unknown Switch Time Model (black) is the only model that aligns with the finding that participants are suboptimal and win less than 50\% of trials in the late mean low variance condition. Collectively, our findings show that humans are suboptimal and excessively indecisive, which can be captured by a model that does not account  for the delay and uncertainties associated with switching from reacting to guessing.
+%         } 
+%     \end{minipage}
 % \end{figure}
 
 % \begin{figure}[H]
 %     \centering
 %     \includegraphics[scale = 1]{figures/exp2_design.png}
 
-%     \SethCaption{Figure 6.}{Experiment 2 Design}
+%     \caption{\textbf{Experiment 2 Design.} The goal of this experiment was to test the idea that there is a delay and uncertainty associated with switching from reacting to guessing, as suggested by our findings in  Experiment 1. \textbf{A)} Participants responded to two different types of stimuli. In the react trials (pink), the agent (yellow cursor) would move to one of the two potential targets. Participants were instructed to reach the same target as the agent as quickly as possible. \textbf{B)} In the guess trials (blue), the agent disappeared from the start position. Once the agent disappeared, participants were instructed to guess which target the agent would appear in and select that target as quickly as possible. After the participant reached the target, the agent’s cursor would appear in one of the targets. \textbf{C)} We had three experimental conditions. In the react or guess condition, react trials and guess trials were randomly interleaved (50 react trials and 50 guess trials). Participants were informed that the agent would either move to one of the targets or disappear. In the only react condition, participants were informed that the agent would alway move to one of the two targets (50 react trials and 0 guess trials). They were also told that the agent would not disappear. In the only guess condition, participants were informed that the agent would always disappear (0 react trials and 50 guess trials). They were also informed the agent would not move. }
 % \end{figure}
 
 % \begin{figure}[H]
 %     \centering
 %     \includegraphics[scale = 1]{figures/exp2_reaction_panel.png}
 
-%     \SethCaption{Figure 7.}{React or Guess panel}
+%     \caption{A) Response time (y-axis) for each of the experimental conditions (x-axis). Participants had significantly greater response times for guess trials in the react or guess condition compared to the only guess condition. Critically, this result suggests there is an additional delay when participants initially wait to react to the agent and then switch to guessing. B) Interquartile range (IQR) of response times (y-axis) was used to quantify participants’ response time uncertainty for each of the experimental conditions (x-axis). Participants had significantly greater response time uncertainty for guess trials in the react or guess condition than in the only guess condition. Similarly, this finding suggests there is additional uncertainty when participants initially wait to react to the agent and then switch to guessing. Taken together, these results match the predictions of our model in Experiment 1, providing empirical evidence for an additional delay and uncertainty when switching from reacting to guessing.}
 % \end{figure}
 
 % \SectionHeader{Supplementary Figures} 
@@ -93,51 +109,51 @@
 %     \centering
 %     \includegraphics[scale = 1]{figures/reaction_guess_decisions.png}
 
-%     \SethCaption{Supplementary Figure 1.}{Reaction and Guess Decisions}
+%     \SuppCaption{Supplementary Figure 1.}{Reaction and Guess Decision Percentages for Experiment 1: Estimated percentage of reaction (pink) and guess (blue) decision percentages (y-axis) for each experimental condition (x-axis). During Experiment 1 participants were rewarded for successful trials and experienced a time constraint. Thus, we would expect participants to have faster reaction times in Experiment 1 than in the Reaction Time task (citation). To account for this, we adjusted participants’ reaction times by subtracting 25ms from their median reaction time in the Reaction Time task. A trial was a reaction decision if the difference between the agent’s movement onset time and participant’s movement onset time was greater than that participant’s adjusted reaction time. Conversely, a trial was a guess decision if the difference between the agent movement onset time and participant movement onset time was less than that participant’s adjusted reaction time. We found that participants guessed significantly more often as the agent’s mean movement onset time approached the time constraint. }
 % \end{figure}
 
 % \begin{figure}[H]
 %     \centering
 %     \includegraphics[scale = 1]{figures/model_losses.png}
 
-%     \SethCaption{Supplementary Figure 2.}{Model Loss Comparison}
+%     \SuppCaption{Supplementary Figure 2.}{Model Loss Comparison}
 % \end{figure}
 
-\SectionHeader{Methods}
-\begin{table}[h]
-    \centering
-    \begin{tabular}{|l | c|}
-        \hline
-        Agent Movement Onset Time Mean        & $\mu_{a}$         \\
-        Agent Movement Onset Time Uncertainty & $\sigma_{a}$      \\
-        Reaction Time Mean                    & $\mu_{rt}$        \\
-        Reaction Time Uncertainty             & $\sigma_{rt}$     \\
-        Movement Time Mean                    & $\mu_{mt}$        \\
-        Movement Time Uncertainty             & $\sigma_{mt}$     \\
-        Neuromechanical Delay Mean            & $\mu_{nmd}$       \\
-        Neuromechanical Delay Uncertainty     & $\sigma_{nmd}$    \\
-        Stopping Time Uncertainty             & $\sigma_{\tau}$   \\
-        Switch Time Mean                      & $\mu_{switch}$    \\
-        Switch Time Uncertainty               & $\sigma_{switch}$ \\
-        \hline
-    \end{tabular}
-    \caption[]{Inputs to the model}
-\end{table}
+% \SectionHeader{Methods}
+% \begin{table}[h]
+%     \centering
+%     \begin{tabular}{|l | c|}
+%         \hline
+%         Agent Movement Onset Time Mean        & $\mu_{a}$         \\
+%         Agent Movement Onset Time Uncertainty & $\sigma_{a}$      \\
+%         Reaction Time Mean                    & $\mu_{rt}$        \\
+%         Reaction Time Uncertainty             & $\sigma_{rt}$     \\
+%         Movement Time Mean                    & $\mu_{mt}$        \\
+%         Movement Time Uncertainty             & $\sigma_{mt}$     \\
+%         Neuromechanical Delay Mean            & $\mu_{nmd}$       \\
+%         Neuromechanical Delay Uncertainty     & $\sigma_{nmd}$    \\
+%         Stopping Time Uncertainty             & $\sigma_{\tau}$   \\
+%         Switch Time Mean                      & $\mu_{switch}$    \\
+%         Switch Time Uncertainty               & $\sigma_{switch}$ \\
+%         \hline
+%     \end{tabular}
+%     \caption[]{Inputs to the model}
+% \end{table}
 
-\begin{table}[h]
-    \centering
-    \begin{tabular}{|l | c|}
-        \hline
-        Reaction Time             & $\mathcal{N}(\mu_{rt},\sigma_{rt})$         \\
-        Movement Time             & $\mathcal{N}(\mu_{mt},\sigma_{mt})$         \\
-        Neuromechanical Delay     & $\mathcal{N}(\mu_{nmd},\sigma_{nmd})$       \\
-        Switch Time               & $\mathcal{N}(\mu_{switch},\sigma_{switch})$ \\
-        Agent Movement Onset Time & $\mathcal{N}(\mu_{A},\sigma_{A})$           \\
-        Stopping Time Uncertainty & $\sigma_{\tau}$                             \\
-        \hline
-    \end{tabular}
-    \caption[]{Inputs to the model}
-\end{table}
+% \begin{table}[h]
+%     \centering
+%     \begin{tabular}{|l | c|}
+%         \hline
+%         Reaction Time             & $\mathcal{N}(\mu_{rt},\sigma_{rt})$         \\
+%         Movement Time             & $\mathcal{N}(\mu_{mt},\sigma_{mt})$         \\
+%         Neuromechanical Delay     & $\mathcal{N}(\mu_{nmd},\sigma_{nmd})$       \\
+%         Switch Time               & $\mathcal{N}(\mu_{switch},\sigma_{switch})$ \\
+%         Agent Movement Onset Time & $\mathcal{N}(\mu_{A},\sigma_{A})$           \\
+%         Stopping Time Uncertainty & $\sigma_{\tau}$                             \\
+%         \hline
+%     \end{tabular}
+%     \caption[]{Inputs to the model}
+% \end{table}
 
 
 
@@ -146,7 +162,7 @@
     f_{X}(x; \mu, \sigma) = \frac{1}{\sigma\sqrt{2\pi}}e^{-\frac{1}{2}(\frac{x-\mu}{\sigma})^2}
 \end{equation}
 \begin{equation}
-    P(u\leq X\leq v) = \int_{u}^{v} f_{X}(x; \mu, \sigma)dt
+    F_{X}(b) = P(X \leq b) = \int_{-\infty}^{b} f_{X}(x; \mu, \sigma)dx
 \end{equation}
 % \begin{equation}
 %     t \in [0,1500]
@@ -164,35 +180,33 @@
 % \end{equation}
 
 % Define random variables A and T
-% Define expected value
-\begin{equation}
-    \mu_{A} = \mathbb{E}[A] = \int_{-\infty}^{\infty}a \cdot f_{A}(a)dx
-\end{equation}
-
 \begin{align}
     A & \sim\mathcal{N}(\mu_{A},\sigma_{A}) \\
     T & \sim\mathcal{N}(\tau,\sigma_{\tau})
 \end{align}
 
-
-
-% Define indicator function and the set S
+% Define indicator function 
 \begin{align}
-     & \mathbbm{1}_{a \in S} =
+     & \mathbbm{1}_{a<t} =
     \begin{cases}
-        1, & \text{if } a \in S     \\
-        0, & \text{if }  a \notin S
-    \end{cases}                                                             \\
-     & \text{\emph{where} } S = \{a \mid a < t; \hspace{2pt} a,t \in \mathbb{R}\} \nonumber
+        1, & \text{if } a <t, \, \forall a,t \in \mathbb{R}; \\
+        0, & \text{otherwise.}
+    \end{cases}
 \end{align}
+
+% Define expected value
+\begin{equation}
+    \mu_{A} = \mathbb{E}[A] = \int_{-\infty}^{\infty}a \cdot f_{A}(a)da
+\end{equation}
+
 
 % Define Cutoff react mean 
 \begin{equation}
-    \mu_{A_{react}} = \dfrac{\int_{-\infty}^{\infty}  \int_{-\infty}^{\infty} a \cdot p(a) \cdot p(t) \cdot \mathbbm{1}_{a \in S} \ dxdt} {P(A<T) }
+    \mu_{A_{react}} = \dfrac{\int_{-\infty}^{\infty}  \int_{-\infty}^{\infty} a \cdot f_{A}(a) \cdot f_{T}(t) \cdot \mathbbm{1}_{a \in S} \ dxdt} {P(A<T)}
 \end{equation}
 
 \begin{equation}
-    \sigma^2_{A_{react}} = \dfrac{\int_{-\infty}^{\infty}  \int_{-\infty}^{\infty} (a - \mu_{A_{react}})^2 \cdot p(a) \cdot p(t_{j}) \cdot \mathbbm{1}_{a \in S} \ dx \ dt}{P(A<T)}
+    \sigma^2_{A_{react}} = \dfrac{\int_{-\infty}^{\infty}  \int_{-\infty}^{\infty} (a - \mu_{A_{react}})^2 \cdot f_{A}(a) \cdot f_{T}(t) \cdot \mathbbm{1}_{a<t} \ da \ dt}{P(A<T)}
 \end{equation}
 
 
@@ -205,36 +219,11 @@
     \sigma_{mo_{react}} = \sqrt{\sigma_{A_{react}}^2 + \sigma_{rt}^2}
 \end{equation}
 \begin{equation}
-    \mu_{mo_{guess}} = \tau +  \mu_{nmd} + \mu_{switch}
+    \mu_{mo_{guess}} = \tau +  \mu_{nmd}
 \end{equation}
 \begin{equation}
-    \sigma_{mo_{guess}} = \sqrt{\sigma_{\tau}^2 + \sigma_{nmd}^2 + \sigma_{switch}^2}
+    \sigma_{mo_{guess}} = \sqrt{\sigma_{\tau}^2 + \sigma_{nmd}^2}
 \end{equation}
-
-% Scores 
-\begin{equation}
-    R_{win} = 1
-\end{equation}
-\begin{equation}
-    R_{indecision} = 0
-\end{equation}
-\begin{equation}
-    R_{incorrect} = 0
-\end{equation}
-
-% Prob React and Guess
-\begin{align}
-    P(React)             & = P(A<T) \nonumber                                      \\
-                         & = P(A-T<0) \nonumber                                    \\
-                         & = P(Z<0)                                                \\
-    \text{\emph{where} } & Z\sim \mathcal{N}(\mu_{z}, \sigma_{z})   \nonumber      \\
-                         & \mu_z = \mu_A - \mu_\tau                 \nonumber      \\
-                         & \sigma_z = \sqrt{\sigma_{A}^2 + \sigma_{T}^2} \nonumber
-\end{align}
-
-\begin{align}
-    P(G) = 1 - P(React)
-\end{align}
 
 % Target Reach Time 
 \begin{align}
@@ -244,15 +233,27 @@
     \sigma_{reach_{guess}} = \sqrt{\sigma_{mo_{guess}}^2 + \sigma_{mt}^2}
 \end{align}
 
+% Reach random variables
+\begin{align}
+    X_{reach_{react}} \sim \mathcal{N}(\mu_{reach_{react}}, \sigma_{reach_{react}}) \\
+    X_{reach_{guess}} \sim \mathcal{N}(\mu_{reach_{guess}}, \sigma_{reach_{guess}})
+\end{align}
+
 % Probability of Reaching Target
 \begin{align}
-    P(Reach|React) = P(X_{reach_{react}} < 1500) \\
-    \text{\emph{where} } X_{reach_{react}} \sim \mathcal{N}(\mu_{reach_{react}}, \sigma_{reach_{react}}) \nonumber
+    P(Reach|React) = P(X_{reach_{react}} < 1500)
 \end{align}
 \begin{align}
-    P(Reach|Guess) = P(X_{reach_{guess}} < 1500) \\
-    \text{\emph{where} } X_{reach_{guess}} \sim \mathcal{N}(\mu_{reach_{guess}}, \sigma_{reach_{guess}}) \nonumber
+    P(Reach|Guess) = P(X_{reach_{guess}} < 1500)
 \end{align}
+
+% Probability of incorrect sequence 
+\begin{equation}
+    P(Indecision|React) = 1 - P(Reach|React)
+\end{equation}
+\begin{equation}
+    P(Indecision|Guess) = 1 - P(Reach|Guess)
+\end{equation}
 
 % Probability of being correct
 \begin{equation}
@@ -270,9 +271,7 @@
 \begin{equation}
     P(Win|Guess) = P(Reach|Guess) \cdot P(Correct|Guess)
 \end{equation}
-\begin{equation}
-    P(Win) = P(React) \cdot P(Win|React) + P(Guess) \cdot P(Win|Guess) 
-\end{equation}
+
 
 % Probability of incorrect sequence 
 \begin{equation}
@@ -281,20 +280,36 @@
 \begin{equation}
     P(Incorrect|Guess) = P(Reach|Guess) \cdot (1 - P(Correct|Guess))
 \end{equation}
-\begin{equation}
-    P(Incorrect) = P(React) \cdot P(Incorrect|React) + P(Guess) \cdot P(Incorrect|Guess) 
-\end{equation}
 
-% Probability of incorrect sequence 
-\begin{equation}
-    P(Indecision|React) = 1 - P(Reach|React)
-\end{equation}
-\begin{equation}
-    P(Indecision|Guess) = 1 - P(Reach|Guess)
-\end{equation}
-\begin{equation}
-    P(Indecision) = P(React) \cdot P(Indecision|React) + P(Guess) \cdot P(Indecision|Guess) 
-\end{equation}
+
+
+
+
+
+% Prob React and Guess
+% \begin{align}
+%     P(React|\tau)             & = P(A<T) \nonumber                                      \\
+%                          & = P(A-T<0) \nonumber                                    \\
+%                          & = P(Z<0)                                                \\
+%     \text{\emph{where} } & Z\sim \mathcal{N}(\mu_{z}, \sigma_{z})   \nonumber      \\
+%                          & \mu_z = \mu_A - \mu_\tau                 \nonumber      \\
+%                          & \sigma_z = \sqrt{\sigma_{A}^2 + \sigma_{T}^2} \nonumber
+% \end{align}
+
+\begin{align}
+    P(React|\tau) = P(A<T)
+\end{align}
+\begin{align}
+    P(Guess|\tau) = 1 - P(React|\tau)
+\end{align}
+
+
+\begin{align}
+    P(Win|\tau)        =& P(React|\tau) \cdot P(Win|React) \nonumber \\ &+  P(Guess|\tau) \cdot P(Win|Guess)\\
+    P(Indecision|\tau) =& P(React|\tau) \cdot P(Indecision|React) \nonumber \\ &+ P(Guess|\tau) \cdot P(Indecision|Guess) \\
+    P(Incorrect|\tau)  =& P(React|\tau) \cdot P(Incorrect|React) \nonumber \\ &+ P(Guess|\tau) \cdot P(Incorrect|Guess)
+\end{align}
+
 
 % Expected Reward
 \begin{equation}
@@ -308,13 +323,35 @@
 \end{equation}
 
 \begin{align}
-    \mathbb{E}[R] = & P(Win) \cdot R_{Win} + P(Incorrect) \cdot R_{Incorrect} + P(Indecision) \cdot R_{Indecision}
+    \mathbb{E}[R|\tau] = &P(Win|\tau) \cdot R_{Win} \nonumber\\ &+ P(Incorrect|\tau) \cdot R_{Incorrect} \nonumber \\ &+ P(Indecision|\tau) \cdot R_{Indecision}
 \end{align}
 
 % Maximize expected reward with tau
 \begin{equation}
-    \tau = \underset{\tau \in [0,2000]}{argmax}(\mathbb{E}[R])
+    \tau^* = \underset{\tau}{argmax}[\mathbb{E}(R|\tau)]
 \end{equation}
 
-\end{document}
+% Switch time included in movement onset times
+\begin{equation}
+    \mu_{mo_{guess}} = \tau +  \mu_{nmd} + \mu_{switch}
+\end{equation}
+\begin{equation}
+    \sigma_{mo_{guess}} = \sqrt{\sigma_{\tau}^2 + \sigma_{nmd}^2 + \sigma_{switch}^2}
+\end{equation}
 
+% Expected switch time 
+\begin{equation}
+    \hat{\mu}_{mo_{guess}} = \tau +  \mu_{nmd} + \hat{\mu}_{switch}
+\end{equation}
+\begin{equation}
+    \hat{\sigma}_{mo_{guess}} = \sqrt{\sigma_{\tau}^2 + \sigma_{nmd}^2 + \hat{\sigma}_{switch}^2}
+\end{equation}
+
+% Loss Equation 
+
+\begin{equation}
+    \mathcal{L} = \sum_{i = 1}^{6} \sum_{j = 1}^{5} \frac{|Data_{i,j} - Model_{i,j}|}{Data_{i,j}}
+\end{equation}
+
+
+\end{document}
