@@ -73,7 +73,7 @@ def generate_exp1_summary_dataframe(group, EXPERIMENT="Exp1", DROP_SUBJECT_NUM=N
             "Q1_Movement_Onset_Time",
             "Q3_Movement_onset_time",
             "Reaction_Decisions",
-            "Gamble_Decisions",
+            "Guess_Decisions",
             "Points",
         ],
     )
