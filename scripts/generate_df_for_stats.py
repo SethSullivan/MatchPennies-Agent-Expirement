@@ -119,6 +119,7 @@ def generate_exp1_trial_dataframe(group, EXPERIMENT="Exp1", DROP_SUBJECT_NUM=Non
     target_reach_times = group.movement_metrics.target_reach_times("task").flatten()
     movement_times = group.movement_metrics.movement_times("task").flatten()
     reaction_times = np.repeat(np.nanmedian(group.movement_metrics.reaction_times - 25, axis=1), it.num_blocks*it.num_trials) #! Subtracting off 25 ms
+    timing_uncertainty = np.repeat(np.nanstd(group.raw_data.coincidence_reach_time, axis=1), it.num_blocks*it.num_trials)
     subject_number = np.repeat(np.arange(1, it.num_subjects + 1, 1, dtype=int), it.num_blocks*it.num_trials)
     condition = np.tile(np.repeat(np.arange(1, it.num_blocks + 1, 1, dtype=int),it.num_trials), it.num_subjects)
     trial_number = np.tile(np.arange(1,it.num_trials + 1, 1, dtype=int), it.num_subjects*it.num_blocks)
@@ -143,6 +144,7 @@ def generate_exp1_trial_dataframe(group, EXPERIMENT="Exp1", DROP_SUBJECT_NUM=Non
                 target_reach_times,
                 movement_times,
                 reaction_times,
+                timing_uncertainty,
             ]
         ).T,
         columns=[
@@ -153,7 +155,8 @@ def generate_exp1_trial_dataframe(group, EXPERIMENT="Exp1", DROP_SUBJECT_NUM=Non
             "agent_movement_onset_time",
             "target_reach_time",
             "movement_time",
-            "reaction_time"
+            "reaction_time",
+            "timing_uncertainty",
         ],
     )
     print(np.vstack((subject_number, condition, factor1, factor2)))
@@ -209,7 +212,8 @@ def generate_exp2_trial_dataframe(group):
     subject_number = np.repeat(np.arange(1, it.num_subjects + 1, 1, dtype=int), num_conditions*num_trials) # Get subject 1 300 times, then sub 2 300 times
     condition = np.tile(np.repeat(['mixed','react_only','guess_only'],num_trials), it.num_subjects) # Get (1 100 times, then 2 100 times etc. and then tile that for each subject)
     reaction_decision_array = np.where(group.movement_metrics.reaction_decision_array.flatten()==1.0,'right','left')
-    reaction_time = group.movement_metrics.reaction_times.flatten()
+    group.movement_metrics.get_reaction_times(filter_=False)
+    reaction_time = group.movement_metrics.reaction_times.flatten() #! FILTERING REACTION TIMES <170 or >600 out in the subject object
     movement_time = group.movement_metrics.movement_times(task="reaction").flatten()
     decision_type = np.where(group.movement_metrics.reaction_guess_mask,"guess","react").flatten()
     df = pd.DataFrame({
@@ -229,31 +233,22 @@ def generate_exp2_trial_dataframe(group):
 
 
 SAVE_PATH = Path(r"D:\OneDrive - University of Delaware - o365\Desktop\MatchPennies-Agent-Expirement\results\participant_data")
-EXPERIMENT = "Exp1"
 print('here')
-if "group" not in locals():
-    group = rdf.generate_subject_object_v3(EXPERIMENT, "All Trials", movement_metric_type='velocity')
-else:
-    if group.exp_info.experiment != EXPERIMENT:  # This means i changed experiment and need to run again
-        group = rdf.generate_subject_object_v3(EXPERIMENT, "All Trials", movement_metric_type='velocity')
+# group = rdf.generate_subject_object_v3("Exp1", "All Trials", movement_metric_type='velocity')
 
-if "group2" not in locals():
-    group2 = rdf.generate_subject_object_v3("Exp2", "All Trials", movement_metric_type='velocity')
-else:
-    if group2.exp_info.experiment != "Exp2":  # This means i changed experiment and need to run again
-        group2 = rdf.generate_subject_object_v3("Exp2", "All Trials", movement_metric_type='velocity')
+group2 = rdf.generate_subject_object_v3("Exp2", "All Trials", movement_metric_type='velocity')
 
-df1 = generate_exp1_summary_dataframe(group, EXPERIMENT, DROP_SUBJECT_NUM=None)
+# df1 = generate_exp1_summary_dataframe(group, EXPERIMENT, DROP_SUBJECT_NUM=None)
 df2 = generate_exp2_summary_dataframe(group2)
 
 # Create raw dataframe if I want to use later for side analyses
-df3 = generate_exp1_trial_dataframe(group)
+# df3 = generate_exp1_trial_dataframe(group)
 df4 = generate_exp2_trial_dataframe(group2)
-with open(SAVE_PATH / f"Exp1_summary_data_df.pkl", "wb") as f:
-    dill.dump(df1,f)
+# with open(SAVE_PATH / f"Exp1_summary_data_df.pkl", "wb") as f:
+#     dill.dump(df1,f)
 with open(SAVE_PATH / f"Exp2_summary_data_df.pkl", "wb") as f:
     dill.dump(df2,f)
-with open(SAVE_PATH / f"Exp1_trial_data_df.pkl", "wb") as f:
-    dill.dump(df3,f)
+# with open(SAVE_PATH / f"Exp1_trial_data_df.pkl", "wb") as f:
+#     dill.dump(df3,f)
 with open(SAVE_PATH / f"Exp2_trial_data_df.pkl", "wb") as f:
     dill.dump(df4,f)
