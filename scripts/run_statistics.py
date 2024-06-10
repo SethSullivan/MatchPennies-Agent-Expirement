@@ -97,6 +97,7 @@ def pairwise_bootstrap(data, combos, alternative ="two-sided", M=1e6, test="mean
         return {x: alternative_dict[x] for x in alternative_dict.keys() if x in combos}
             
     alternative_dict = _get_alternative_dict(combos)
+    print(alternative_dict)
     # if self.experiment == 'Exp1':
     pvals = {}
     cles1 = {}
@@ -186,6 +187,7 @@ for i,colname in enumerate(column_names):
         test='mean'
     )
     pvals_corrected = au.holmbonferroni_correction(list(pvals.values()))
+    # print(pvals.values(), pvals_corrected)
     pvals_corrected = dict(zip(pvals.keys(),pvals_corrected))
     d1 = {"Metric":colname, "Collapsed":collapsed}
     df_row_pvals_uncorrected = d1 | pvals
