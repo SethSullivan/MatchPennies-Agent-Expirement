@@ -281,7 +281,7 @@ class MovementMetrics:
             self.reaction_times = self.movement_onset_times(task='reaction') - self.raw_data.agent_reaction_leave_time
         #* Filter out fault reaction times
         if filter_:
-            self.reaction_times[(self.reaction_times>650)|(self.reaction_times<170)] = np.nan
+            self.reaction_times[(self.reaction_times>650)|(self.reaction_times<150)] = np.nan
     
     @lru_cache
     def exp2_react_guess_reaction_time_all(self, react_or_guess):
