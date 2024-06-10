@@ -212,8 +212,8 @@ def generate_exp2_trial_dataframe(group):
     subject_number = np.repeat(np.arange(1, it.num_subjects + 1, 1, dtype=int), num_conditions*num_trials) # Get subject 1 300 times, then sub 2 300 times
     condition = np.tile(np.repeat(['mixed','react_only','guess_only'],num_trials), it.num_subjects) # Get (1 100 times, then 2 100 times etc. and then tile that for each subject)
     reaction_decision_array = np.where(group.movement_metrics.reaction_decision_array.flatten()==1.0,'right','left')
-    group.movement_metrics.get_reaction_times(filter_=False)
-    reaction_time = group.movement_metrics.reaction_times.flatten() #! FILTERING REACTION TIMES <170 or >600 out in the subject object
+    group.movement_metrics.get_reaction_times(filter_=False) #! Not filtering the trial by trial dataframe, will filter when I calculate reaction times directly in the script with the df
+    reaction_time = group.movement_metrics.reaction_times.flatten() 
     movement_time = group.movement_metrics.movement_times(task="reaction").flatten()
     decision_type = np.where(group.movement_metrics.reaction_guess_mask,"guess","react").flatten()
     df = pd.DataFrame({
@@ -236,6 +236,7 @@ SAVE_PATH = Path(r"D:\OneDrive - University of Delaware - o365\Desktop\MatchPenn
 print('here')
 # group = rdf.generate_subject_object_v3("Exp1", "All Trials", movement_metric_type='velocity')
 
+#! FILTERING REACTION TIMES <150 or >650 out in the subject object
 group2 = rdf.generate_subject_object_v3("Exp2", "All Trials", movement_metric_type='velocity')
 
 # df1 = generate_exp1_summary_dataframe(group, EXPERIMENT, DROP_SUBJECT_NUM=None)
