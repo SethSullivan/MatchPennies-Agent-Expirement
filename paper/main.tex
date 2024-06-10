@@ -9,6 +9,8 @@
 \usepackage{graphicx,wrapfig}
 \usepackage{float}
 \usepackage{caption}
+\usepackage{arydshln} % For \hdashline
+
 \graphicspath{ {./figures/} }
 \usepackage[backend=biber]{biblatex}
 \usepackage[paper=letterpaper,
@@ -159,6 +161,10 @@
 
 % Define pdf and cdf
 \begin{equation}
+    X\sim\mathcal{N}(\mu,\sigma)
+\end{equation}
+
+\begin{equation}
     f_{X}(x; \mu, \sigma) = \frac{1}{\sigma\sqrt{2\pi}}e^{-\frac{1}{2}(\frac{x-\mu}{\sigma})^2}
 \end{equation}
 \begin{equation}
@@ -167,17 +173,8 @@
 % \begin{equation}
 %     t \in [0,1500]
 % \end{equation}
-\begin{equation}
-    X\sim\mathcal{N}(\mu,\sigma)
-\end{equation}
 
-% % Define prob react and guess
-% \begin{equation}
-%     P(React|\tau) = P(\tau>\mu_{A}; \sigma_{\tau}, \sigma_{A})
-% \end{equation}
-% \begin{equation}
-%     P(Guess|\tau) = P(\tau<\mu_{A}; \sigma_{\tau}, \sigma_{A})
-% \end{equation}
+
 
 % Define random variables A and T
 \begin{align}
@@ -185,12 +182,20 @@
     T & \sim\mathcal{N}(\tau,\sigma_{\tau})
 \end{align}
 
+% Define prob react and guess
+\begin{equation}
+    P(React|\tau) = P(\tau>\mu_{A}; \sigma_{\tau}, \sigma_{A})
+\end{equation}
+\begin{equation}
+    P(Guess|\tau) = P(\tau<\mu_{A}; \sigma_{\tau}, \sigma_{A})
+\end{equation}
+
 % Define indicator function 
 \begin{align}
      & \mathbbm{1}_{a<t} =
     \begin{cases}
-        1, & \text{if } a <t, \, \forall a,t \in \mathbb{R}; \\
-        0, & \text{otherwise.}
+        1 & \text{if } a <t,  \\
+        0 & \text{otherwise.}
     \end{cases}
 \end{align}
 
@@ -202,7 +207,7 @@
 
 % Define Cutoff react mean 
 \begin{equation}
-    \mu_{A_{react}} = \dfrac{\int_{-\infty}^{\infty}  \int_{-\infty}^{\infty} a \cdot f_{A}(a) \cdot f_{T}(t) \cdot \mathbbm{1}_{a \in S} \ dxdt} {P(A<T)}
+    \mu_{A_{react}} = \dfrac{\int_{-\infty}^{\infty}  \int_{-\infty}^{\infty} a \cdot f_{A}(a) \cdot f_{T}(t) \cdot \mathbbm{1}_{a \in S} \ dadt} {P(A<T)}
 \end{equation}
 
 \begin{equation}
@@ -213,30 +218,46 @@
 
 % Movement Onset times
 \begin{equation}
-    \mu_{mo_{react}} = \mu_{A_{react}} + \mu_{rt}
+    \mu_{mot_{react}} = \mu_{A_{react}} + \mu_{rt}
 \end{equation}
 \begin{equation}
-    \sigma_{mo_{react}} = \sqrt{\sigma_{A_{react}}^2 + \sigma_{rt}^2}
+    \sigma_{mot_{react}} = \sqrt{\sigma_{A_{react}}^2 + \sigma_{rt}^2}
 \end{equation}
 \begin{equation}
-    \mu_{mo_{guess}} = \tau +  \mu_{nmd}
+    \mu_{mot_{guess}} = \tau +  \mu_{nmd}
 \end{equation}
 \begin{equation}
-    \sigma_{mo_{guess}} = \sqrt{\sigma_{\tau}^2 + \sigma_{nmd}^2}
+    \sigma_{mot_{guess}} = \sqrt{\sigma_{\tau}^2 + \sigma_{nmd}^2}
+\end{equation}
+
+% Switch time included in movement onset times
+\begin{equation}
+    \mu_{mot_{guess}} = \tau +  \mu_{nmd} + \mu_{switch}
+\end{equation}
+\begin{equation}
+    \sigma_{mot_{guess}} = \sqrt{\sigma_{\tau}^2 + \sigma_{nmd}^2 + \sigma_{switch}^2}
 \end{equation}
 
 % Target Reach Time 
 \begin{align}
-    \mu_{reach_{react}} =\mu_{mo_{react}} + \mu_{mt}                      \\
-    \sigma_{reach_{react}} = \sqrt{\sigma_{mo_{react}}^2 + \sigma_{mt}^2} \\
-    \mu_{reach_{guess}} =\mu_{mo_{guess}} + \mu_{mt}                      \\
-    \sigma_{reach_{guess}} = \sqrt{\sigma_{mo_{guess}}^2 + \sigma_{mt}^2}
+    \mu_{reach_{react}} =\mu_{mot_{react}} + \mu_{mt}                      \\
+    \sigma_{reach_{react}} = \sqrt{\sigma_{mot_{react}}^2 + \sigma_{mt}^2} \\
+    \mu_{reach_{guess}} =\mu_{mot_{guess}} + \mu_{mt}                      \\
+    \sigma_{reach_{guess}} = \sqrt{\sigma_{mot_{guess}}^2 + \sigma_{mt}^2}
 \end{align}
+
+% Hat reach time
+\begin{align}
+    \hat{\mu}_{reach_{guess}} = \hat{\mu}_{mot_{guess}} + \mu_{mt} \\
+    \hat{\sigma}_{reach_{guess}} = \sqrt{\hat{\sigma}_{mot_{guess}}^2 + \sigma_{mt}^2}
+\end{align}
+
 
 % Reach random variables
 \begin{align}
     X_{reach_{react}} \sim \mathcal{N}(\mu_{reach_{react}}, \sigma_{reach_{react}}) \\
-    X_{reach_{guess}} \sim \mathcal{N}(\mu_{reach_{guess}}, \sigma_{reach_{guess}})
+    X_{reach_{guess}} \sim \mathcal{N}(\mu_{reach_{guess}}, \sigma_{reach_{guess}}) \\
+    \hat{X}_{reach_{guess}} \sim \mathcal{N}(\hat{\mu}_{reach_{guess}}, \hat{\sigma}_{reach_{guess}})
 \end{align}
 
 % Probability of Reaching Target
@@ -305,9 +326,9 @@
 
 
 \begin{align}
-    P(Win|\tau)        =& P(React|\tau) \cdot P(Win|React) \nonumber \\ &+  P(Guess|\tau) \cdot P(Win|Guess)\\
-    P(Indecision|\tau) =& P(React|\tau) \cdot P(Indecision|React) \nonumber \\ &+ P(Guess|\tau) \cdot P(Indecision|Guess) \\
-    P(Incorrect|\tau)  =& P(React|\tau) \cdot P(Incorrect|React) \nonumber \\ &+ P(Guess|\tau) \cdot P(Incorrect|Guess)
+    P(Win|\tau)        = & P(React|\tau) \cdot P(Win|React) \nonumber        \\ &+  P(Guess|\tau) \cdot P(Win|Guess)\\
+    P(Indecision|\tau) = & P(React|\tau) \cdot P(Indecision|React) \nonumber \\ &+ P(Guess|\tau) \cdot P(Indecision|Guess) \\
+    P(Incorrect|\tau)  = & P(React|\tau) \cdot P(Incorrect|React) \nonumber  \\ &+ P(Guess|\tau) \cdot P(Incorrect|Guess)
 \end{align}
 
 
@@ -323,7 +344,7 @@
 \end{equation}
 
 \begin{align}
-    \mathbb{E}[R|\tau] = &P(Win|\tau) \cdot R_{Win} \nonumber\\ &+ P(Incorrect|\tau) \cdot R_{Incorrect} \nonumber \\ &+ P(Indecision|\tau) \cdot R_{Indecision}
+    \mathbb{E}[R|\tau] = & P(Win|\tau) \cdot R_{Win} \nonumber \\ &+ P(Incorrect|\tau) \cdot R_{Incorrect} \nonumber \\ &+ P(Indecision|\tau) \cdot R_{Indecision}
 \end{align}
 
 % Maximize expected reward with tau
@@ -331,21 +352,7 @@
     \tau^* = \underset{\tau}{argmax}[\mathbb{E}(R|\tau)]
 \end{equation}
 
-% Switch time included in movement onset times
-\begin{equation}
-    \mu_{mo_{guess}} = \tau +  \mu_{nmd} + \mu_{switch}
-\end{equation}
-\begin{equation}
-    \sigma_{mo_{guess}} = \sqrt{\sigma_{\tau}^2 + \sigma_{nmd}^2 + \sigma_{switch}^2}
-\end{equation}
 
-% Expected switch time 
-\begin{equation}
-    \hat{\mu}_{mo_{guess}} = \tau +  \mu_{nmd} + \hat{\mu}_{switch}
-\end{equation}
-\begin{equation}
-    \hat{\sigma}_{mo_{guess}} = \sqrt{\sigma_{\tau}^2 + \sigma_{nmd}^2 + \hat{\sigma}_{switch}^2}
-\end{equation}
 
 % Loss Equation 
 
@@ -354,4 +361,31 @@
 \end{equation}
 
 
+
+% Fit Parameter Table
+{\renewcommand{\arraystretch}{1.2}% for the vertical padding
+\begin{table}[h]
+    \centering
+    \begin{tabular}{l|c|c }
+        % \hline
+                                  & Decision Policy Parameter Value & Model Output Parameter Value \\
+        \hline
+        \textit{No Switch Time Model}      & -                               & -                            \\
+        \hdashline
+        \textit{Known Switch Time Model}   & \begin{tabular}[t]{@{}c@{}}$\mu_{switch}=2.82$ ms \\$\sigma_{switch}=70.95$ ms\end{tabular}   & \begin{tabular}[t]{@{}c@{}}$\mu_{switch}=2.82$ ms \\$\sigma_{switch}=70.95$ ms\end{tabular} \\              
+        \hdashline
+        \textit{Unknown Switch Time Model}   & \begin{tabular}[t]{@{}c@{}}$\mu_{switch}=5.31$ ms \\$\sigma_{switch}=14.06$ ms\\$\sigma_{\tau}=2.03$ ms \end{tabular}   & \begin{tabular}[t]{@{}c@{}}$\mu_{switch}=31.17$ ms \\$\sigma_{switch}=115.35$ ms\\$\sigma_{\tau}=77.60$ ms\end{tabular} \\               
+        % \hline
+    \end{tabular}
+    \caption[]{Fit values for each of the three models. The No Switch Time Model has no fit parameters. The Known Switch Time Model fit the switch time mean and uncertainty. Additionally, this model required the decision policy parameter value and the model output parameter value to be equal. The Unknown Switch Time Model fits the switch time mean, switch time uncertainty, and stopping time uncertainty. This model allowed the decision policy parameter value and the model output parameter value to be fit separately. Importantly, for the Unknown Switch Time Model, the parameter values used by the decision policy were found to be less than the parameter values that affect the model outputs. Since the Unknown Switch Time model had the lowest loss, this result suggests that participants do not account for the delay and uncertainty associated with switching from reacting to guessing.}
+\end{table}
+
 \end{document}
+
+% Expected switch time 
+\begin{equation}
+    \hat{\mu}_{mot_{guess}} = \tau +  \mu_{nmd} + \hat{\mu}_{switch}
+\end{equation}
+\begin{equation}
+    \hat{\sigma}_{mot_{guess}} = \sqrt{\sigma_{\tau}^2 + \sigma_{nmd}^2 + \hat{\sigma}_{switch}^2}
+\end{equation}
