@@ -8,6 +8,12 @@ from initializer import InitialThangs
 
 from tests.test_model import SAVE_PATH
 
+'''
+DEPRECATED SCRIPT(?) I think I use "generate_model_inputs_and_boostrap_parameters" instead
+
+'''
+
+
 @nb.njit(parallel=True)
 def parameter_bootstrap(parameters:np.ndarray,M=1e5,):
     num_params = len(parameters)
