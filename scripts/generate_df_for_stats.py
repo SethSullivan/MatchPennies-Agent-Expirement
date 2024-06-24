@@ -22,6 +22,7 @@ def generate_exp1_summary_dataframe(group, EXPERIMENT="Exp1", DROP_SUBJECT_NUM=N
     q1_median_movement_onset_time = np.nanquantile(group.movement_metrics.movement_onset_times("task"), 0.25, axis=2).flatten().tolist()
     q3_median_movement_onset_time = np.nanquantile(group.movement_metrics.movement_onset_times("task"), 0.75, axis=2).flatten().tolist()
     movement_onset_time_sd = np.nanstd(group.movement_metrics.movement_onset_times("task"), axis=2).flatten().tolist()
+    movement_onset_time_iqr = iqr(group.movement_metrics.movement_onset_times("task"), axis=2, nan_policy='omit').flatten().tolist()
     gamble_movement_onset_time = np.nanmedian(group.react_guess_movement_metrics.movement_onset_times("react"), axis=2).flatten().tolist()
     median_movement_time = np.nanmedian(group.movement_metrics.movement_times("task"), axis=2).flatten().tolist()
     reaction_decisions = perc(group.react_guess_score_metrics.react_guess_decisions("react")).flatten().tolist()
@@ -52,6 +53,7 @@ def generate_exp1_summary_dataframe(group, EXPERIMENT="Exp1", DROP_SUBJECT_NUM=N
                 wins_when_both_decide,
                 gamble_movement_onset_time,
                 movement_onset_time_sd,
+                movement_onset_time_iqr,
                 q1_median_movement_onset_time,
                 q3_median_movement_onset_time,
                 reaction_decisions,
@@ -70,6 +72,7 @@ def generate_exp1_summary_dataframe(group, EXPERIMENT="Exp1", DROP_SUBJECT_NUM=N
             "Wins_When_Both_Decide",
             "Median_Gamble_Movement_Onset_Time",
             "SD_Movement_Onset_Time",
+            "IQR_Movement_Onset_Time",
             "Q1_Movement_Onset_Time",
             "Q3_Movement_onset_time",
             "Reaction_Decisions",
@@ -170,6 +173,12 @@ def generate_exp1_trial_dataframe(group, EXPERIMENT="Exp1", DROP_SUBJECT_NUM=Non
 def generate_exp2_summary_dataframe(group2):
     it2 = InitialThangs("Exp2")
 
+    react_mixed_mean   = np.nanmean(group2.movement_metrics.exp2_react_guess_reaction_time_split('react','mixed'),axis=1)
+    react_only_mean    = np.nanmean(group2.movement_metrics.exp2_react_guess_reaction_time_split('react','only'),axis=1)
+    guess_mixed_mean   = np.nanmean(group2.movement_metrics.exp2_react_guess_reaction_time_split('guess','mixed'),axis=1)
+    guess_only_mean    = np.nanmean(group2.movement_metrics.exp2_react_guess_reaction_time_split('guess','only'),axis=1)
+    reaction_time_mean = np.vstack((react_mixed_mean,guess_mixed_mean,react_only_mean,guess_only_mean)).T.flatten()
+    
     react_mixed_median   = np.nanmedian(group2.movement_metrics.exp2_react_guess_reaction_time_split('react','mixed'),axis=1)
     react_only_median    = np.nanmedian(group2.movement_metrics.exp2_react_guess_reaction_time_split('react','only'),axis=1)
     guess_mixed_median   = np.nanmedian(group2.movement_metrics.exp2_react_guess_reaction_time_split('guess','mixed'),axis=1)
@@ -193,8 +202,8 @@ def generate_exp2_summary_dataframe(group2):
     factor1 = np.tile(["React","Guess"], it2.num_subjects*2)
     factor2 = np.tile(["Mixed", "Mixed","Only","Only"], it2.num_subjects)
 
-    df_metrics = pd.DataFrame(np.array([reaction_time_median,reaction_time_sd, reaction_time_iqr]).T,
-                            columns=["Reaction_Time_Median","Reaction_Time_SD","Reaction_Time_IQR"])
+    df_metrics = pd.DataFrame(np.array([reaction_time_median, reaction_time_mean, reaction_time_sd, reaction_time_iqr]).T,
+                            columns=["Reaction_Time_Median","Reaction_Time_Mean","Reaction_Time_SD","Reaction_Time_IQR"])
     df_conditions = pd.DataFrame(np.array([subject_number, condition, factor1, factor2]).T, 
                                 columns=["Subject", "Condition", "Factor_1", "Factor_2"])
 
@@ -234,22 +243,22 @@ def generate_exp2_trial_dataframe(group):
 
 SAVE_PATH = Path(r"D:\OneDrive - University of Delaware - o365\Desktop\MatchPennies-Agent-Expirement\results\participant_data")
 print('here')
-# group = rdf.generate_subject_object_v3("Exp1", "All Trials", movement_metric_type='velocity')
+group = rdf.generate_subject_object_v3("Exp1", "All Trials", movement_metric_type='velocity')
 
 #! FILTERING REACTION TIMES <150 or >650 out in the subject object
 group2 = rdf.generate_subject_object_v3("Exp2", "All Trials", movement_metric_type='velocity')
 
-# df1 = generate_exp1_summary_dataframe(group, EXPERIMENT, DROP_SUBJECT_NUM=None)
+df1 = generate_exp1_summary_dataframe(group, DROP_SUBJECT_NUM=None)
 df2 = generate_exp2_summary_dataframe(group2)
 
 # Create raw dataframe if I want to use later for side analyses
-# df3 = generate_exp1_trial_dataframe(group)
+df3 = generate_exp1_trial_dataframe(group)
 df4 = generate_exp2_trial_dataframe(group2)
-# with open(SAVE_PATH / f"Exp1_summary_data_df.pkl", "wb") as f:
-#     dill.dump(df1,f)
+with open(SAVE_PATH / f"Exp1_summary_data_df.pkl", "wb") as f:
+    dill.dump(df1,f)
 with open(SAVE_PATH / f"Exp2_summary_data_df.pkl", "wb") as f:
     dill.dump(df2,f)
-# with open(SAVE_PATH / f"Exp1_trial_data_df.pkl", "wb") as f:
-#     dill.dump(df3,f)
+with open(SAVE_PATH / f"Exp1_trial_data_df.pkl", "wb") as f:
+    dill.dump(df3,f)
 with open(SAVE_PATH / f"Exp2_trial_data_df.pkl", "wb") as f:
     dill.dump(df4,f)

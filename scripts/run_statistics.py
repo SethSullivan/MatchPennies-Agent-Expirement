@@ -124,7 +124,7 @@ def pairwise_bootstrap(data, combos, alternative ="two-sided", M=1e6, test="mean
     return pvals, cles_dict
 
 
-EXPERIMENT = "Exp1"
+EXPERIMENT = "Exp2"
 print(EXPERIMENT)
 
 # Load dataframe of data to use for stats
@@ -132,7 +132,8 @@ with open(rf'D:\OneDrive - University of Delaware - o365\Desktop\MatchPennies-Ag
     df = dill.load(f)
 it = InitialThangs(EXPERIMENT)
 if EXPERIMENT == "Exp1":
-    column_names = ["Mean_Movement_Onset_Time", "Median_Movement_Onset_Time", "SD_Movement_Onset_Time",
+    column_names = ["Mean_Movement_Onset_Time", "Median_Movement_Onset_Time", 
+                    "SD_Movement_Onset_Time", "IQR_Movement_Onset_Time",
                     "Wins", "Incorrects", "Indecisions", "Guess_Decisions"]
     condition_nums = ["0", "1", "2", "3", "4", "5"]
     # Only care about mean comparisons, and then 01 and 12 for the collapse
@@ -142,7 +143,8 @@ if EXPERIMENT == "Exp1":
     collapsed_combos = ["01","02","12"]
     all_combo_slice = slice(2,None)
 elif EXPERIMENT == "Exp2":
-    column_names = ["Reaction_Time_Median", "Reaction_Time_SD","Reaction_Time_IQR"]
+    column_names = ["Reaction_Time_Median","Reaction_Time_Mean",
+                    "Reaction_Time_SD","Reaction_Time_IQR"]
     condition_nums = ["0", "1", "2", "3",]
     all_combos = ["01","02","13","23"]
     collapse_across = exp2_collapse_across
