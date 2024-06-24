@@ -20,6 +20,12 @@ import constants
 This script can either do the warmstarts (set WARM_START = True)
 
 It can also bootstrap using the best warmstart initial conditions
+
+Model Options Final
+1. suboptimal_one
+  - THis fits the switch delay and switch sd, but model has knowledge
+2. suboptimal_partial
+  - this fits the switch delay and switch sd expected and true, 
 '''
 
 # * Functions
@@ -43,13 +49,14 @@ def create_results_row_dict(model,loss,model_name,free_param_keys):
     ]
     results_row = {
         "Model":model_name,"Loss":loss,"fit_parameters":free_param_keys,
-        "median_movement_onset_time":model_data[0],
+        "mean_movement_onset_time":model_data[0],
         "sd_movement_onset_time":model_data[1],
         "indecisions":model_data[2],
         "wins":model_data[3],
         "incorrects":model_data[4],
     }
     return results_row
+
 def get_base_model_loss(model, metric_keys, targets, decision_type="optimal"):
     # Get each metric from results at that specific decision time
     model_metrics = np.zeros_like(targets)
@@ -93,7 +100,7 @@ if True:
     #* True Parameters load
     with open(constants.MODEL_INPUT_PATH / 'model_input_dict.pkl','rb') as f:
         model_input_dict = dill.load(f)
-    true_parameters = [np.nanmedian(v) for k,v in model_input_dict.items() if "agent" not in k] 
+    true_parameters = [np.nanmean(v) for k,v in model_input_dict.items() if "agent" not in k] 
     #* Bootstrap Load
     with open(constants.MODEL_INPUT_PATH / 'bootstrap_parameter_distribution.pkl','rb') as f:
         parameter_distribution = dill.load(f)    
@@ -102,8 +109,8 @@ if True:
     with open(constants.MODEL_INPUT_PATH / 'participant_ids.pkl','rb') as f:
         participant_ids = dill.load(f)        
     #* Comparison Targets load
-    with open(constants.MODEL_INPUT_PATH / 'participant_median_movement_onset_time.pkl','rb') as f:
-        participant_median_movement_onset_time = dill.load(f)
+    with open(constants.MODEL_INPUT_PATH / 'participant_mean_movement_onset_time.pkl','rb') as f:
+        participant_mean_movement_onset_time = dill.load(f)
     with open(constants.MODEL_INPUT_PATH / 'participant_sd_movement_onset_time.pkl','rb') as f:
         participant_sd_movement_onset_time = dill.load(f)
     with open(constants.MODEL_INPUT_PATH / 'participant_wins.pkl','rb') as f:
@@ -121,24 +128,24 @@ if WARM_START:
         #* Randomize for warmstart
         player_inputs = dict(zip(input_keys,true_parameters)) #! This won't change unless we're boostrapping so can pull out of for loop for Warm_Start
         switch_delay_expected_rand = np.random.uniform(0,200,size=iters)
-        switch_delay_true_rand = np.random.uniform(0,200,size=iters)
-        switch_sd_expected_rand = np.random.uniform(0,200,size=iters)
-        switch_sd_true_rand = np.random.uniform(0,200,size=iters)
+        switch_delay_true_rand     = np.random.uniform(0,200,size=iters)
+        switch_sd_expected_rand    = np.random.uniform(0,200,size=iters)
+        switch_sd_true_rand        = np.random.uniform(0,200,size=iters)
     else:
         iters = 1000
         #* Randomize for warmstart
         player_inputs = dict(zip(input_keys,true_parameters)) #! This won't change unless we're boostrapping so can pull out of for loop for Warm_Start
-        switch_delay_true_rand = np.random.uniform(0,200,size=iters)
-        switch_delay_expected_rand = np.random.uniform(0,200,size=iters)
-        switch_sd_true_rand = np.random.uniform(0,250,size=iters)
-        switch_sd_expected_rand = np.random.uniform(0,250,size=iters)
-        reaction_time_expected_rand = np.random.uniform(0,player_inputs["rt"]*1.5,size=iters)
-        reaction_time_sd_expected_rand = np.random.uniform(0,player_inputs["rt_sd"]*1.5,size=iters)
-        movement_time_expected_rand = np.random.uniform(0,player_inputs["mt"]*1.5,size=iters)
-        movement_time_sd_expected_rand = np.random.uniform(0,player_inputs["mt_sd"]*1.5,size=iters)
-        timing_sd_expected_rand = np.random.uniform(0,player_inputs["timing_sd"]*1.5,size=iters)
+        switch_delay_true_rand               = np.random.uniform(0,200,size=iters)
+        switch_delay_expected_rand           = np.random.uniform(0,200,size=iters)
+        switch_sd_true_rand                  = np.random.uniform(0,250,size=iters)
+        switch_sd_expected_rand              = np.random.uniform(0,250,size=iters)
+        reaction_time_expected_rand          = np.random.uniform(0,player_inputs["rt"]*1.5,size=iters)
+        reaction_time_sd_expected_rand       = np.random.uniform(0,player_inputs["rt_sd"]*1.5,size=iters)
+        movement_time_expected_rand          = np.random.uniform(0,player_inputs["mt"]*1.5,size=iters)
+        movement_time_sd_expected_rand       = np.random.uniform(0,player_inputs["mt_sd"]*1.5,size=iters)
+        timing_sd_expected_rand              = np.random.uniform(0,player_inputs["timing_sd"]*1.5,size=iters)
         eletromechanical_delay_expected_rand = np.random.uniform(0,50*1.5,size=iters)
-        eletromechanical_sd_expected_rand = np.random.uniform(0,10*1.5,size=iters)
+        eletromechanical_sd_expected_rand    = np.random.uniform(0,10*1.5,size=iters)
         
     # timing_sd_expected_rand = np.random.uniform(0,np.max(player_inputs['timing_sd']),size=iters)
 else:
@@ -205,9 +212,11 @@ for i in tqdm(range(iters)):
     #* 3. Full optimal, not accounting for fit switch delay and uncertainty, and the expected and true are both fit simultaneously
     
     # Run pure optimal, no switch 
-    optimal_model_no_switch = mhf.run_model(player_inputs,
-                                            expected=False,use_agent_behavior_lookup=False,
-                                            round_num=20)
+    if STORE_BASE_MODEL:
+        optimal_model_no_switch = mhf.run_model(player_inputs,
+                                                expected=False,
+                                                use_agent_behavior_lookup=False,
+                                                round_num=20)
 
     # Run either optimal or suboptimal    
     if MODEL_TO_FIT == "optimal":
@@ -267,21 +276,21 @@ for i in tqdm(range(iters)):
     if WARM_START:
         comparison_targets = np.array(
             [
-                np.nanmedian(participant_median_movement_onset_time, axis=0),
-                np.nanmedian(participant_sd_movement_onset_time, axis=0),
-                np.nanmedian(participant_wins,axis=0)/it.num_trials,
-                np.nanmedian(participant_incorrects,axis=0)/it.num_trials,
-                np.nanmedian(participant_indecisions,axis=0)/it.num_trials,
+                np.nanmean(participant_mean_movement_onset_time, axis=0),
+                np.nanmean(participant_sd_movement_onset_time, axis=0),
+                np.nanmean(participant_wins,axis=0)/it.num_trials,
+                np.nanmean(participant_incorrects,axis=0)/it.num_trials,
+                np.nanmean(participant_indecisions,axis=0)/it.num_trials,
             ]   
         )
     else:
         comparison_targets = np.array(
             [
-                np.nanmedian(participant_median_movement_onset_time[participant_ids[i,:]], axis=0),
-                np.nanmedian(participant_sd_movement_onset_time[participant_ids[i,:]], axis=0),
-                np.nanmedian(participant_wins[participant_ids[i,:]],axis=0)/it.num_trials,
-                np.nanmedian(participant_incorrects[participant_ids[i,:]],axis=0)/it.num_trials,
-                np.nanmedian(participant_indecisions[participant_ids[i,:]],axis=0)/it.num_trials,
+                np.nanmean(participant_mean_movement_onset_time[participant_ids[i,:]], axis=0),
+                np.nanmean(participant_sd_movement_onset_time[participant_ids[i,:]], axis=0),
+                np.nanmean(participant_wins[participant_ids[i,:]],axis=0)/it.num_trials,
+                np.nanmean(participant_incorrects[participant_ids[i,:]],axis=0)/it.num_trials,
+                np.nanmean(participant_indecisions[participant_ids[i,:]],axis=0)/it.num_trials,
             ]   
         )      
     model_metric_keys = ['wtd_leave_time','wtd_leave_time_sd','prob_win','prob_incorrect','prob_indecision']
