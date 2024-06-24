@@ -15,7 +15,7 @@ from Optimal_Stopping_Object import ModelConstructor, get_moments, nb_sum
 
 
 @nb.njit(parallel=True)
-def parameter_bootstrap(parameters:np.ndarray, model_input_dict, M=1e4,):
+def parameter_bootstrap(parameters:np.ndarray, M=1e4,):
     print('begin bootstrap')
     M = int(M)
     num_params = len(parameters)
@@ -38,23 +38,23 @@ def parameter_bootstrap(parameters:np.ndarray, model_input_dict, M=1e4,):
 it = InitialThangs("Exp1")
 #* Pickle model inputs
 group = rdf.generate_subject_object_v3('Exp1', "All Trials")
-rt = np.nanmedian(group.movement_metrics.reaction_times, axis=1) - 25
+rt = np.nanmean(group.movement_metrics.reaction_times, axis=1) - 25
 rt_sd = np.nanstd(group.movement_metrics.reaction_times, axis=1)
-mt = np.min(np.nanmedian(group.movement_metrics.movement_times("task"), axis=2), axis=1)
+mt = np.min(np.nanmean(group.movement_metrics.movement_times("task"), axis=2), axis=1)
 mt_sd = np.min(np.nanstd(group.movement_metrics.movement_times("task"), axis=2), axis=1)
 timing_sd = np.nanstd(group.movement_metrics.coincidence_reach_time, axis=1)
-agent_sds = np.nanmedian(np.nanstd(group.raw_data.agent_task_leave_time, axis=2),axis=0)
-agent_means = np.nanmedian(np.nanmean(group.raw_data.agent_task_leave_time, axis=2),axis=0)
+agent_sds = np.nanmean(np.nanstd(group.raw_data.agent_task_leave_time, axis=2),axis=0)
+agent_means = np.nanmean(np.nanmean(group.raw_data.agent_task_leave_time, axis=2),axis=0)
 metrics = [rt,rt_sd,mt,mt_sd,timing_sd,agent_sds,agent_means]
 keys = ["rt","rt_sd","mt","mt_sd","timing_sd","agent_sds","agent_means"]
 model_input_dict = dict(zip(keys,metrics))
 with open(constants.MODEL_INPUT_PATH / 'model_input_dict.pkl','wb') as f:
     dill.dump(model_input_dict,f)
 
-#* Pickle true median data for loss function
-participant_median_movement_onset_time = np.nanmedian(group.movement_metrics.movement_onset_times("task"), axis=2)
-with open(constants.MODEL_INPUT_PATH / 'participant_median_movement_onset_time.pkl','wb') as f:
-    dill.dump(participant_median_movement_onset_time,f)
+#* Pickle true mean data for loss function
+participant_mean_movement_onset_time = np.nanmean(group.movement_metrics.movement_onset_times("task"), axis=2)
+with open(constants.MODEL_INPUT_PATH / 'participant_mean_movement_onset_time.pkl','wb') as f:
+    dill.dump(participant_mean_movement_onset_time,f)
 participant_mean_movement_onset_time = np.nanmean(group.movement_metrics.movement_onset_times("task"), axis=2)
 with open(constants.MODEL_INPUT_PATH / 'participant_mean_movement_onset_time.pkl','wb') as f:
     dill.dump(participant_mean_movement_onset_time,f)
@@ -76,14 +76,12 @@ with open(constants.MODEL_INPUT_PATH / 'participant_indecisions.pkl','wb') as f:
 
 
 #* Bootstrap parameters
-if False:
+if True:
     bootstrap_parameters = np.array([x for x in model_input_dict.values() if x.shape[0]==it.num_subjects])
     a,b,c = parameter_bootstrap(parameters=bootstrap_parameters, 
-                                model_input_dict=model_input_dict, 
                                 M=1e2) # initialize bootstrap
 
-    parameter_distribution,results,participant_ids = parameter_bootstrap(parameters=bootstrap_parameters, 
-                                                                         model_input_dict=model_input_dict)
+    parameter_distribution,results,participant_ids = parameter_bootstrap(parameters=bootstrap_parameters,)
     print("finished bootstrap")
     with open(constants.MODEL_INPUT_PATH / 'bootstrap_parameter_distribution.pkl','wb') as f:
         dill.dump(parameter_distribution,f)    
@@ -142,7 +140,7 @@ if False:
         '''
         print("starting lookup")
         input_keys = ["rt","rt_sd","mt","mt_sd","timing_sd",]
-        true_parameters = [np.nanmedian(v) for k,v in model_input_dict.items() if "agent" not in k] 
+        true_parameters = [np.nanmean(v) for k,v in model_input_dict.items() if "agent" not in k] 
         player_inputs = dict(zip(input_keys,true_parameters))
 
         reaction_leave_time_lookup = np.zeros((max_timing_sd,max_timing_sd,2,6,1800))
