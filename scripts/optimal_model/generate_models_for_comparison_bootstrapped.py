@@ -22,10 +22,14 @@ This script can either do the warmstarts (set WARM_START = True)
 It can also bootstrap using the best warmstart initial conditions
 
 Model Options Final
-1. suboptimal_one
+1. optimal
   - THis fits the switch delay and switch sd, but model has knowledge
 2. suboptimal_partial
-  - this fits the switch delay and switch sd expected and true, 
+  - this fits the switch delay and switch sd expected and true
+3. suboptimal_none
+  - THis fits the switch delay and sd true to whatever, while holding the expected equal to 0
+
+NOTE: base_model is run simultaneously as the fit model if STORE_BASE_MODEL = True
 '''
 
 # * Functions
@@ -86,11 +90,11 @@ it = InitialThangs(EXPERIMENT)
 
 #! SET THE SETTINGS BEFORE RUNNING SCRIPT
 print("DID YOU SET THE RIGHT SETTINGS?")
-FIT_PARAMETERS = True
-SAVE = True
-MODEL_TO_FIT = "suboptimal_all" # OPTIONS: "optimal", "suboptimal_partial", "suboptimal_none"
-WARM_START = True # If False, that means I'm bootstrapping with the warmstart initial condition 
-STORE_BASE_MODEL = False
+FIT_PARAMETERS   = True
+SAVE             = True
+MODEL_TO_FIT     = "optimal" # OPTIONS: "optimal", "suboptimal_partial", "suboptimal_none"
+WARM_START       = False # If False, that means I'm bootstrapping with the warmstart initial condition 
+STORE_BASE_MODEL = True
 input_keys = ["rt","rt_sd","mt","mt_sd","timing_sd",]
 print(f" Fit Parameters: {FIT_PARAMETERS}\n Save: {SAVE}\n Model to Fit: {MODEL_TO_FIT}\n Warm Start: {WARM_START}\n Store Base Model: {STORE_BASE_MODEL}")
 print(f" Fitting: {MODEL_TO_FIT}")
@@ -124,14 +128,15 @@ if True:
 if WARM_START:
     print("FINDING INITIAL CONDITIONS")
     if MODEL_TO_FIT != "suboptimal_all":
-        iters = 10000
+        iters = 1000
         #* Randomize for warmstart
         player_inputs = dict(zip(input_keys,true_parameters)) #! This won't change unless we're boostrapping so can pull out of for loop for Warm_Start
         switch_delay_expected_rand = np.random.uniform(0,200,size=iters)
         switch_delay_true_rand     = np.random.uniform(0,200,size=iters)
         switch_sd_expected_rand    = np.random.uniform(0,200,size=iters)
         switch_sd_true_rand        = np.random.uniform(0,200,size=iters)
-    else:
+        timing_sd_expected_rand    = np.random.uniform(0,player_inputs["timing_sd"]*1.5,size=iters)
+    else: # This is for suboptimal all only, where we just fit everything
         iters = 1000
         #* Randomize for warmstart
         player_inputs = dict(zip(input_keys,true_parameters)) #! This won't change unless we're boostrapping so can pull out of for loop for Warm_Start
@@ -147,7 +152,6 @@ if WARM_START:
         eletromechanical_delay_expected_rand = np.random.uniform(0,50*1.5,size=iters)
         eletromechanical_sd_expected_rand    = np.random.uniform(0,10*1.5,size=iters)
         
-    # timing_sd_expected_rand = np.random.uniform(0,np.max(player_inputs['timing_sd']),size=iters)
 else:
     print("BOOTSTRAPPING MODEL FITS USING WARMSTART")
     path = constants.MODELS_PATH / "warmstart_models"
@@ -175,7 +179,7 @@ for i in tqdm(range(iters)):
                 "guess_switch_delay_expected": switch_delay_expected_rand[i],
                 "guess_switch_sd_true": switch_sd_true_rand[i],
                 "guess_switch_sd_expected": switch_sd_expected_rand[i],
-                # "timing_sd_expected": timing_sd_expected_rand[i]
+                "timing_sd_expected": timing_sd_expected_rand[i]
             }
         else:
             initial_guess = {
@@ -202,7 +206,7 @@ for i in tqdm(range(iters)):
             "guess_switch_delay_expected": best_warmstart_inputs["guess_switch_delay"].squeeze()[1],
             "guess_switch_sd_true": best_warmstart_inputs["guess_switch_sd"].squeeze()[0],
             "guess_switch_sd_expected": best_warmstart_inputs["guess_switch_sd"].squeeze()[1],
-            # "timing_sd_expected": best_warmstart_inputs["timing_sd"].squeeze()[1,0]
+            "timing_sd_expected": best_warmstart_inputs["timing_sd"].squeeze()[1,0]
         }
     model_name = f"model{i}_{datetime.now():%Y_%m_%d_%H_%M_%S}"
 
@@ -240,10 +244,10 @@ for i in tqdm(range(iters)):
             "guess_switch_delay_expected": initial_guess['guess_switch_delay_expected'],
             "guess_switch_sd_true": initial_guess['guess_switch_sd_true'],
             "guess_switch_sd_expected": initial_guess['guess_switch_sd_expected'],
+            'timing_sd_expected': initial_guess['timing_sd_expected'],
         }
     elif MODEL_TO_FIT == "suboptimal_none":
-        #! 12/4/23 - Also want to just fit the true and holding the expected at zero
-        # Switch delay and sd are automatically set to zero in the run_model function 
+        #! Switch delay and sd are automatically set to zero in the run_model function 
         fit_model = mhf.run_model(player_inputs,
                                   expected=True,use_agent_behavior_lookup=False,
                                   round_num=20,)
@@ -316,7 +320,6 @@ for i in tqdm(range(iters)):
     results_for_df.append(results_dict)
     if not WARM_START and STORE_BASE_MODEL:
         base_model_name = "base_" + model_name
-        # base_model_fit_object = ModelFitting(model=optimal_model_no_switch)
         base_model_loss = get_base_model_loss(optimal_model_no_switch, model_metric_keys, comparison_targets)
         base_input_row_dict = create_input_row_dict(optimal_model_no_switch, base_model_loss, base_model_name, [])
         base_input_parameters_for_df.append(base_input_row_dict)

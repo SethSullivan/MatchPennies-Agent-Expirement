@@ -43,8 +43,10 @@ rt_sd = np.nanstd(group.movement_metrics.reaction_times, axis=1)
 mt = np.min(np.nanmean(group.movement_metrics.movement_times("task"), axis=2), axis=1)
 mt_sd = np.min(np.nanstd(group.movement_metrics.movement_times("task"), axis=2), axis=1)
 timing_sd = np.nanstd(group.movement_metrics.coincidence_reach_time, axis=1)
-agent_sds = np.nanmean(np.nanstd(group.raw_data.agent_task_leave_time, axis=2),axis=0)
-agent_means = np.nanmean(np.nanmean(group.raw_data.agent_task_leave_time, axis=2),axis=0)
+agent_sds_calc = np.nanmean(np.nanstd(group.raw_data.agent_task_leave_time, axis=2),axis=0)
+agent_sds = np.array([50.0,150.0,50.0,150.0,50.0,150.0])
+agent_means_calc = np.nanmean(np.nanmean(group.raw_data.agent_task_leave_time, axis=2),axis=0)
+agent_means = np.array([1000.0,100.00,1100.0,1100.0,1200.0,1200.0])
 metrics = [rt,rt_sd,mt,mt_sd,timing_sd,agent_sds,agent_means]
 keys = ["rt","rt_sd","mt","mt_sd","timing_sd","agent_sds","agent_means"]
 model_input_dict = dict(zip(keys,metrics))
