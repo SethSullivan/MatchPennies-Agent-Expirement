@@ -352,10 +352,7 @@
     \tau^* = \underset{\tau}{argmax}[\mathbb{E}(R|\tau)]
 \end{equation}
 
-
-
 % Loss Equation 
-
 \begin{equation}
     \mathcal{L} = \sum_{i = 1}^{6} \sum_{j = 1}^{5} \frac{|Data_{i,j} - Model_{i,j}|}{Data_{i,j}}
 \end{equation}
@@ -368,13 +365,13 @@
     \centering
     \begin{tabular}{l|c|c }
         % \hline
-                                  & Decision Policy Parameter Value & Model Output Parameter Value \\
+                                           & Decision Policy Parameter Value                                                                                                 & Model Output Parameter Value                                                                                                      \\
         \hline
-        \textit{No Switch Time Model}      & -                               & -                            \\
+        \textit{No Switch Time Model}      & -                                                                                                                               & -                                                                                                                                 \\
         \hdashline
-        \textit{Known Switch Time Model}   & \begin{tabular}[t]{@{}c@{}}$\mu_{switch}=2.82$ ms \\$\sigma_{switch}=70.95$ ms\end{tabular}   & \begin{tabular}[t]{@{}c@{}}$\mu_{switch}=2.82$ ms \\$\sigma_{switch}=70.95$ ms\end{tabular} \\              
+        \textit{Known Switch Time Model}   & \begin{tabular}[t]{@{}c@{}}$\mu_{switch}=2.82$ ms \\$\sigma_{switch}=70.95$ ms\end{tabular}                           & \begin{tabular}[t]{@{}c@{}}$\mu_{switch}=2.82$ ms \\$\sigma_{switch}=70.95$ ms\end{tabular}                             \\
         \hdashline
-        \textit{Unknown Switch Time Model}   & \begin{tabular}[t]{@{}c@{}}$\mu_{switch}=5.31$ ms \\$\sigma_{switch}=14.06$ ms\\$\sigma_{\tau}=2.03$ ms \end{tabular}   & \begin{tabular}[t]{@{}c@{}}$\mu_{switch}=31.17$ ms \\$\sigma_{switch}=115.35$ ms\\$\sigma_{\tau}=77.60$ ms\end{tabular} \\               
+        \textit{Unknown Switch Time Model} & \begin{tabular}[t]{@{}c@{}}$\mu_{switch}=5.31$ ms \\$\sigma_{switch}=14.06$ ms\\$\sigma_{\tau}=2.03$ ms \end{tabular} & \begin{tabular}[t]{@{}c@{}}$\mu_{switch}=31.17$ ms \\$\sigma_{switch}=115.35$ ms\\$\sigma_{\tau}=77.60$ ms\end{tabular} \\
         % \hline
     \end{tabular}
     \caption[]{Fit values for each of the three models. The No Switch Time Model has no fit parameters. The Known Switch Time Model fit the switch time mean and uncertainty. Additionally, this model required the decision policy parameter value and the model output parameter value to be equal. The Unknown Switch Time Model fits the switch time mean, switch time uncertainty, and stopping time uncertainty. This model allowed the decision policy parameter value and the model output parameter value to be fit separately. Importantly, for the Unknown Switch Time Model, the parameter values used by the decision policy were found to be less than the parameter values that affect the model outputs. Since the Unknown Switch Time model had the lowest loss, this result suggests that participants do not account for the delay and uncertainty associated with switching from reacting to guessing.}
