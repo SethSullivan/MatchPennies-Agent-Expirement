@@ -82,7 +82,7 @@ def rerun_models_save_output(model_df, old_model_results):
 
 EXPERIMENT = "Exp1"
 path = constants.MODELS_PATH / f"bootstrapped_models"
-model_names = ["Base","Optimal","Suboptimal_All"]
+model_names = ["Base","Optimal","Suboptimal_Partial"]
 model_results = []
 model_inputs = []
 for model in model_names:
