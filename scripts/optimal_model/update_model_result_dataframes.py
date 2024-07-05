@@ -42,7 +42,7 @@ def create_results_row_dict(model,loss,model_name,free_param_keys):
         "target_reach_times_react_sd",
         "prob_selecting_guess",
         "prob_selecting_reaction",
-        "median_movement_onset_time",
+        "mean_movement_onset_time",
         "sd_movement_onset_time",
         "indecisions",
         "wins",
