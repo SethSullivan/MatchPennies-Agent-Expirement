@@ -62,7 +62,7 @@ cool_grey       = "#9090C0"
 cadet_grey      = "#91A3B0"
 marengo = "#4C5866"
 pebble = "#333333"
-model_colors = [cadet_grey, pebble, wheel.black]
+model_colors = [cadet_grey, wheel.lighten_color(pebble,0.75), wheel.black]
 model_names = ["No Switch Time Model", "Known Switch Time Model", "Unknown Switch Time Model"]
 
 agent_color = wheel.lighten_color(wheel.yellow, 1.75)
