@@ -93,8 +93,8 @@ print("DID YOU SET THE RIGHT SETTINGS?")
 FIT_PARAMETERS   = True
 SAVE             = True
 MODEL_TO_FIT     = "optimal" # OPTIONS: "optimal", "suboptimal_partial", "suboptimal_none"
-WARM_START       = False # If False, that means I'm bootstrapping with the warmstart initial condition 
-STORE_BASE_MODEL = True
+WARM_START       = True # If False, that means I'm bootstrapping with the warmstart initial condition 
+STORE_BASE_MODEL = False
 input_keys = ["rt","rt_sd","mt","mt_sd","timing_sd",]
 print(f" Fit Parameters: {FIT_PARAMETERS}\n Save: {SAVE}\n Model to Fit: {MODEL_TO_FIT}\n Warm Start: {WARM_START}\n Store Base Model: {STORE_BASE_MODEL}")
 print(f" Fitting: {MODEL_TO_FIT}")
