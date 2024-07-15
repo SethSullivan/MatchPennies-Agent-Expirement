@@ -783,8 +783,8 @@ class ModelFitting:
         for k,v in new_parameters_dict.items():
             #* return big loss if anything is less than 0
             if v<0:
-                self.loss_store.append(1e3)
-                return 1e3 + abs(v)
+                self.loss_store.append(1e6)
+                return 1e6 + abs(v)
             #* Return big loss if true is less than expected
             # if k.endswith("_true"):
             #     expected_key = k.replace("_true","_expected")
