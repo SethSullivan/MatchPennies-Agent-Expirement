@@ -45,20 +45,38 @@ def create_input_row_dict(model, loss, model_name,free_param_keys):
 def create_results_row_dict(model,loss,model_name,free_param_keys):
     get_metric = model.results.get_metric
     model_data = [
+        model.results.optimal_decision_time,
+        get_metric(model.player_behavior.wtd_reach_time,metric_type='true',decision_type='optimal'),
+        get_metric(model.player_behavior.wtd_reach_time_sd,metric_type='true',decision_type='optimal'),
+        get_metric(model.player_behavior.guess_reach_time,metric_type='true',decision_type='optimal'),
+        model.player_behavior.guess_reach_time_sd.squeeze(),
+        get_metric(model.player_behavior.reaction_reach_time,metric_type='true',decision_type='optimal'),
+        get_metric(model.player_behavior.reaction_reach_time_sd,metric_type='true',decision_type='optimal'),
+        get_metric(model.player_behavior.prob_selecting_guess,metric_type='true',decision_type='optimal'),
+        get_metric(model.player_behavior.prob_selecting_reaction,metric_type='true',decision_type='optimal'),
         get_metric(model.player_behavior.wtd_leave_time,metric_type='true',decision_type='optimal'),
         get_metric(model.player_behavior.wtd_leave_time_sd,metric_type='true',decision_type='optimal'),
         get_metric(model.score_metrics.prob_indecision,metric_type='true',decision_type='optimal')*100,
         get_metric(model.score_metrics.prob_win,metric_type='true',decision_type='optimal')*100,
         get_metric(model.score_metrics.prob_incorrect,metric_type='true',decision_type='optimal')*100,
     ]
-    results_row = {
-        "Model":model_name,"Loss":loss,"fit_parameters":free_param_keys,
-        "mean_movement_onset_time":model_data[0],
-        "sd_movement_onset_time":model_data[1],
-        "indecisions":model_data[2],
-        "wins":model_data[3],
-        "incorrects":model_data[4],
-    }
+    results_keys = [
+        "decision_times",
+        "target_reach_times",
+        "target_reach_times_sd",
+        "target_reach_times_guess",
+        "target_reach_times_guess_sd",
+        "target_reach_times_react",
+        "target_reach_times_react_sd",
+        "prob_selecting_guess",
+        "prob_selecting_reaction",
+        "mean_movement_onset_time",
+        "sd_movement_onset_time",
+        "indecisions",
+        "wins",
+        "incorrects",
+        ]
+    results_row = {"Model":model_name,"Loss":loss,"fit_parameters":free_param_keys} | dict(zip(results_keys, model_data))
     return results_row
 
 def get_base_model_loss(model, metric_keys, targets, decision_type="optimal"):
