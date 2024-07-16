@@ -95,7 +95,8 @@ for model in model_names:
     new_rows = []
     new_rows = rerun_models_save_output(old_model_inputs, old_model_results)
     new_model_results = pd.DataFrame(new_rows)
-    with open(results_path.as_posix()[:-4] + "_new.pkl", "wb") as f:
+    print(results_path.as_posix())
+    with open(results_path.as_posix(), "wb") as f:
         dill.dump(new_model_results, f)
     print("model done")
 
