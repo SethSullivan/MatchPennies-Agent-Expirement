@@ -816,7 +816,7 @@ class ModelFitting:
                 model_metrics[i,:] = self.model.results.get_metric(model_metric, 
                                                                    decision_type=decision_type, 
                                                                    metric_type="true")  # Find the metric at optimal decision time
-        loss = lf.mse_loss(model_metrics, targets)
+        loss = lf.ape_loss(model_metrics, targets)
         try:
             self.loss_store.append(loss)
         except AttributeError:
