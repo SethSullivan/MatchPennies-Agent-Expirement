@@ -153,7 +153,7 @@ if WARM_START:
         switch_delay_true_rand     = np.random.uniform(0,200,size=iters)
         switch_sd_expected_rand    = np.random.uniform(0,200,size=iters)
         switch_sd_true_rand        = np.random.uniform(0,200,size=iters)
-        timing_sd_expected_rand    = np.random.uniform(0,player_inputs["timing_sd"]*1.5,size=iters)
+        timing_sd_expected_rand    = np.random.uniform(0,player_inputs["timing_sd"],size=iters)
     else: # This is for suboptimal all only, where we just fit everything
         iters = 1000
         #* Randomize for warmstart
