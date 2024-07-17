@@ -30,6 +30,6 @@ def mse_loss(predictions, targets):
     predictions = predictions.squeeze()
     targets = targets.squeeze()
     
-    error = np.mean((predictions - targets)**2)
+    error = np.mean((((predictions - targets)/targets)*100)**2)
     
     return error 
