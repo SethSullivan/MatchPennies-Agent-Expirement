@@ -51,8 +51,8 @@ model_input_savenames = ['exp1_rt_median_array.pkl','exp1_rt_sd_array.pkl',
 # This goes along with parameter distribution so I know which index corresponds to which metric
 input_keys = ["rt","rt_sd","mt","mt_sd","timing_sd",]
 
-agent_means = np.array([1000.0,1000.0,1100.0,1100.0,1200.0,1200.0])
-agent_sds = np.array([50.0,150.0,50.0,150.0,50.0,150.0])
+stimulus_means = np.array([1000.0,1000.0,1100.0,1100.0,1200.0,1200.0])
+stimulus_sds = np.array([50.0,150.0,50.0,150.0,50.0,150.0])
 
 # model_colors = [wheel.grey, wheel.lighten_color(wheel.dark_grey,1.25), wheel.black]
 battleship_grey = "#848482"
@@ -60,10 +60,10 @@ charcoal        = "#36454F"
 stone_grey      = "#928E85"
 cool_grey       = "#9090C0"
 cadet_grey      = "#91A3B0"
-marengo = "#4C5866"
-pebble = "#333333"
+marengo         = "#4C5866"
+pebble          = "#333333"
 model_colors = [cadet_grey, wheel.lighten_color(pebble,0.75), wheel.black]
 model_names = ["No Switch Time Model", "Known Switch Time Model", "Unknown Switch Time Model"]
 
-agent_color = wheel.lighten_color(wheel.yellow, 1.75)
+stimulus_color = wheel.lighten_color(wheel.yellow, 1.75)
 player_color = wheel.purple
