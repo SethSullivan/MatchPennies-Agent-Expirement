@@ -10,7 +10,6 @@ from copy import deepcopy
 
 sys.path.insert(0,r'D:\OneDrive - University of Delaware - o365\Desktop\MatchPennies-Agent-Expirement')
 from Subject_Object_v3 import SubjectBuilder
-import deprecated.Subject_Object_v2 as Subject_Object_v2
 
 def pickle_subject_objects(subject_list,load_path):
     '''
