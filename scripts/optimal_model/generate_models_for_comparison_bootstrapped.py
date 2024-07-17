@@ -110,7 +110,7 @@ it = InitialThangs(EXPERIMENT)
 print("DID YOU SET THE RIGHT SETTINGS?")
 FIT_PARAMETERS   = True
 SAVE             = True
-MODEL_TO_FIT     = "optimal" # OPTIONS: "optimal", "suboptimal_partial", "suboptimal_none"
+MODEL_TO_FIT     = "suboptimal_partial" # OPTIONS: "optimal", "suboptimal_partial", "suboptimal_none"
 WARM_START       = True # If False, that means I'm bootstrapping with the warmstart initial condition 
 STORE_BASE_MODEL = False
 input_keys = ["rt","rt_sd","mt","mt_sd","timing_sd",]
@@ -149,10 +149,10 @@ if WARM_START:
         iters = 1000
         #* Randomize for warmstart
         player_inputs = dict(zip(input_keys,true_parameters)) #! This won't change unless we're boostrapping so can pull out of for loop for Warm_Start
-        switch_delay_expected_rand = np.random.uniform(0,200,size=iters)
         switch_delay_true_rand     = np.random.uniform(0,200,size=iters)
-        switch_sd_expected_rand    = np.random.uniform(0,200,size=iters)
+        switch_delay_expected_rand = np.random.uniform(0,switch_delay_true_rand,size=iters) # MAKES EXPECTED SELECT SOMETHING LOWER FOR EACH TRUE VALUE
         switch_sd_true_rand        = np.random.uniform(0,200,size=iters)
+        switch_sd_expected_rand    = np.random.uniform(0,switch_sd_true_rand,size=iters)
         timing_sd_expected_rand    = np.random.uniform(0,player_inputs["timing_sd"],size=iters)
     else: # This is for suboptimal all only, where we just fit everything
         iters = 1000
