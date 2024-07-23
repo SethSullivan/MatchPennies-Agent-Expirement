@@ -110,9 +110,9 @@ it = InitialThangs(EXPERIMENT)
 print("DID YOU SET THE RIGHT SETTINGS?")
 FIT_PARAMETERS   = True
 SAVE             = True
-MODEL_TO_FIT     = "suboptimal_partial" # OPTIONS: "optimal", "suboptimal_partial", "suboptimal_none"
-WARM_START       = True # If False, that means I'm bootstrapping with the warmstart initial condition 
-STORE_BASE_MODEL = False
+MODEL_TO_FIT     = "optimal" # OPTIONS: "optimal", "suboptimal_partial", "suboptimal_none"
+WARM_START       = False # If False, that means I'm bootstrapping with the warmstart initial condition 
+STORE_BASE_MODEL = True
 input_keys = ["rt","rt_sd","mt","mt_sd","timing_sd",]
 print(f" Fit Parameters: {FIT_PARAMETERS}\n Save: {SAVE}\n Model to Fit: {MODEL_TO_FIT}\n Warm Start: {WARM_START}\n Store Base Model: {STORE_BASE_MODEL}")
 print(f" Fitting: {MODEL_TO_FIT}")
@@ -173,6 +173,7 @@ if WARM_START:
 else:
     print("BOOTSTRAPPING MODEL FITS USING WARMSTART")
     path = constants.MODELS_PATH / "warmstart_models"
+    print(list(path.glob(f"{EXPERIMENT}_{MODEL_TO_FIT}_warmstart_results*"))[-1])
     df_results = list(path.glob(f"{EXPERIMENT}_{MODEL_TO_FIT}_warmstart_results*"))[-1]
     df_inputs = list(path.glob(f"{EXPERIMENT}_{MODEL_TO_FIT}_warmstart_inputs*"))[-1]
     df_warmstart_results = pd.read_pickle(path / df_results)
