@@ -635,7 +635,7 @@ def plot_stats(ax, statistics:list[dict], combos:list[str],
         dv.stat_annotation(ax,xpositions[i][0],xpositions[i][1],y=ypos[i],
                            p_val= statistics[0][combos[i]], **kwargs)
 
-def plot_boostrapped_model_results(ax, x, y, percentiles, color, horizontal_lw = 0.2, markersize=10):
+def plot_boostrapped_model_results(ax, x, y, percentiles, color, horizontal_lw = 0.2, markersize=10, markerstyle="o"):
     left = x - horizontal_lw/2
     right = x + horizontal_lw/2
     if percentiles is not None:
@@ -644,7 +644,7 @@ def plot_boostrapped_model_results(ax, x, y, percentiles, color, horizontal_lw =
         ax.plot([x, x], [top, bottom], color=color)
         ax.plot([left, right], [top, top], color=color)
         ax.plot([left, right], [bottom, bottom], color=color)
-    ax.plot(x, y, 'o', color=color, markersize=markersize, zorder=99, clip_on=False)
+    ax.plot(x, y, markerstyle, color=color, markersize=markersize, zorder=99, clip_on=False)
     
 def plot_models(ax, xlocs, data, line_colors, linestyles, bw, 
                 markersize, legend_labels, legend_linewidth, 
