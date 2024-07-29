@@ -1,0 +1,228 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%% Simple LaTeX CV Template %%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% NOTE: If you find that it says                                     %%
+%%                                                                    %%
+%%                           1 of ??                                  %%
+%%                                                                    %%
+%% at the bottom of your first page, this means that the AUX file     %%
+%some% was not available when you ran LaTeX on this source. Simply RERUN  %%
+%% LaTeX to get the ``??'' replaced with the number of the last page  %%
+%% of the document. The AUX file will be generated on the first run   %%
+%% of LaTeX and used on the second run to fill in all of the          %%
+%% references.                                                        %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% Document Setup %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Don't like 10pt? Try 11pt or 12pt
+\documentclass[12pt]{article}
+%\RequirePackage[T1]{fontenc}
+\usepackage{ragged2e}
+% LaTeX will typeset using Computer Modern Roman, which a lot of
+% non-mathematicians and non-engineers won't like. Also, a few PDF
+% viewers may not render CMR very well. Instead, Times New Roman can
+% be used. That's what this package does.
+%times 
+%\usepackage{times}
+\usepackage{fontspec}
+
+% The automated optical recognition software used to digitize resume
+% information works best with fonts that do not have serifs. This
+% command uses a sans serif font throughout. Uncomment both lines (or at
+% least the second) to restore a Roman font (i.e., a font with serifs).
+% (NOTE: This requires the times package above)
+%\renewcommand{\familydefault}{\sfdefault}
+
+% This is a helpful package that puts math inside length specifications
+\usepackage{calc}
+
+
+% This package helps LaTeX auto-hyphenate hyphenated words if you use
+% special hyphens. For example, bio\-/mimicry will properly hyphenate
+% ``mimicry'' if necessary.
+\usepackage[shortcuts]{extdash}
+\usepackage{graphicx}
+\usepackage{fontawesome}
+%\usepackage{hyperref}
+\usepackage[usenames,dvipsnames]{xcolor}
+\usepackage{graphicx,wrapfig}
+%
+%         PAPER SIZE, PAGE NUMBER, AND DOCUMENT LAYOUT NOTES:
+%
+% The next \usepackage line changes the layout for CV style section
+% headings as marginal notes. It also sets up the paper size as either
+% letter or A4. By default, letter was used. If A4 paper is desired,
+% comment out the letterpaper lines and uncomment the a4paper lines.
+%
+% As you can see, the margin widths and section title widths can be
+% easily adjusted.
+%
+% ALSO: Notice that the includefoot option can be commented OUT in order
+% to put the PAGE NUMBER *IN* the bottom margin. This will make the
+% effective text area larger.
+%
+% IF YOU WISH TO REMOVE THE ``of LASTPAGE'' next to each page number,
+% see the note about the +LP and -LP lines below. Comment out the +LP
+% and uncomment the -LP.
+%
+% IF YOU WISH TO REMOVE PAGE NUMBERS, be sure that the includefoot line
+% is uncommented and ALSO uncomment the \pagestyle{empty} a few lines
+% below.
+%
+
+%% Use these lines for letter-sized paper
+\usepackage[paper=letterpaper,
+            includefoot, % Uncomment to put page number above margin
+            marginparwidth=0.0in,     % Length of section titles
+            marginparsep=.05in,       % Space between titles and text
+            margin=1.0in,               % 1 inch margins
+            includemp]{geometry}
+	   \pagestyle{empty}
+
+\setmainfont{AvenirLTProBook.otf}[
+    Path =fonts/,
+    BoldFont = AvenirNextLTProBold.otf,
+    %BoldFont = AvenirLTProHeavy.otf, % another option for bold font
+    ItalicFont = AvenirLTProBookOblique.otf,
+    BoldItalicFont = AvenirLTProHeavyOblique.otf
+]
+	   
+%% Use these lines for A4-sized paper
+%\usepackage[paper=a4paper,
+%            %includefoot, % Uncomment to put page number above margin
+%            marginparwidth=30.5mm,    % Length of section titles
+%            marginparsep=1.5mm,       % Space between titles and text
+%            margin=25mm,              % 25mm margins
+%            includemp]{geometry}
+
+%% More layout: Get rid of indenting throughout entire document
+\setlength{\parindent}{0in}
+
+
+\usepackage{fancyhdr}
+\renewcommand{\headrulewidth}{0.0pt} % sets line size of header / footer
+\renewcommand{\footrulewidth}{0.0pt}
+
+\usepackage{graphicx} 
+\usepackage{caption}
+\usepackage{mwe}
+
+\definecolor{myudblue}{RGB}{0, 83, 159}
+\usepackage[hidelinks]{hyperref}
+
+%%%%%%%%%%%%%%%%%%%%%%%% End Document Setup %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%% Begin CV Document %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+\fontsize{12pt}{12pt}\selectfont
+%\pagenumbering{gobble}
+\pagestyle{fancy}
+\cfoot{}
+\lfoot{}
+\rfoot{\textcolor{myudblue}{1}}
+\raggedright
+\begin{minipage}[ht]{0.6\textwidth}
+\hspace{-10mm}\includegraphics[height=0.9in]{udcoe_logo}
+\end{minipage}\hfill
+\begin{minipage}[ht]{0.275\textwidth}
+\begin{tabular}{lr}
+\raggedleft
+&\fontsize{10}{10}\selectfont \hspace{+20mm}\textcolor{myudblue}{Joshua Cashaback}\\
+&\fontsize{10}{10}\selectfont \textcolor{myudblue}{Assistant Professor}\\
+ &{\fontsize{10}{10}\selectfont \textcolor{myudblue}{\faPhone \hspace{1mm} +1.302.784.5986}}\\
+ &{\fontsize{10}{10}\selectfont \textcolor{myudblue}{\href{mailto:joshcash@udel.edu}{\faEnvelope \hspace{1mm} joshcash@udel.edu}}}\\
+%&{\fontsize{10}{10}\selectfont \textcolor{myudblue}{\faHome joshcashaback.weebly.com}}
+%&{\fontsize{10}{10}\selectfont \textcolor{myudblue}{\href{mailto:cashabackjga@gmail.com}{cashabackjga@gmail.com}}}\\
+\end{tabular}
+\end{minipage}
+\\
+\vspace{6mm}
+\today
+\\
+\vspace{6mm}
+Dear Editor,
+\justify
+\vspace{1.0mm}
+We are writing to request that you consider our paper, \textcolor{myudblue}{\textbf{``Indecision under time pressure arises from suboptimal switching behaviour''}}, for publication in \emph{Current Biology}.
+\vspace{1.0mm}
+\\
+Indecisions can be catastrophic, preventing a life-saving response or leading to a loss of large sums of money.  Despite their importance and high prevalence, indecisions have been surprisingly ignored in the literature. The main culprit is that the field of decision-making leans heavily on the classic two-alternative forced choice task---where a human or animal \emph{must} select one of two potential options---which simply does not permit a non-response past some deadline (i.e., indecision). Of the few papers that have considered a deadline, indecisions are usually only mentioned in passing and, more often, simply removed from analyses and discarded from model fitting. \textbf{The field has consequently overlooked a common and hallmark feature of human and animal behaviour---indecisions.}
+\vspace{3mm}
+\\
+Here we designed a novel paradigm to study high pressure scenarios that lead to indecisions. We found a median indecision rate of approximately 20\%, \textbf{with some participants even displaying over 50\% indecisions despite having plenty of time to make a guess.} Our computational modelling suggested that these indecisions arose by not accounting for the time delay and uncertainty associated when switching from reacting to guessing. In a second experiment, we show for the first time there is an inherent and functionally relevant time delay when switching from reacting to guessing, a phenomenon previously unreported in the literature. \textbf{Our paper novelly provides a mechanism to explain how indecisions arise.}
+\vspace{3mm}
+\\
+We fully expect that our work will broadly draw interest from fields as diverse as Decision-Making, Economics, and Sports Science, which are all interested in the role of decision-making on behaviour.
+Thank you for your time and consideration.
+\vspace{3mm}
+\\
+Sincerely, 
+\vspace{3mm}
+\\
+\includegraphics[height=0.75in]{signature}
+\\
+\vspace{-3.5mm}
+\\
+Joshua G. A. Cashaback, Ph.D.
+\thispagestyle{fancy}
+\rfoot{\textcolor{myudblue}{\thepage}}
+\lfoot{\textcolor{myudblue}{\textbf{\fontsize{10}{10}\selectfont Biomedical Engineering | College of Engineering | University of Delaware} }
+\\
+\fontsize{10}{10}\selectfont \textcolor{myudblue}{STAR Health Sciences Complex, Rm 201J | 540 South College Avenue | Newark, DE., 19713}}
+\newpage
+\noindent \textcolor{myudblue}{REVIEWER SUGGESTIONS}
+\\
+\\
+Michael S Landy, New York University, landy@nyu.edu
+\\
+\\
+Han L.J. van der Maas, University of Amsterdam, H.L.J.vanderMaas@uva.nl 
+\\
+\\
+Tony Carlsen, University of Ottawa, University of Ottawa
+\\
+\\
+Martin Wiener, George Mason University, mwiener@gmu.edu
+%\\
+%\\
+%Laurence T. Maloney, New York University, laurence.maloney@nyu.edu
+%\\
+%\\
+%Jan Drugowitsch, Harvard Medical School, jan_drugowitsch@hms.harvard.edu
+%\\
+%\\
+%Taraz G. Lee, University of Michigan, tarazlee@umich.edu
+%\\
+%\\
+%Tony Carlsen, University of Ottawa, University of Ottawa
+\end{document}
+%%%%%%%%%%%%%%%%%%%%%%%%%% End CV Document %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%----------------------------------------------------------------------%
+% The following is copyright and licensing information for
+% redistribution of this LaTeX source code; it also includes a liability
+% statement. If this source code is not being redistributed to others,
+% it may be omitted. It has no effect on the function of the above code.
+%----------------------------------------------------------------------%
+% Copyright (c) 2007, 2008, 2009, 2010, 2011 by Theodore P. Pavlic
+%
+% Unless otherwise expressly stated, this work is licensed under the
+% Creative Commons Attribution-Noncommercial 3.0 United States License. To
+% view a copy of this license, visit
+% http://creativecommons.org/licenses/by-nc/3.0/us/ or send a letter to
+% Creative Commons, 171 Second Street, Suite 300, San Francisco,
+% California, 94105, USA.
+%
+% THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+% OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+% MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+% IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+% CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+% TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+% SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+%----------------------------------------------------------------------%
