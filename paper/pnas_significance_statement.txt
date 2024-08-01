@@ -1,0 +1,6 @@
+Indecisive behaviour is highly prevalent in many aspects of daily life. Despite its ubiquity,
+there has been very little focus and a lack of explanation for why indecisions occur. Here
+we find under high time pressure scenarios that indecisions arise by misrepresenting ad-
+ditional time delays and temporal uncertainties associated when attempting to switch
+from reacting to guessing. Our novel paradigm presents a new way to elucidate and
+study indecisions.
