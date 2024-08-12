@@ -138,7 +138,7 @@
 \begin{document}
 \SectionHeader{Supplementary}
 
-\noindent\boldblue{\large{Supplementary A: High Variance Results}}
+\noindent\boldblue{\large{Supplementary A: Low and High Variance Results}}
 \begin{figure}[H]
     \centering
     \includegraphics[scale =1]{figures/exp1_movement_onset_panel_all_conditions.png}
@@ -154,6 +154,7 @@
 
 \newpage
 \noindent\boldblue{\large{Supplementary B: Optimal Models}}
+\vspace{-1mm}
 
 We tested three different models to investigate the ability of participants to maximize reward during \boldblue{Experiment 1}: i) No Switch Time Model, ii) Full Switch Time Model and iii) Partial Switch Time Model (\boldblue{Fig. 2}). Each model represents a different hypothesis on how humans time their decisions, which we address further below. Intuitively, participants should react to the stimulus on trials where it moved earlier in time and guess on trials where it moved later in time. That is, reacting to early stimulus movement onsets ensures they can select the correct target. Likewise, guessing on late stimulus movement onsets affords the participant a 50\% chance of selecting the correct target. However, if participants wait too long to react to a late stimulus movement onset, then they might make too many indecisions and fail to maximize reward.
 We modelled the time to switch from reacting to guessing as an optimal transition problem. This differs from past models that have used a similar Bayesian framework, which has beenused to determine reach aim \autocite{trommershauserStatisticalDecisionTheory2003} and reach timing \autocite{hudsonOptimalCompensationTemporal2008}. Here a model represents a decision-maker that selects a transition time, $\tau$. This transition time determines when to stop waiting to react to the stimulus and switch to guessing one of the two targets. The optimal transition time is determined from a decision policy that maximizes reward, given task constraints (i.e. stimulus movement onset distribution and time constraint), and knowledge of sensorimotor delays and uncertainties.
