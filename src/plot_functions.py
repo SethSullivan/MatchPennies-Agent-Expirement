@@ -611,7 +611,10 @@ def plot_stats_v2(ax, pvals:list[dict],cles, combos:list[str],
             kwargs.update({'cles':cles.iloc[0][combos[i]]})
         else:
             kwargs.update({'cles':None})
-        pval = pvals.iloc[0][combos[i]]
+        if isinstance(pvals, dict):
+            pval = pvals[combos[i]]
+        else:
+            pval = pvals.iloc[0][combos[i]]
         if pval>1.0:
             pval = 1.0
         dv.stat_annotation(ax,xlocs[i][0],xlocs[i][1],y=ypos[i],
