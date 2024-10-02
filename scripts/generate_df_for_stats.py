@@ -128,8 +128,8 @@ def generate_exp1_trial_dataframe(group, EXPERIMENT="Exp1", DROP_SUBJECT_NUM=Non
     trial_number = np.tile(np.arange(1,it.num_trials + 1, 1, dtype=int), it.num_subjects*it.num_blocks)
     # alt_condition = np.tile(['1000 (50)','1000 (150)','1100 (50)','1100 (150)', '1200 (50)', '1200 (150)'],it.num_subjects).tolist()
     if EXPERIMENT == "Exp1":
-        factor1 = np.repeat(["1000", "1000", "1100", "1100", "1200", "1200"], it.num_subjects*it.num_trials)
-        factor2 = np.repeat(["50","50","50", "150", "150","150"], it.num_subjects*it.num_trials)
+        factor1 = np.tile(np.repeat(["1000", "1000", "1100", "1100", "1200", "1200"], it.num_trials), it.num_subjects)
+        factor2 = np.tile(np.repeat(["50", "150", "50", "150", "50", "150"], it.num_trials), it.num_subjects)
         points = np.full_like(win, 0)
     else:
         factor1 = np.tile(["0 Inc", "-1 Inc", "0 Inc", "-1 Inc"], it.num_subjects)
