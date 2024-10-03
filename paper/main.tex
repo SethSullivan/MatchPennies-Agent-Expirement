@@ -13,12 +13,12 @@
 \usepackage{lineno}
 \usepackage{setspace}
 \usepackage{docmute} % For putting one tex into another tex using \input
-
-\definecolor{mydarkblue}{RGB}{0,51,102}
-\definecolor{MYDARKBLUE}{RGB}{0,51,102}
-
-\graphicspath{ {./figures/} }
-
+\usepackage[paper=letterpaper,
+            %includefoot, % Uncomment to put page number above margin
+            marginparwidth=0.0in,     % Length of section titles
+            marginparsep=.05in,       % Space between titles and text
+            margin=1.0in,               % 1 inch margins
+            includemp]{geometry}
 \usepackage[%
   autocite  = superscript,
   backend  = bibtex,
@@ -32,17 +32,27 @@
   doi = false,
   url = false, 
   date=year, % Removes everything but year (i.e. month day) from citations
-]{biblatex}
+  ]{biblatex}
+\usepackage{fancyhdr}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+\usepackage{xpatch}
+\xpatchbibmacro{date+extrayear}{%
+    \printtext[parens]%
+  }{%
+    \setunit{\addperiod\space}%
+    \printtext%
+  }{}{}
+  \AtEveryBibitem{%
+    \clearfield{note}%
+  }
+  
+\definecolor{mydarkblue}{RGB}{0,51,102}
+\definecolor{MYDARKBLUE}{RGB}{0,51,102}
+
+\graphicspath{ {./figures/} }
 
 \addbibresource{Aim1.bib}
-% \bibliography{draft}
-
-\usepackage[paper=letterpaper,
-            %includefoot, % Uncomment to put page number above margin
-            marginparwidth=0.0in,     % Length of section titles
-            marginparsep=.05in,       % Space between titles and text
-            margin=1.0in,               % 1 inch margins
-            includemp]{geometry}
 
 \renewbibmacro{in:}{}
 \DeclareFieldFormat[article]{citetitle}{#1}
@@ -52,7 +62,6 @@
 \DeclareNameAlias{default}{family-given}
 \DeclareFieldFormat{labelnumberwidth}{\textcolor{mydarkblue}{\mkbibbold{#1\adddot}}} %remove brackets in bibliography
 \DeclareFieldFormat{journaltitle}{\mkbibemph{#1}\isdot}
-%\renewcommand{\labelnamepunct}{\addspace}  % remove period after year
 
 % add numbers in front of citations and puts year behind authors
 \defbibenvironment{bibliography}
@@ -70,17 +79,6 @@
   {\endlist}
   {\item}
 
-\usepackage{xpatch}
-\xpatchbibmacro{date+extrayear}{%
-  \printtext[parens]%
-}{%
-  \setunit{\addperiod\space}%
-  \printtext%
-}{}{}
-\AtEveryBibitem{%
-  \clearfield{note}%
-}
-
 % adds comma after journal 
 \renewcommand\bibpagespunct{\ifentrytype{article}{\addcolon}{\addcomma}\space}
 \renewbibmacro*{volume+number+eid}{%
@@ -97,9 +95,7 @@
 }
 
 %\usepackage{hyperref}
-\usepackage{fancyhdr}
-\renewcommand{\headrulewidth}{0pt}
-\renewcommand{\footrulewidth}{0pt}
+
 
 \setmainfont{AvenirLTProBook.otf}[
     Path =fonts/,
@@ -123,26 +119,11 @@
 \newcommand{\SectionHeader}[1]{\noindent\boldblue{\Large{#1}}\normalsize }
 \newcommand{\SubSectionHeader}[1]{\noindent\Large{\textcolor{mydarkblue}{#1}}\normalsize }
 
-
-
 \abovedisplayskip = 10.0pt plus 2.0pt minus 20.0pt
 \belowdisplayskip = 10.0pt plus 2.0pt minus 20.0pt
 \abovedisplayshortskip = 0.0pt plus 20.0pt
 \belowdisplayshortskip = 9pt plus 3pt minus 20pt
 
-% Condition variables
-% \def\emlv{\emph{\emph{early mean} low variance}}
-% \def\emhv{\emph{\emph{early mean} high variance}}
-% \def\mmlv{\emph{\emph{middle mean} low variance}}
-% \def\mmhv{\emph{\emph{middle mean} high variance}}
-% \def\lmlv{\emph{\emph{late mean} low variance}}
-% \def\lmhv{\emph{\emph{late mean} high variance}}
-
-% \def\em{\emph{\emph{early mean}}}
-% \def\mm{\emph{\emph{middle mean}}}
-% \def\lm{\emph{\emph{late mean}}}
-
-% \definecolor{myudblue}{RGB}{0, 83, 159}
 \begin{document}
 % MUST BE IN DOCUMENT FOR EQUATION SPACING
 %%%%%%%%%%%%%%%%%% TITLE PAGE %%%%%%%%%%%%%%%%%%
@@ -273,7 +254,7 @@ Participant movement onset standard deviation for the low variance conditions is
   \end{minipage}\hfill
   \begin{minipage}[c][\pdfpageheight][t]{0.5\textwidth}
       \caption*{
-        \boldblue{Figure 2: Behaviour Results}. \boldblue{A)} Participant movement onset, \boldblue{B)} participant movement onset standard deviation, \boldblue{C)} indecisions, \boldblue{D)} wins, and \boldblue{E)} incorrects are shown for each condition. In our high time pressure task, participants made a high proportion of indecisions. Open circles are individual participant data. Filled icons are the predicted behavior of the three models, see legend for detail. Interestingly, we also found that the average win percentage (41.25\%) was significantly below the 50\% chance level (p < 0.001) in the \emph{late mean} condition, clearly demonstrating suboptimal behaviour. Critically, participants would have earned more points if they had simply guessed earlier on all trials, rather than attempting to react to the stimulus. \boldblue{Model Results}: Only the Partial Switch Time Model, which had only a partial representation of the time delay and uncertainty when switching from reacting to guessing, was able to predict the indecisions and a suboptimal win rate (below 50\%) in the \emph{late mean} condition. See \boldblue{Fig. 3} for the time varying model predictions for the \emph{late mean} condition. Collectively, our findings show that humans are suboptimal and excessively indecisive.} 
+        \boldblue{Figure 2: Behaviour Results}. \boldblue{A)} Participant movement onset, \boldblue{B)} participant movement onset standard deviation, \boldblue{C)} indecisions, \boldblue{D)} wins, and \boldblue{E)} incorrects are shown for each condition. Open circles are individual participant data. Filled icons are the predicted behavior of the three models, see legend for detail. In our high time pressure task, participants made a high proportion of indecisions. Interestingly, we also found that the average win percentage (41.25\%) was significantly below the 50\% chance level (p < 0.001) in the \emph{late mean} condition, clearly demonstrating suboptimal behaviour. Critically, participants would have earned more points if they had simply guessed earlier on all trials, rather than attempting to react to the stimulus. \boldblue{Model Results}: Only the Partial Switch Time Model, which had only a partial representation of the time delay and uncertainty when switching from reacting to guessing, was able to predict the indecisions and a suboptimal win rate (below 50\%) in the \emph{late mean} condition. See \boldblue{Fig. 3} for the time varying model predictions for the \emph{late mean} condition. Collectively, our findings show that humans are suboptimal and excessively indecisive.} 
   \end{minipage}
 \end{figure}
 
@@ -285,13 +266,15 @@ Participant movement onset standard deviation for the low variance conditions is
 \noindent We calculated the indecisions (\boldblue{Fig. 2C}), wins (\boldblue{Fig. 2D}), and incorrect decisions (\boldblue{Fig. 2E}) for each of the experimental conditions. Participants displayed a substantial number of indecisions. The median percentage of indecisions was 15.0\% [range: 0.0 - 93.8\%] across all conditions, with the \emph{late mean} condition having a median percentage of indecisions of 19.4\% [range: 1.2\%, 93.8\%]. We found a significant interaction between stimulus movement onset and variance for indecisions (F[1.57, 28.78] = 5.58, p = 0.013). In low variance conditions, participants made significantly more indecisions in the \emph{middle mean} condition than the \emph{early mean} condition (p<0.001, $\hat{\theta}$ = 85.0\%; \boldblue{Fig. 2C}). Additionally, participants made significantly more indecisions in the \emph{late mean} condition compared to the \emph{early mean} condition (p<0.004, $\hat{\theta}$ = 80.0\%).
 
 The win percentage across all conditions was 56.25\% (range: 6.2\%, 93.8\%; \boldblue{Fig. 2D}). We found a significant interaction between stimulus movement onset mean and variance for wins (F[1.54, 29.30] = 23.73, p<0.001). The \emph{late mean} condition had significantly less wins than the \emph{early mean} condition (p < 0.001, $\hat{\theta}$ = 95.0\%). Interestingly, in the \emph{late mean} condition we found that the average win percentage was significantly below the 50\% chance level (p<0.001; $\hat{\theta}$ = 95.0\%), which was true for 19 out of 20 participants. Since guessing on every trial would lead to a win percentage of 50\%, the only way participants would be below chance is if they were excessively indecisive.
-The incorrect percentage across all conditions was 26.3\% [range: 0.0\%, 57.5\%; \boldblue{Fig. 2E}]. We found significant interactions between stimulus movement onset mean and variance for incorrect decisions (F[1.66,31.51] = 3.72, p = 0.033). Participants displayed a greater percentage of incorrect decisions in the \emph{late mean} condition than the \emph{early mean} condition (p < 0.001, $\hat{\theta}$ = 92.5\%).
 
+The incorrect percentage across all conditions was 26.3\% [range: 0.0\%, 57.5\%; \boldblue{Fig. 2E}]. We found significant interactions between stimulus movement onset mean and variance for incorrect decisions (F[1.66,31.51] = 3.72, p = 0.033). Participants displayed a greater percentage of incorrect decisions in the \emph{late mean} condition than the \emph{early mean} condition (p < 0.001, $\hat{\theta}$ = 92.5\%). 
+For indecisions, wins, and incorrects we also found the same significant differences between conditions when separately analyzing the first half and second half of trials (\boldblue{Supplementary C}). 
+That is, the same trends for the first and second half of trials shows that participants determined their decision-timing strategy early on in each condition and there was a negligible influence of learning.
 
 \vspace{10mm}
 \noindent \boldblue{{{Decision-Making Models}}}
 
-\noindent In our task, participants must make a decision of whether to react to the stimulus or guess. For \boldblue{Experiment 1}, we tested three different models:  i) No Switch Time Model, ii) Full Switch Time Model and iii) Partial Switch Time Model (\boldblue{Fig. 3}, left column). The decision policy of all models considers the expected value ($\mathbb{E}[R|\tau]$) to determine the time ($\tau$) to transition from reacting to guessing. Expected value is defined as
+\noindent In our task, participants must make a decision of whether to react to the stimulus or guess. Building on the mathematical framework of statistical decision theory\autocite*{trommershauserStatisticalDecisionTheory2003}, we tested three different models for \boldblue{Experiment 1}: i) No Switch Time Model, ii) Full Switch Time Model and iii) Partial Switch Time Model (\boldblue{Fig. 3}, left column). The decision policy of all models considers the expected value ($\mathbb{E}[R|\tau]$) to determine the time ($\tau$) to transition from reacting to guessing. Expected value is defined as
 \setlength{\belowdisplayskip}{4pt} \setlength{\belowdisplayshortskip}{4pt} % THIS MUST BE HERE FOR EQUATIONS SPACING
 \setlength{\abovedisplayskip}{4pt} \setlength{\abovedisplayshortskip}{4pt}
 \begin{align}
@@ -303,7 +286,7 @@ The incorrect percentage across all conditions was 26.3\% [range: 0.0\%, 57.5\%;
     \tau^* = \underset{\tau}{argmax}[\mathbb{E}(R|\tau)].
 \end{equation}
 
-Each model has varying knowledge of the different parameters (\boldblue{Fig. 3}, left column). A model can have full knowledge or partial knowledge of a particular parameter. With full knowledge, the decision policy fully utilizes the parameter when selecting the time to transition from reacting to guessing. With partial knowledge, the decision policy utilizes its partial and imperfect representation of the parameter. Here the idea is that a human may have an imperfect representation of some parameter when determining a transition time, even though that particular parameter will still influence behaviour. As an example, one could plan for only some portion of a time delay, but then end up deciding too late because they did not fully account for the entire time delay. All model parameter values are described in \boldblue{Supplementary B}.
+Each model has varying knowledge of the different parameters (\boldblue{Fig. 3}, left column). A model can have full knowledge or partial knowledge of a particular parameter. With full knowledge, the decision policy fully utilizes the parameter when selecting the time to transition from reacting to guessing. With partial knowledge, the decision policy utilizes its partial and imperfect representation of the parameter. Here the idea is that a human may have an imperfect representation of some parameter when determining a transition time, even though that particular parameter will still influence behaviour. As an example, one could plan for only some portion of a time delay, but then end up deciding too late because they did not fully account for the entire time delay. All model parameter values and the fitting procedure are described in \boldblue{Supplementary C}. 
 
 \begin{figure}[H]
   \centering
@@ -415,7 +398,7 @@ For each trial within a condition, the stimulus movement onset was drawn from th
 
 Participants completed 605 total trials. They first performed 25 baseline trials, as well as 80 trials per experimental condition that were each separated by 25 washout trials. The stimulus movement onset during baseline and washout trials was randomly drawn from a discrete uniform distribution [400, 437.5,…,1300 ms]. The washout condition was designed to minimize the influence of the stimulus movement onset distribution of the previous condition. Condition order was randomized across participants.
 
-Prior to \boldblue{Experiment 1}, participants performed two separate tasks to estimate response time (response time task; \boldblue{Supplementary D}) and timing uncertainty (timing uncertainty task; \boldblue{Supplementary E}). We counterbalanced the order of the response time and timing uncertainty tasks.
+Prior to \boldblue{Experiment 1}, participants performed two separate tasks to estimate response time (response time task; \boldblue{Supplementary E}) and timing uncertainty (timing uncertainty task; \boldblue{Supplementary F}). We counterbalanced the order of the response time and timing uncertainty tasks.
 
 \vspace{2mm}
 \noindent\boldblue{\large Experiment 2 Design}
