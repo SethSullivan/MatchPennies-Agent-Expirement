@@ -136,9 +136,9 @@
 
 % \definecolor{myudblue}{RGB}{0, 83, 159}
 \begin{document}
-\SectionHeader{Supplementary}
+\section{Supplementary}
 
-\noindent\boldblue{\large{Supplementary A: Low and High Variance Results}}
+\section{Supplementary A: Low and High Variance Results}
 \begin{figure}[H]
     \centering
     \includegraphics[scale =1]{figures/exp1_movement_onset_panel_all_conditions.png}
@@ -153,7 +153,7 @@
 \end{figure}
 
 \newpage
-\noindent\boldblue{\large{Supplementary B: First Half and Second Half Data Trends}}
+\section{Supplementary B: First Half and Second Half Data Trends}
 \vspace{-1mm}
 
 \begin{figure}[H]
@@ -178,7 +178,7 @@
 \end{figure}
 
 \newpage
-\noindent\boldblue{\large{Supplementary C: Optimal Models}}
+\section{Supplementary C: Optimal Models}
 \vspace{-1mm}
 
 \noindent We tested three different models to investigate the ability of participants to maximize reward during \boldblue{Experiment 1}: i) No Switch Time Model, ii) Full Switch Time Model and iii) Partial Switch Time Model (\boldblue{Fig. 2}). Each model represents a different hypothesis on how humans time their decisions, which we address further below. Intuitively, participants should react to the stimulus on trials where it moved earlier in time and guess on trials where it moved later in time. That is, reacting to early stimulus movement onsets ensures they can select the correct target. Likewise, guessing on late stimulus movement onsets affords the participant a 50\% chance of selecting the correct target. However, if participants wait too long to react to a late stimulus movement onset, then they might make too many indecisions and fail to maximize reward.
@@ -205,7 +205,7 @@ We modelled the time to switch from reacting to guessing as an optimal transitio
 \noindent The Partial Switch Time Model had the following known parameters: response time mean and uncertainty, neuromechanical delay mean and uncertainty, movement time mean and uncertainty, and stimulus movement onset. This model had the following unknown parameters: switch time mean and uncertainty, and timing uncertainty. The Partial Switch Time Model reflects our hypothesis that participants can only partially account for the delay and uncertainties associated with guessing.
 
 \vspace{2mm}
-\noindent \boldblue{General Formulation for the Models}
+\subsection{General Formulation for the Models}
 
 \noindent We begin by defining the general normal probability density function and cumulative density function:
 \setlength{\belowdisplayskip}{4pt} \setlength{\belowdisplayshortskip}{4pt} % THIS MUST BE HERE FOR EQUATIONS SPACING
@@ -400,7 +400,7 @@ The decision policy uses known parameters to select an optimal transition time $
 \end{equation}
 
 \vspace{2mm}
-\noindent\boldblue{Model Parameter Estimation and Fitting Procedure}
+\subsection{Model Parameter Estimation and Fitting Procedure}
 
 \noindent As a reminder, we had three models: No Switch Time Model, Full Switch Time Model, and Partial Switch Time Model. Each of these models had full knowledge of the reaction time mean and standard deviation, neuromechanical delay mean and standard deviation, movement time mean and standard deviation, and the stimulus movement onset distribution. These parameter values were estimated from experimental data by bootstrapping the meansfrom the response time experiment ($\mu_{rt}, \sigma_{rt}$), timing experiment ($\sigma_{\tau}$), and \boldblue{Experiment 1} ($\mu_{mt}, \sigma_{mt}$). We describe the bootstrap procedure below. Neuromechanical delay ($\mu_{nmd}$) and uncertainty ($\sigma_{nmd}$) were estimated from prior literature\autocite*{normanElectromechanicalDelaySkeletal1979,rossiniClinicalApplicationsMotor1998,brucePrimateFrontalEye1985}.
 
@@ -422,14 +422,14 @@ where $i$ corresponds to experimental condition and $j$ corresponds to each depe
 \noindent In the bootstrap procedure we randomly sampled participants with replacement 10,000 times\autocite*{cashabackGradientReinforcementLandscape2019a, cashabackDissociatingErrorbasedReinforcementbased2017,rothReinforcementbasedProcessesActively2023,rothPunishmentLeadsGreater2024}. We used the mean of the bootstrapped participant data for each of the parameter values that were estimated from data. For each bootstrap iteration, the optimization process selected the free parameters for the Full Switch Time Model ($\mu_{switch}$, $\sigma_{switch}$) and Partial Switch Time Model ($\mu_{switch}$, $\sigma_{switch}$, $\hat{\mu}_{switch}$, $\hat{\sigma}_{\tau}$, $\hat{\sigma}_{\tau}$) that minimized the loss function (\boldblue{Eq. 44}).
 
 \vspace{2mm}
-\noindent \boldblue{Model Parameter Values}
+\subsection{Model Parameter Values}
 
 \noindent Here we report the mean and 95\% confidence intervals for the bootstrapped model parameters. For each parameter, each model had a value that determined the model outputs and a value that the decision policy used to select $\tau$. The No Switch Time Model and Full Switch Time Model were both optimal in the sense that they had perfect knowledge of all parameters. That is, the value that determined model outputs was equal to the value used by the decision policy. Parameter values for reaction time mean, reaction time uncertainty, movement time mean, movement time uncertainty, and timing uncertainty were all calculated from participant data on each bootstrap iteration: reaction time mean (247.4 ms; [239.2, 256.35]), reaction time uncertainty (38.5 ms; [35.7, 41.4]), movement time mean (171.7 ms; [157.6, 197.2]), movement time uncertainty (25.4 ms; [22.2, 28.7]), and timing uncertainty (77.8 ms; [69.4, 86.6]). The No Switch Time Model had no parameters to fit, and the decision policy had full knowledge of all of these parameters. The Full Switch Time Model fit the switch time mean and switch time uncertainty and the decision policy had full knowledge of all parameters. The bootstrapped mean of the switch time delay parameter was 0.95 ms with a 95\% confidence interval of [0.21, 2.20]. The bootstrapped mean of the switch time uncertainty parameter was 103.20 ms with a 95\% confidence interval of [97.77, 115.31].
 
 The Partial Switch Time Model fit the timing uncertainty, switch time mean, switch time uncertainty. Critically, this model did not have full knowledge of these parameters, so the value that the decision policy used to select the optimal time was fit separately from the value that was used to determine the model outputs. Note that the timing uncertainty value used for model outputs is from experimental data, but this model allowed the knowledge of the timing uncertainty to be a fit parameter. The values that were used for model outputs were: timing uncertainty (77.83 ms; [69.4, 86.8]), switch time mean (21.10 ms; [1.46, 63.71]), switch time uncertainty (134.73 ms; [111.22, 155.06]. The values that were used by the decision policy were: timing uncertainty (1.65 ms;  [0.08, 4.63]), switch time mean (9.0 ms; [0.00, 16.65]), switch time uncertainty (40.4 ms; [34.54, 48.02]). Critically, the fitting procedure for the Partial Switch Time Model selected the decision policy’s values for the switch time mean, switch time uncertainty, and timing certainty to be less than the values that impact the model outputs, indicating that  humans have imperfect knowledge of these parameters.
 
 \newpage
-\noindent\boldblue{\large\textcolor{mydarkblue}{Supplementary D: Model Results}}
+\section{Supplementary D: Model Results}
 
 % Figure 5 Model Outputs All Conditions
 \begin{figure}[H]
@@ -454,7 +454,7 @@ The Partial Switch Time Model fit the timing uncertainty, switch time mean, swit
 
 
 \newpage
-\noindent\boldblue{\large\textcolor{mydarkblue}{Supplementary E: Response Time Task}}
+\section{Supplementary E: Response Time Task}
 
 \noindent For the response time task (\boldblue{Supplementary Figure 7}), participants began each trial by moving their cursor (yellow circle, 1 cm diameter) into a start position (white circle, 1.5 cm diameter). Following a randomized time period (600-2400 ms drawn from a uniform distribution), one of two potential targets (white rings, 8 cm diameter) appeared on the screen. The two potential targets were positioned 16.7 cm forward relative to the start position, and either 11.1 cm to the left or right of the start position. As soon as one of the two potential targets appeared, the participant reached as fast as possible to the displayed target. Participants experienced 25 left target trials and 25 right target trials in a randomized order. 
 \begin{figure}[H]
@@ -465,7 +465,7 @@ The Partial Switch Time Model fit the timing uncertainty, switch time mean, swit
 \end{figure}
 
 \newpage
-\noindent\boldblue{\large\textcolor{mydarkblue}{Supplementary F: Timing Uncertainty Task}}
+\section{Supplementary F: Timing Uncertainty Task}
 
 \noindent To capture timing uncertainty, participants were instructed to reach into a target at a specified time of 1500 ms. Each trial began with a participant moving their cursor into a start position (white circle, 1.5 cm diameter). Following a randomized time delay (600-2400 ms drawn from a uniform distribution), they would hear a beep, a target (white ring, 8 cm diameter) appeared 17 cm forward relative to the start position, and a timing bar was displayed 10 cm below the start position. After the initial beep, participants were instructed to wait in the start position until they decided to hit the target. They were then told to make a smooth and quick movement to hit the target with their cursor at 1500 ms. They would then hear a beep at the desired time of 1500 ms. Participants performed a block of 50 trials for the timing uncertainty task with a timing bar and another block of 50 trials without a timing bar. The timing bar decreased in width over time and consequently disappeared at 1500 ms. Thus, during the trials with a timing bar the participants would have better knowledge of when they were required to hit the target. We used the data during this condition for the timing uncertainty parameter in each model, which aligned with the experimental design of \boldblue{Experiment 1}. Trials where there was no timing bar were not used for subsequent analyses. We counterbalanced the blocks of trials that did or did not have the timing bar.
 \begin{figure}[H]
@@ -476,7 +476,7 @@ The Partial Switch Time Model fit the timing uncertainty, switch time mean, swit
 \end{figure}
 
 \newpage
-\noindent\boldblue{\large\textcolor{mydarkblue}{Supplementary G: Guess Decisions}}
+\section{Supplementary G: Guess Decisions}
 
 \begin{figure}[H]
     \centering
