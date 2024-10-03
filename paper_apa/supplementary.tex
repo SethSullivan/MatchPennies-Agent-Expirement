@@ -1,0 +1,497 @@
+\documentclass[12pt]{article}
+\usepackage{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{bbm}
+\usepackage{fontspec} %XeLatex
+\usepackage{soul,xcolor}
+\usepackage{graphicx,wrapfig}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{arydshln} % For \hdashline
+\usepackage{lineno}
+\usepackage{setspace}
+
+\definecolor{mydarkblue}{RGB}{0,51,102}
+\definecolor{MYDARKBLUE}{RGB}{0,51,102}
+
+\graphicspath{ {./figures/} }
+
+\usepackage[%
+  autocite  = superscript,
+  backend  = bibtex,
+  sortcites  = false,
+  citestyle = numeric,
+  bibstyle=authoryear,
+  sorting = none,
+  maxbibnames=99,
+  giveninits = true, %initials
+  isbn=false,
+  doi = false,
+  url = false
+]{biblatex}
+
+\addbibresource{Aim1.bib}
+% \bibliography{draft}
+
+\usepackage[paper=letterpaper,
+            %includefoot, % Uncomment to put page number above margin
+            marginparwidth=0.0in,     % Length of section titles
+            marginparsep=.05in,       % Space between titles and text
+            margin=1.0in,               % 1 inch margins
+            includemp]{geometry}
+
+\renewbibmacro{in:}{}
+\DeclareFieldFormat[article]{citetitle}{#1}
+\DeclareFieldFormat[article]{title}{#1}  %
+\DeclareFieldFormat{pages}{#1}% no prefix for the `pages` field in the bibliography
+\DeclareNameAlias{sortname}{family-given} % put last name first
+\DeclareNameAlias{default}{family-given}
+\DeclareFieldFormat{labelnumberwidth}{\textcolor{mydarkblue}{\mkbibbold{#1\adddot}}} %remove brackets in bibliography
+\DeclareFieldFormat{journaltitle}{\mkbibemph{#1}\isdot}
+%\renewcommand{\labelnamepunct}{\addspace}  % remove period after year
+
+% add numbers in front of citations and puts year behind authors
+\defbibenvironment{bibliography}
+  {\list
+     {\printtext[labelnumberwidth]{%
+    \printfield{labelprefix}%
+    \printfield{labelnumber}}}
+     {\setlength{\labelwidth}{\labelnumberwidth}%
+      \setlength{\leftmargin}{\labelwidth}%
+      \setlength{\labelsep}{\biblabelsep}%
+      \addtolength{\leftmargin}{\labelsep}%
+      \setlength{\itemsep}{\bibitemsep}%
+      \setlength{\parsep}{\bibparsep}}%
+      \renewcommand*{\makelabel}[1]{\hss##1}}
+  {\endlist}
+  {\item}
+
+\usepackage{xpatch}
+\xpatchbibmacro{date+extrayear}{%
+  \printtext[parens]%
+}{%
+  \setunit{\addperiod\space}%
+  \printtext%
+}{}{}
+\AtEveryBibitem{%
+  \clearfield{note}%
+}
+
+% adds comma after journal 
+\renewcommand\bibpagespunct{\ifentrytype{article}{\addcolon}{\addcomma}\space}
+\renewbibmacro*{volume+number+eid}{%
+\setunit*{\addcomma\space}% NEW
+  \printfield{volume}
+  \printfield[parens]{number}{,}%
+  \setunit{\addcomma\space}%
+  \printfield{eid}}
+
+% change and to \& (can also remove)
+\DefineBibliographyExtras{english}{%
+  \renewcommand*{\finalnamedelim}{\addcomma\addspace\&\addspace}%
+  %\renewcommand*{\finalnamedelim}{\addcomma\addspace}%
+}
+
+%\usepackage{hyperref}
+\usepackage{fancyhdr}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\setmainfont{AvenirLTProBook.otf}[
+    Path =fonts/,
+    BoldFont = AvenirNextLTProBold.otf,
+    %BoldFont = AvenirLTProHeavy.otf, % another option for bold font
+    ItalicFont = AvenirLTProBookOblique.otf,
+    BoldItalicFont = AvenirLTProHeavyOblique.otf
+]
+% Set caption styles
+% \DeclareCaptionLabelFormat{table}{1-2}
+% \captionsetup[table]{labelfont=bf, labelsep=period}
+\DeclareCaptionLabelFormat{supp}{1-2}
+\captionsetup[figure]{labelfont=bf, labelsep=colon, font=footnotesize, justification=justified}
+
+\DeclareMathOperator*{\argmax}{arg\,max} % thin space, limits underneath in displays
+
+\newcommand\boldblue[1]{\textcolor{mydarkblue}{\textbf{#1}}}
+
+\newcommand{\SuppCaption}[2]{\noindent\textbf{{#1}} {#2}\footnotesize}
+\newcommand{\SectionHeader}[1]{\noindent\textbf{\Large\textcolor{mydarkblue}{#1}}\normalsize }
+\newcommand{\SubSectionHeader}[1]{\noindent\Large{\textcolor{mydarkblue}{#1}}\normalsize }
+
+\renewcommand{\figurename}{Supplementary Figure}
+
+% Condition variables
+% \def\emlv{\emph{\emph{early mean low variance}}}
+% \def\emhv{\emph{early mean high variance}}
+% \def\mmlv{\emph{middle mean low variance}}
+% \def\mmhv{\emph{middle mean high variance}}
+% \def\lmlv{\emph{\emph{late mean low variance}}}
+% \def\lmhv{\emph{late mean high variance}}
+
+% \def\em{\emph{early mean}}
+% \def\mm{\emph{middle mean}}
+% \def\lm{\emph{late mean}}
+
+% \definecolor{myudblue}{RGB}{0, 83, 159}
+\begin{document}
+\SectionHeader{Supplementary}
+
+\noindent\boldblue{\large{Supplementary A: Low and High Variance Results}}
+\begin{figure}[H]
+    \centering
+    \includegraphics[scale =1]{figures/exp1_movement_onset_panel_all_conditions.png}
+    \caption*{\boldblue{Supplementary Figure 1: Timing Behaviour.} \boldblue{A)} Average participant movement onset (y-axis) for each experimental condition (x-axis). We found a significant main effect of stimulus movement onset mean (F[1.55,29.48] = 4.36, p = 0.030) and variance (F[1.00,19.00], p = 0.017)) on participant movement onset. There was no significant interaction (F[1.66,31.47], p = 0.565) \boldblue{B)} Corresponding participant movement onset (y-axis) for the three different mean stimulus onsets (x-axis) when collapsed across variance. During the early mean conditions, participants had a high probability of reacting to the stimulus and reaching a target within the time constraint. For the middle mean conditions, participants often waited longer to react and had a later guess than the early mean conditions. Waiting longer to react and/or late guessing led to later movement onset. In the late mean condition, participants waited to react to the stimulus, but ended up guessing a majority of the time (see \boldblue{Supplementary Figure 6}). The combination of waiting for the stimulus and eventually guessing, led to an earlier movement onset compared to the middle mean condition. For both the middle mean and late mean conditions, late guessing often led to indecisions (see \boldblue{Fig. 2}). \boldblue{C)} Participant movement onset standard deviation (y-axis) for each experimental condition (x-axis). We found a significant main effect of mean (F[1.38, 26.28], p = 0.018) and variance (F[1.00,19.00], p < 0.001) on participant movement onset standard deviation There was no significant interaction between stimulus movement onset mean and variance (F[1.98, 37.58], p = 0.097) \boldblue{D)} Corresponding participant movement onset standard deviation (y-axis) for the three different mean onsets (x-axis), when collapsed across variance. In the late mean conditions, waiting to react and then guessing led to a larger movement onset standard deviation compared to the early mean and middle mean conditions. Box and whisker plots display the 25th, 50th, and 75th percentiles. Open circles and connecting lines represent individual data.}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[scale = 1]{figures/exp1_score_metrics_panel.png}
+
+    \caption*{\boldblue{Supplementary Figure 2: Trial Outcomes.} \boldblue{A)} Indecisions (\%) \boldblue{B)} Wins (\%), and \boldblue{C)} Incorrects (\%) for each condition. \boldblue{A)} We found that the middle mean low variance and \emph{late mean low variance} condition had a significantly greater number of indecisions compared to the \emph{early mean low variance} condition. That is, in the middle mean low variance and \emph{late mean low variance} conditions, participants often waited to react to the stimulus but ended up guessing late. These late guesses often led to indecisions. \boldblue{B)} Interestingly, we also found that the average win percentage (41\%) was significantly below the 50\% chance level (p < 0.001) in the \emph{late mean low variance} condition, clearly demonstrating suboptimal behaviour. Critically, participants would have earned more points if they had simply guessed early on all trials, rather than attempting to react to the stimulus. Collectively, these results show that participants were suboptimal decision makers that led to excessively indecisive behaviour.}
+\end{figure}
+
+\newpage
+\noindent\boldblue{\large{Supplementary B: First Half and Second Half Data Trends}}
+\vspace{-1mm}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[scale = 1]{figures/exp1_data_panel_first_half.png}
+    \caption*{
+        \boldblue{Supplementary Figure 3: Outcome Metrics for First Half of Trials}. \boldblue{A)} Indecisions (\%) \boldblue{B)} Wins (\%), and \boldblue{C)} Incorrects (\%) for the first half of trials. 
+        Here we show that the significant differences between conditions are the same for the first and second half of trials (\boldblue{Supplementary Figure 4}).         
+        The same trends for the first half and second half of trials indicates that participants determined their timing strategy early on in each condition and there was a negligible effect of learning. 
+    } 
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[scale = 1]{figures/exp1_data_panel_second_half.png}
+
+    \caption*{
+        \boldblue{Supplementary Figure 4: Outcome Metrics for Second Half of Trials} \boldblue{A)} Indecisions (\%) \boldblue{B)} Wins (\%), and \boldblue{C)} Incorrects (\%) for the second half of trials. 
+        Here we show that the significant differences between conditions are the same for the first half (\boldblue{Supplementary Figure 3}) and second half of trials.         
+        The same trends for the first half and second half of trials indicates that participants determined their timing strategy early on in each condition and there was a negligible effect of learning. 
+    } 
+\end{figure}
+
+\newpage
+\noindent\boldblue{\large{Supplementary C: Optimal Models}}
+\vspace{-1mm}
+
+\noindent We tested three different models to investigate the ability of participants to maximize reward during \boldblue{Experiment 1}: i) No Switch Time Model, ii) Full Switch Time Model and iii) Partial Switch Time Model (\boldblue{Fig. 2}). Each model represents a different hypothesis on how humans time their decisions, which we address further below. Intuitively, participants should react to the stimulus on trials where it moved earlier in time and guess on trials where it moved later in time. That is, reacting to early stimulus movement onsets ensures they can select the correct target. Likewise, guessing on late stimulus movement onsets affords the participant a 50\% chance of selecting the correct target. However, if participants wait too long to react to a late stimulus movement onset, then they might make too many indecisions and fail to maximize reward.
+We modelled the time to switch from reacting to guessing as an optimal transition problem. This differs from past models that have used a similar Bayesian framework, which has beenused to determine reach aim \autocite{trommershauserStatisticalDecisionTheory2003} and reach timing \autocite{hudsonOptimalCompensationTemporal2008}. Here a model represents a decision-maker that selects a transition time, $\tau$. This transition time determines when to stop waiting to react to the stimulus and switch to guessing one of the two targets. The optimal transition time is determined from a decision policy that maximizes reward, given task constraints (i.e. stimulus movement onset distribution and time constraint), and knowledge of sensorimotor delays and uncertainties.
+
+\vspace{2mm}
+\noindent \emph{Model Parameters}
+
+\noindent Here we define the parameters used for the three models. Note that not all the parameters are used in each model, which we specify further below and in \boldblue{Fig. 2}. The Response Time parameters has both a mean ($\mu_{rt}$) and uncertainty ($\sigma_{rt}$) that represents the delay between observing the stimulus movement onset to initiating a movement. Neuromechanical Delay is the mean ($\mu_{nmd}$) and uncertainty ($\sigma_{nmd}$) of the time between a volitional decision to move and movement onset. Movement Time represents the mean ($\mu_{mt}$) and uncertainty ($\sigma_{mt}$) of the delay between movement onset and reaching a target. Stimulus Movement onset is knowledge of the mean ($\mu_{S}$) and uncertainty ($\sigma_{S}$) of the stimulus’s movement onset distribution. Timing uncertainty ($\sigma_{\tau}$) is the participant uncertainty around the intended transition time, $\tau$. Switch Time represents the additional delay ($\mu_{switch}$) and uncertainty  ($\sigma_{switch}$) of switching from reacting to guessing. All probability distributions are assumed to be normally distributed with a mean $\mu$ and standard deviation $\sigma$.  Each of our three models has a different set of known and unknown parameters. A model decision policy has full knowledge of known parameters, and no or partial knowledge of unknown parameters when determining the optimal decision time.
+
+\vspace{2mm}
+\noindent \emph{No Switch Time Model}
+
+\noindent The No Switch Time Model had the following known parameters: response time mean and uncertainty, movement time mean and uncertainty, neuromechanical delay mean and uncertainty, timing uncertainty, and stimulus movement onset. This model had no unknown parameters. Importantly, the No Switch Time Model did not include the switch time mean and uncertainty in neither the known nor the unknown parameter sets. The No Switch Time Model reflects the hypothesis that there is no additional delay and uncertainty when switching from reacting to guessing.
+
+\vspace*{2mm}
+\noindent \emph{Full Switch Time Model}
+
+\noindent The Full Switch Time Model had the following known parameters: response time mean and uncertainty, neuromechanical delay mean and uncertainty, movement time mean and uncertainty, stimulus movement onset, timing uncertainty, and switch time mean and uncertainty. This model did not have any unknown parameters. The Full Switch Time Model reflects the hypothesis that participants fully account for a delay and uncertainty associated with switching from reacting to guessing.
+
+\vspace{2mm}
+\noindent \emph{Partial Switch Time Model}
+
+\noindent The Partial Switch Time Model had the following known parameters: response time mean and uncertainty, neuromechanical delay mean and uncertainty, movement time mean and uncertainty, and stimulus movement onset. This model had the following unknown parameters: switch time mean and uncertainty, and timing uncertainty. The Partial Switch Time Model reflects our hypothesis that participants can only partially account for the delay and uncertainties associated with guessing.
+
+\vspace{2mm}
+\noindent \boldblue{General Formulation for the Models}
+
+\noindent We begin by defining the general normal probability density function and cumulative density function:
+\setlength{\belowdisplayskip}{4pt} \setlength{\belowdisplayshortskip}{4pt} % THIS MUST BE HERE FOR EQUATIONS SPACING
+\setlength{\abovedisplayskip}{4pt} \setlength{\abovedisplayshortskip}{4pt}
+
+\setcounter{equation}{0}
+
+% Define pdf and cdf
+\begin{equation}
+    X\sim\mathcal{N}(\mu,\sigma)
+\end{equation}
+\begin{equation}
+    f_{X}(x; \mu, \sigma) = \frac{1}{\sigma\sqrt{2\pi}}e^{-\frac{1}{2}(\frac{x-\mu}{\sigma})^2}
+\end{equation}
+\begin{equation}
+    F_{X}(b) = P(X \leq b) = \int_{-\infty}^{b} f_{X}(x; \mu, \sigma)dx
+\end{equation}
+
+$X$ is the random variable drawn from a normal distribution $\mathcal{N}$ with some mean and standard deviation. $f_{X}(x;\mu,\sigma)$ is the normal probability density function over the variable $x$, with a mean ($\mu$) and standard deviation ($\sigma$). $F_{X}(b)$ is the normal cumulative density, which is the integral of the probability density function $f_{X}(x;\mu,\sigma)$ from $-\infty$ to $b$. Throughout, capitalized variables denote normally distributed random variables. Additionally, lowercase variables such as $x$ refer to the realization of the random variable $X$. The lowercase notation simply indicates that the value is known and is not a random variable.
+
+Next we define the mean and standard deviation of the participant movement onset separately for reaction decisions and guess decisions. We begin by defining $S$ as the random variable drawn from the stimulus movement onset distribution (\boldblue{Eq. 4}) and $T$ as the random variable drawn from the transition time distribution (\boldblue{Eq. 5}).
+% Define random variables S and T
+\begin{align}
+    S & \sim\mathcal{N}(\mu_{S},\sigma_{S}) \\
+    T & \sim\mathcal{N}(\tau,\sigma_{\tau})
+\end{align}
+
+Consider $s$ and $t$ as the realizations of random variables $S$ and $T$ for a single trial. On any specific trial, a decision-maker will react if the stimulus movement onset is before the transition time (i.e., $s<t$). Conversely, the decision-maker will guess at the transition time if the stimulus has not moved by the transition time (i.e., $s>t$). Thus, the probability that a participant will react or guess depends on the participants choice of a transition time mean ($\tau$). Specifically, the probability that the participant will react is the probability that the random variable T is greater than S.
+% Define prob react and guess
+\begin{equation}
+    P(React|\tau) = P(T>S).
+\end{equation}
+
+The probability that the participant will guess is the probability that the random variable T is less than S.
+\begin{equation}
+    P(Guess|\tau) = P(T<S).
+\end{equation}
+
+As a result, a decision-maker only reacts to the portion of the stimulus’s distribution that is prior to their transition time. Thus, the participant reacts to a truncated distribution of the stimulus movement onset. The truncated stimulus movement onset distribution is generated from only taking the random variable $S$ if it is less than the random variable $T$. We can then define an indicator function ($\mathbbm{1}_{s<t}$), which is equal to one if the realized value $s$ is less than $t$ and zero otherwise:
+% Define indicator function 
+\begin{align}
+     & \mathbbm{1}_{s<t} =
+    \begin{cases}
+        1 & \text{if } s < t, \\
+        0 & \text{otherwise.}
+    \end{cases}
+\end{align}
+
+The mean of the truncated stimulus movement onset distribution ($\mu_{S_{react}}$) can be calculated by combining the indicator function and the method of moments. We start by calculating the expected value of the random variable $S$, which is the integral from $-\infty$ to $\infty$ of the value $s$ multiplied by the probability density function $f_{S}(s)$.
+% Define expected value
+\begin{equation}
+    \mu_{S} = \mathbb{E}[S] = \int_{-\infty}^{\infty}s \cdot f_{S}(s).ds
+\end{equation}
+
+Note that the expected value of the full stimulus movement onset distribution defined here is equivalent to the mean of the distribution. For the truncated stimulus movement onset distribution, we only take values $s$ if they are less than $t$. Since the inclusion of $s$ depends on $t$, we calculate the mean of the truncated stimulus movement onset distribution by integrating over every possible combination of $s$ and $t$. Inside the double integral, we multiply the realized value $s$ by its probability density function (i.e., $f_{S}(s)$). We also multiply the probability density function for $t$ (i.e., $f_{T}(t)$) and the indicator function ($\mathbbm{1}_{s<t}$). Since this double integral multiplies two gaussian probability density functions and only sums values if $s$ is less than $t$, we must normalize by dividing by the probability that S is less than T. The mean (first moment) of the truncated stimulus movement onset distribution is
+% Define Cutoff react mean 
+\begin{equation}
+    \mu_{S_{react}} = \dfrac{\int_{-\infty}^{\infty}  \int_{-\infty}^{\infty} s \cdot f_{S}(s) \cdot f_{T}(t) \cdot \mathbbm{1}_{s \in S} \ dadt} {P(S<T)}.
+\end{equation}
+
+Similarly, we can find the standard deviation of the truncated stimulus movement onset distribution, where variance is the second moment, by:
+%
+\begin{equation}
+    \sigma^2_{S_{react}} = \dfrac{\int_{-\infty}^{\infty}  \int_{-\infty}^{\infty} (s - \mu_{S_{react}})^2 \cdot f_{S}(s) \cdot f_{T}(t) \cdot \mathbbm{1}_{s<t} \ ds \ dt}{P(S<T)}.
+\end{equation}
+
+The player’s movement onset distribution consists of a mix between reacting to the truncated stimulus movement onset and guessing. Importantly, reacting and guessing have unique delays and uncertainties. Thus, reaction decisions and guess decisions will lead to unique means and uncertainties of the participant movement onset distribution.
+The participant mean reaction movement onset ($\mu_{mo_{react}}$, \boldblue{Eq. 12}) is the truncated stimulus movement onset mean ($\mu_{S_{react}}$) plus the participant mean response time ($\mu_{rt}$). Likewise, the standard deviation of participant reaction movement onset ($\sigma_{mo_{react}}$, \boldblue{Eq. 13}) is the square root of the variance of the truncated stimulus movement onset distribution ($\sigma_{S_{react}}^2$) plus the participant response time variance ($\sigma_{rt}^2$).
+% Movement Onset times
+\begin{equation}
+    \mu_{mo_{react}} = \mu_{S_{react}} + \mu_{rt}
+\end{equation}
+\begin{equation}
+    \sigma_{mo_{react}} = \sqrt{\sigma_{S_{react}}^2 + \sigma_{rt}^2}
+\end{equation}
+
+Here, $\mu_{rt}$ represents the time to process the stimulus movement plus the neuromechanical delay ($\mu_{nmd}$).
+For the No Switch Time Model, the participant mean guess movement onset ($\mu_{mo_{guess}}$, \boldblue{Eq. 14}) is the sum of the participant transition time $\tau$ and the mean neuromechanical delay $\mu_{nmd}$. The participant standard deviation guess movement onset ($\sigma_{mo_{guess}}$) is the square root of the sum of the timing variance $\sigma_{\tau}^2$ and neuromechanical delay variance $\sigma_{nmd}^2$ (\boldblue{Eq. 15}).
+%
+\begin{equation}
+    \mu_{mo_{guess}} = \tau +  \mu_{nmd}
+\end{equation}
+\begin{equation}
+    \sigma_{mo_{guess}} = \sqrt{\sigma_{\tau}^2 + \sigma_{nmd}^2}
+\end{equation}
+
+Crucially, for the Full Switch Time Model and Partial Switch Time Model, the mean and standard deviation of the guess movement onset includes the switch time mean and uncertainty,
+% Switch time included in movement onset times
+\begin{equation}
+    \mu_{mo_{guess}} = \tau +  \mu_{nmd} + \mu_{switch}
+\end{equation}
+\begin{equation}
+    \sigma_{mo_{guess}} = \sqrt{\sigma_{\tau}^2 + \sigma_{nmd}^2 + \sigma_{switch}^2}
+\end{equation}
+
+For both the Full Switch Time Model and Partial Switch Time Model, the switch time mean and uncertainty influence the model outputs. However, the decision policy of the Full Switch Time Model has perfect knowledge of the switch time, while the decision policy of the Partial Switch Time Model has imperfect knowledge of the switch time. Further below (see Model Fitting), we address how we estimate the amount of imperfect knowledge for the Partial Switch Time Model.
+
+We define the react target reach time mean ($\mu_{reach_{react}}$) and standard deviation ($\sigma_{reach_{react}}$), and the  guess target reach time mean ($\mu_{reach_{guess}}$) and standard deviation ($\sigma_{reach_{guess}}$) as
+% Target Reach Time 
+\begin{align}
+    \mu_{reach_{react}} =\mu_{mo_{react}} + \mu_{mt}                      \\
+    \sigma_{reach_{react}} = \sqrt{\sigma_{mo_{react}}^2 + \sigma_{mt}^2} \\
+    \mu_{reach_{guess}} =\mu_{mo_{guess}} + \mu_{mt}                      \\
+    \sigma_{reach_{guess}} = \sqrt{\sigma_{mo_{guess}}^2 + \sigma_{mt}^2}.
+\end{align}
+
+To obtain the probability of reaching the target given the participant has either reacted ($X_{reach_{react}}$) or guessed ($X_{reach_{guess}}$), we need to define a random variable for the distribution of target reach times according to
+% Reach random variables
+\begin{align}
+    X_{reach_{react}} \sim \mathcal{N}(\mu_{reach_{react}}, \sigma_{reach_{react}}) \\
+    X_{reach_{guess}} \sim \mathcal{N}(\mu_{reach_{guess}}, \sigma_{reach_{guess}})
+    % \hat{X}_{reach_{guess}} \sim \mathcal{N}(\hat{\mu}_{reach_{guess}}, \hat{\sigma}_{reach_{guess}}).
+\end{align}
+
+We can then define the probability that the participant will reach one of the two targets before the time constraint of 1500ms given they react ($P(Reach|React)$) or guess ($P(Reach|Guess)$):
+% Probability of Reaching Target
+\begin{align}
+    P(Reach|React) = P(X_{reach_{react}} < 1500)
+\end{align}
+\begin{align}
+    P(Reach|Guess) = P(X_{reach_{guess}} < 1500)
+\end{align}
+
+We can now define the conditional probabilities for three outcome metrics: indecision, win, and incorrect. The conditional probability of an indecision given the participant has reacted ($P(Indecision|React)$) or guessed ($P(Indecision|Guess)$) follows immediately from \boldblue{Eqs. 24-25}. An indecision is simply the probability that the participant does not reach the target within the time constraint:
+% Probability of indecision sequence 
+\begin{equation}
+    P(Indecision|React) = 1 - P(Reach|React)
+\end{equation}
+\begin{equation}
+    P(Indecision|Guess) = 1 - P(Reach|Guess)
+\end{equation}
+
+To define a win or incorrect trial, we need the conditional probability of selecting the correct target given the participant has either reacted ($P(Correct|React)$) or guessed ($P(Correct|Guess)$). The probability of selecting the correct target when the participant reacts is 100\% (\boldblue{Eq. 28}). The probability of selecting the correct target when the participant guesses is 50\% (\boldblue{Eq. 29}).
+% Probability of being correct
+\begin{equation}
+    P(Correct|React) = 1.0
+\end{equation}
+\begin{equation}
+    P(Correct|Guess) = 0.5
+\end{equation}
+
+The conditional probability the participant wins given they react ($P(Win|React)$) or guess ($P(Win|Guess)$) is the probability that they reach the target within the time constraint, and they select the correct target:
+% Probability of winning sequence
+\begin{equation}
+    P(Win|React) = P(Reach|React) \cdot P(Correct|React)
+\end{equation}
+\begin{equation}
+    P(Win|Guess) = P(Reach|Guess) \cdot P(Correct|Guess)
+\end{equation}
+
+The conditional probability the participant is incorrect given they react ($P(Incorrect|React)$) or guess ($P(Incorrect|Guess)$) is the probability that they reach the target within the time constraint and they select the wrong target:
+% Probability of incorrect sequence 
+\begin{equation}
+    P(Incorrect|React) = P(Reach|React) \cdot (1 - P(Correct|React))
+\end{equation}
+\begin{equation}
+    P(Incorrect|Guess) = P(Reach|Guess) \cdot (1 - P(Correct|Guess))
+\end{equation}
+
+Finally, we define the final probability of wins ($P(Win|\tau)$), indecisions ($P(Indecision|\tau)$), and incorrects ($P(Incorrect|\tau)$), by considering their and their associated conditional probabilities (\boldblue{Eq. 26-33}) and the probability of reaching and guessing given a transition time ($\tau$), as
+\begin{align}
+    P(Win|\tau)        = & P(React|\tau) \cdot P(Win|React) \nonumber        \\ &+  P(Guess|\tau) \cdot P(Win|Guess)\\
+    P(Indecision|\tau) = & P(React|\tau) \cdot P(Indecision|React) \nonumber \\ &+ P(Guess|\tau) \cdot P(Indecision|Guess) \\
+    P(Incorrect|\tau)  = & P(React|\tau) \cdot P(Incorrect|React) \nonumber  \\ &+ P(Guess|\tau) \cdot P(Incorrect|Guess).
+\end{align}
+
+\vspace{2mm}
+\noindent\emph{Decision Policy}
+
+\noindent For each model, the goal of the decision policy is to find the optimal transition time that maximizes expected reward. The reward on a particular trial for wins ($R_{win}$), indecisions ($R_{indecision}$), and incorrects ($R_{incorrect}$) is,
+% Expected Reward
+\begin{equation}
+    R_{win} = 1
+\end{equation}
+\begin{equation}
+    R_{indecision} = 0
+\end{equation}
+\begin{equation}
+    R_{incorrect} = 0.
+\end{equation}
+
+The expected reward is defined as the reward of a trial outcome multiplied by the probability of that outcome, which is
+%
+\begin{align}
+    \mathbb{E}[R|\tau] = & P(Win|\tau) \cdot R_{Win} \nonumber \\ &+ P(Incorrect|\tau) \cdot R_{Incorrect} \nonumber \\ &+ P(Indecision|\tau) \cdot R_{Indecision}.
+\end{align}
+
+The decision policy uses known parameters to select an optimal transition time $\tau^*$ that maximizes expected reward:
+% Maximize expected reward with tau
+\begin{equation}
+    \tau^* = \underset{\tau}{argmax}[\mathbb{E}(R|\tau)].
+\end{equation}
+
+\vspace{2mm}
+\noindent\boldblue{Model Parameter Estimation and Fitting Procedure}
+
+\noindent As a reminder, we had three models: No Switch Time Model, Full Switch Time Model, and Partial Switch Time Model. Each of these models had full knowledge of the reaction time mean and standard deviation, neuromechanical delay mean and standard deviation, movement time mean and standard deviation, and the stimulus movement onset distribution. These parameter values were estimated from experimental data by bootstrapping the meansfrom the response time experiment ($\mu_{rt}, \sigma_{rt}$), timing experiment ($\sigma_{\tau}$), and \boldblue{Experiment 1} ($\mu_{mt}, \sigma_{mt}$). We describe the bootstrap procedure below. Neuromechanical delay ($\mu_{nmd}$) and uncertainty ($\sigma_{nmd}$) were estimated from prior literature\autocite*{normanElectromechanicalDelaySkeletal1979,rossiniClinicalApplicationsMotor1998,brucePrimateFrontalEye1985}.
+
+We used both a warm-start initialization and bootstrap procedure (see below) to determine the switch time mean ($\mu_{switch}$) and uncertainty ($\sigma_{switch}$), as well as the decision policy’s knowledge of the switch time mean ($\hat{\mu}_{switch}$), switch time uncertainty ($\hat{\sigma}_{switch}$), and timing uncertainty ($\hat{\sigma}_{\tau}$).
+
+\vspace{2mm}
+\noindent\emph{Warm-Start Initialization}
+
+\noindent The fitting procedure for the Full Switch Time Model and Partial Switch Time Model began with a “warm-start” to find an initial set of $\mu_{switch}$, $\sigma_{switch}$, $\hat{\mu}_{switch}$, $\hat{\sigma}_{switch}$, and $\hat{\sigma}_{\tau}$ \autocite*{rothReinforcementbasedProcessesActively2023,rothPunishmentLeadsGreater2024}.  Here the remaining parameters estimated from experimental data were set as the group level means. We found the best-fit parameters that led to the lowest loss between model outputs ($Model_{i,j}$) and group data means ($Data_{i,j}$) according to
+% Loss Equation 
+\begin{equation}
+    \mathcal{L} = \sum_{i = 1}^{6} \sum_{j = 1}^{5} \frac{|Data_{i,j} - Model_{i,j}|}{Data_{i,j}},
+\end{equation}
+where $i$ corresponds to experimental condition and $j$ corresponds to each dependent measure (i.e., movement onset, standard deviation of participant movement onset, wins, indecisions, and incorrects). The fitting procedure was repeated 1,000 times to avoid local minimums. From these 1,000 optimizations, we used the set of parameters that resulted in the lowest loss as the initial guess for our bootstrap procedure. Model fitting was performed using the Powell algorithm in the Minimize function from the Scipy Python library.
+
+\vspace{2mm}
+\noindent\emph{Bootstrap Procedure}
+
+\noindent In the bootstrap procedure we randomly sampled participants with replacement 10,000 times\autocite*{cashabackGradientReinforcementLandscape2019a, cashabackDissociatingErrorbasedReinforcementbased2017,rothReinforcementbasedProcessesActively2023,rothPunishmentLeadsGreater2024}. We used the mean of the bootstrapped participant data for each of the parameter values that were estimated from data. For each bootstrap iteration, the optimization process selected the free parameters for the Full Switch Time Model ($\mu_{switch}$, $\sigma_{switch}$) and Partial Switch Time Model ($\mu_{switch}$, $\sigma_{switch}$, $\hat{\mu}_{switch}$, $\hat{\sigma}_{\tau}$, $\hat{\sigma}_{\tau}$) that minimized the loss function (\boldblue{Eq. 44}).
+
+\vspace{2mm}
+\noindent \boldblue{Model Parameter Values}
+
+\noindent Here we report the mean and 95\% confidence intervals for the bootstrapped model parameters. For each parameter, each model had a value that determined the model outputs and a value that the decision policy used to select $\tau$. The No Switch Time Model and Full Switch Time Model were both optimal in the sense that they had perfect knowledge of all parameters. That is, the value that determined model outputs was equal to the value used by the decision policy. Parameter values for reaction time mean, reaction time uncertainty, movement time mean, movement time uncertainty, and timing uncertainty were all calculated from participant data on each bootstrap iteration: reaction time mean (247.4 ms; [239.2, 256.35]), reaction time uncertainty (38.5 ms; [35.7, 41.4]), movement time mean (171.7 ms; [157.6, 197.2]), movement time uncertainty (25.4 ms; [22.2, 28.7]), and timing uncertainty (77.8 ms; [69.4, 86.6]). The No Switch Time Model had no parameters to fit, and the decision policy had full knowledge of all of these parameters. The Full Switch Time Model fit the switch time mean and switch time uncertainty and the decision policy had full knowledge of all parameters. The bootstrapped mean of the switch time delay parameter was 0.95 ms with a 95\% confidence interval of [0.21, 2.20]. The bootstrapped mean of the switch time uncertainty parameter was 103.20 ms with a 95\% confidence interval of [97.77, 115.31].
+
+The Partial Switch Time Model fit the timing uncertainty, switch time mean, switch time uncertainty. Critically, this model did not have full knowledge of these parameters, so the value that the decision policy used to select the optimal time was fit separately from the value that was used to determine the model outputs. Note that the timing uncertainty value used for model outputs is from experimental data, but this model allowed the knowledge of the timing uncertainty to be a fit parameter. The values that were used for model outputs were: timing uncertainty (77.83 ms; [69.4, 86.8]), switch time mean (21.10 ms; [1.46, 63.71]), switch time uncertainty (134.73 ms; [111.22, 155.06]. The values that were used by the decision policy were: timing uncertainty (1.65 ms;  [0.08, 4.63]), switch time mean (9.0 ms; [0.00, 16.65]), switch time uncertainty (40.4 ms; [34.54, 48.02]). Critically, the fitting procedure for the Partial Switch Time Model selected the decision policy’s values for the switch time mean, switch time uncertainty, and timing certainty to be less than the values that impact the model outputs, indicating that  humans have imperfect knowledge of these parameters.
+
+\newpage
+\noindent\boldblue{\large\textcolor{mydarkblue}{Supplementary D: Model Results}}
+
+% Figure 5 Model Outputs All Conditions
+\begin{figure}[H]
+    \begin{minipage}[c]{0.6\textwidth}
+        \includegraphics[scale = 0.95]{figures/exp1_data_panel_with_models_all_conditions.png}
+    \end{minipage}\hfill
+    \begin{minipage}[c]{0.3\textwidth}
+        \caption*{
+            \boldblue{Supplementary Figure 5: Model Outputs}. Here we show model fits for the No Switch Time Model (light gray circles), Full Switch Time Model (dark gray squares), and the Partial Switch Time Model (black diamonds) for \boldblue{A)} participant movement onset time, \boldblue{B)} participant movement onset time standard deviation, \boldblue{C)} indecisions, \boldblue{D)} wins, and \boldblue{E)} incorrects for each condition. The No Switch Time Model and Full Switch Time Model poorly predict the participant data across all five metrics for the \emph{late mean low variance} and late mean high variance conditions. Conversely, the Partial Switch Time Model (black diamond) is able to accurately predict the participant data for all conditions across all metrics. As a reminder, the Partial Switch Time Model does not account for the delay and uncertainties associated with switching from reacting to guessing. Critically, in \boldblue{C)} the Partial Switch Time Model predicts participant indecisions in the \emph{late mean low variance} condition, whereas the other two models predict zero indecisions for that condition. Further, in \boldblue{D)} the Partial Switch Time Model is the only model that aligns with the finding that participants are suboptimal and win less than 50\% of trials in the \emph{late mean low variance} condition. Collectively, our findings show that humans are suboptimal and excessively indecisive, which can be captured by a model that does not account  for the delay and uncertainties associated with switching from reacting to guessing.
+        } 
+    \end{minipage}
+\end{figure}
+
+\begin{figure}[H]
+    \centering 
+    \includegraphics[scale = 1]{figures/model_losses.png}
+
+        \caption*{
+            \boldblue{Supplementary Figure 6: Model Losses}. Here we show histograms of each of our model’s bootstrapped losses. Loss was calculated as the normalized mean absolute error between the model prediction and experimental data for each of the following metrics: movement onset, movement onset standard deviation, indecisions, wins, and incorrects. The median loss is shown by the red line. The Partial Switch Time Model has the lowest loss out of the three models, suggesting that participants do not account for a delay and uncertainty when switching from reacting to guessing. 
+        } 
+\end{figure}
+
+
+\newpage
+\noindent\boldblue{\large\textcolor{mydarkblue}{Supplementary E: Response Time Task}}
+
+\noindent For the response time task (\boldblue{Supplementary Figure 7}), participants began each trial by moving their cursor (yellow circle, 1 cm diameter) into a start position (white circle, 1.5 cm diameter). Following a randomized time period (600-2400 ms drawn from a uniform distribution), one of two potential targets (white rings, 8 cm diameter) appeared on the screen. The two potential targets were positioned 16.7 cm forward relative to the start position, and either 11.1 cm to the left or right of the start position. As soon as one of the two potential targets appeared, the participant reached as fast as possible to the displayed target. Participants experienced 25 left target trials and 25 right target trials in a randomized order. 
+\begin{figure}[H]
+    \centering
+    \includegraphics[scale = 1]{figures/exp1_response_time_experimental_design.png}
+
+    \caption*{\boldblue{Supplementary Figure 7: Response Time Experiment}. One of two potential targets (dashed white rings; not visible to participants) would appear on the screen. Once a target appeared (solid white ring), participants were instructed to rapidly move their cursor to hit the displayed target. We used the mean and standard deviation of response times as model parameters in the optimal transition models.}
+\end{figure}
+
+\newpage
+\noindent\boldblue{\large\textcolor{mydarkblue}{Supplementary F: Timing Uncertainty Task}}
+
+\noindent To capture timing uncertainty, participants were instructed to reach into a target at a specified time of 1500 ms. Each trial began with a participant moving their cursor into a start position (white circle, 1.5 cm diameter). Following a randomized time delay (600-2400 ms drawn from a uniform distribution), they would hear a beep, a target (white ring, 8 cm diameter) appeared 17 cm forward relative to the start position, and a timing bar was displayed 10 cm below the start position. After the initial beep, participants were instructed to wait in the start position until they decided to hit the target. They were then told to make a smooth and quick movement to hit the target with their cursor at 1500 ms. They would then hear a beep at the desired time of 1500 ms. Participants performed a block of 50 trials for the timing uncertainty task with a timing bar and another block of 50 trials without a timing bar. The timing bar decreased in width over time and consequently disappeared at 1500 ms. Thus, during the trials with a timing bar the participants would have better knowledge of when they were required to hit the target. We used the data during this condition for the timing uncertainty parameter in each model, which aligned with the experimental design of \boldblue{Experiment 1}. Trials where there was no timing bar were not used for subsequent analyses. We counterbalanced the blocks of trials that did or did not have the timing bar.
+\begin{figure}[H]
+    \centering
+    \includegraphics[scale = 0.7]{figures/exp1_timing_experimental_design.png}
+
+    \caption*{\boldblue{Supplementary Figure 8: Timing Uncertainty Experiment}. One of two potential targets (dashed white rings; not visible to participants) would appear on the screen. Once a target appeared (solid white ring), participants were instructed to rapidly move their cursor to hit the displayed target. We used the mean and standard deviation of response times as model parameters in the optimal transition models.}
+\end{figure}
+
+\newpage
+\noindent\boldblue{\large\textcolor{mydarkblue}{Supplementary G: Guess Decisions}}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[scale = 1]{figures/guess_decisions.png}
+
+    \caption*{\boldblue{Supplementary Figure 9: Guess Decision Percentages for Experiment 1}. 
+    Estimated percentage of guess decision percentages (y-axis) for each experimental condition (x-axis). During \boldblue{Experiment 1} participants were rewarded for successful trials and experienced a time constraint. Thus, we would expect participants to have faster response times in \boldblue{Experiment 1} than in the Response Time task \autocite*{milsteinInfluenceExpectedValue2007,shadmehrMovementVigorReflection2019a}. To account for this, we adjusted participant response times by subtracting 25ms from their median response time in the Response Time task. A trial was a guess decision if the difference between the stimulus movement onset and participant movement onset was less than that participant’s adjusted response time. We found that participants guessed significantly more often as the stimulus’s mean movement onset approached the time constraint.}
+\end{figure}
+
+% \newpage
+% \fancyhead[L]{} % Need this because print bibliography is dumb and puts a REFERENCES in the left header
+% \begin{nolinenumbers}
+%     \definecolor{mydarkblue}{RGB}{0,51,102}
+
+%     \printbibliography[title=\LARGE\textcolor{mydarkblue}{Supplementary References}]
+% \end{nolinenumbers}
+
+\end{document}

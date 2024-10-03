@@ -1,0 +1,377 @@
+\documentclass[man,donotrepeattitle,floatsintext,letterpaper,12pt]{apa7}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\raggedbottom
+
+\usepackage{fontspec} % For setmainfont
+\usepackage{docmute} % For putting one tex into another tex using \input
+\usepackage{bbm} % Needed for supplementary
+
+\usepackage{csquotes}
+\MakeOuterQuote{"}
+
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{setspace}
+\captionsetup[figure]{font=doublespacing,justification=justified}
+% \captionsetup[table]{font=doublespacing}
+
+\usepackage{hyperref}
+\hypersetup{hidelinks,colorlinks=false}
+\urlstyle{same}
+\usepackage{lineno}
+\linenumbers
+
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+
+\usepackage{sectsty}
+\definecolor{mydarkblue}{RGB}{0,51,102}
+\definecolor{MYDARKBLUE}{RGB}{0,51,102}
+\newcommand\boldblue[1]{\textcolor{mydarkblue}{\textbf{#1}}}
+\newcommand\bolditalicblue[1]{\textcolor{mydarkblue}{\textit{\textbf{#1}}}}
+\newcommand\italicblue[1]{\textcolor{mydarkblue}{\textit{#1}}}
+
+\sectionfont{\centering\normalfont\normalsize\boldblue}
+\subsectionfont{\noindent\normalfont\normalsize\bolditalicblue}
+\subsubsectionfont{\noindent\normalfont\normalsize\italicblue}
+
+\usepackage[
+  autocite=inline,
+  style=apa,
+  sortcites=true,
+  sorting=nyt,
+  backend=biber
+  ]{biblatex}
+  \addbibresource{Aim1.bib}
+
+\DeclareBibliographyCategory{asterisk}
+\renewbibmacro*{begentry}{%
+    \ifcategory{asterisk}%
+    {*}%
+    {}%
+}
+\newcommand*{\nocitemeta}[1]{%
+    \nocite{#1}%
+    \addtocategory{asterisk}{#1}%
+}
+
+\renewcommand{\postnotedelim}{\space}
+
+\usepackage{comment}
+
+%% MY DEFINITIONS --------------------------------------
+
+\graphicspath{ {./figures/} }
+
+\renewbibmacro{in:}{}
+\DeclareFieldFormat[article]{citetitle}{#1}
+\DeclareFieldFormat[article]{title}{#1}  %
+\DeclareFieldFormat{pages}{#1}% no prefix for the `pages` field in the bibliography
+\DeclareNameAlias{sortname}{family-given} % put last name first
+\DeclareNameAlias{default}{family-given}
+\DeclareFieldFormat{labelnumberwidth}{\textcolor{mydarkblue}{\mkbibbold{#1\adddot}}} %remove brackets in bibliography
+\DeclareFieldFormat{journaltitle}{\mkbibemph{#1}\isdot}
+
+\setmainfont{AvenirLTProBook.otf}[
+    Path =fonts/,
+    BoldFont = AvenirNextLTProBold.otf,
+    %BoldFont = AvenirLTProHeavy.otf, % another option for bold font
+    ItalicFont = AvenirLTProBookOblique.otf,
+    BoldItalicFont = AvenirLTProHeavyOblique.otf
+]
+% Set caption styles
+% \DeclareCaptionLabelFormat{table}{1-2}
+% \captionsetup[table]{labelfont=bf, labelsep=period}
+\DeclareCaptionLabelFormat{supp}{1-2}
+% \DeclareCaptionFont{myblue}{\color{mydarkblue}}
+\captionsetup[figure]{labelfont=bf, labelsep=colon, font=footnotesize, justification=justified}
+
+\DeclareMathOperator*{\argmax}{arg\,max} % thin space, limits underneath in displays
+
+\abovedisplayskip = 10.0pt plus 2.0pt minus 20.0pt
+\belowdisplayskip = 10.0pt plus 2.0pt minus 20.0pt
+\abovedisplayshortskip = 0.0pt plus 20.0pt
+\belowdisplayshortskip = 9pt plus 3pt minus 20pt
+
+
+%%%%%%%%%%%%%%%%%% TITLE PAGE %%%%%%%%%%%%%%%%%%  
+\title{Indecision under time pressure arises from suboptimal switching behaviour}
+\shorttitle{Indecision arises from suboptimal switching behaviour}
+\renewcommand\author[1]{}
+\renewcommand\affiliation[1]{}
+
+\authorsnames[1,4,2,1,3,2,1,6,7,{1,2,3,7}]{Seth R. Sullivan, Rakshith Lokesh, Jan A. Calalo, Truc Ngo, John H. Buggeln, Adam M. Roth, Christopher Peters, Isaac Kurtzer, Michael J. Carter, Joshua G.A. Cashaback \vspace{2ex}}
+
+\authorsaffiliations{
+  {Department of Biomedical Engineering, University of Delaware},
+  {Department of Mechanical Engineering, University of Delaware}, 
+  {Biomechanics and Movements Science Program, University of Delaware},
+  {Department of Electrical and Computer Engineering, Northeastern University}, 
+  {College of Osteopathic Medicine, New York Institute of Technology}, 
+  {Department of Kinesiology, McMaster University},
+  {Interdisciplinary Neuroscience Graduate Program, University of Delaware}
+}
+
+\abstract{Indecisive behaviour can be catastrophic, leading to car crashes or stock market losses. Despite fruitful efforts across several decades to understand decision-making, there has been little research on what leads to indecision. Here we examined how indecisions arise under high-pressure deadlines. In our first experiment participants attempted to select a target by either reacting to a stimulus or guessing, when acting under a high pressure time constraint. We found that participants were suboptimal, displaying a below chance win percentage due to an excessive number of indecisions. Computational modelling suggested that participants were excessively indecisive because they failed to account for a time delay and temporal uncertainty when switching from reacting to guessing, a phenomenon previously unreported in the literature. In a followup experiment we provide direct evidence for a functionally relevant time delay and temporal uncertainty when switching from reacting to guessing. Collectively, our results demonstrate that humans are suboptimal and fail to account for a time delay and temporal uncertainty when switching from reacting to guessing, leading to indecisive behaviour.
+}
+
+\authornote{Correspondence concering this article should be addressed to Joshua G.A. Cashaback, Department of Biomedical Engineering, University of Delaware. Email: cashabackjga@gmail.com
+}
+
+
+
+% \pagestyle{fancy}
+%\cfoot[]{\textcolor{mydarkblue}{\thepage}}
+% \fancyhead[R]{\emph{\textcolor{mydarkblue}{Indecision arises from suboptimal switching behaviour
+% }}}
+% \fancyfoot[C]{\textcolor{mydarkblue}{\thepage}}
+%\fancyfoot[C]{\emph{\textcolor{mydarkblue}{\thepage}}}
+%\cfoot{\textcolor{myudblue}{\thepage}}
+
+\begin{document}
+\maketitle
+\noindent \textbf{\emph{Public Significance Statement}}
+\\
+\noindent Indecisive behaviour is highly prevalent in many aspects of daily life. Despite its ubiquity, there has been very little focus and a lack of explanation for why indecisions occur. Here we find under high time pressure scenarios that indecisions arise by misrepresenting additional time delays and temporal uncertainties associated with attempting to switch from reacting to guessing. Our novel paradigm presents a new way to elucidate and study indecisions.
+
+\newpage
+% \pagenumbering{arabic} % page numbering starts here
+\vspace{2mm}
+\section{Introduction}
+\vspace{2mm}
+\noindent Indecisions arise from failing to decide and act upon sensory information in time, such as a driver failing to brake or hit the gas pedal when a traffic light turns yellow. When acting under high pressure time constraints, the ability to accurately time a decision is critical to success. The vast majority of decision-making research either does not consider responses made after some time constraint or simply does not permit a non-response, such as in the classic two-alternative forced choice paradigm \autocite{zacksenhouseRobustOptimalStrategies2010, bogaczPhysicsOptimalDecision2006, choMechanismsUnderlyingDependencies2002, joganNewTwoalternativeForced2014, ratcliffDiffusionDecisionModel2008,ulrichThresholdEstimationTwoalternative2004,tylerSignalDetectionTheory2000}. Thus, despite its real-world ubiquity and importance, we have very little understanding of how indecisions arise.
+
+There have only been a handful of papers to examine indecisions, which involve either high \autocite{lokeshHumansUtilizeSensory2022} or low time pressure \autocite{karsilarSpeedAccuracyTradeoff2014, wuCapacityCognitiveControl2016,philiastidesCausalRoleDorsolateral2011, dambacherTimePressureAffects2015,forstmannStriatumPreSMAFacilitate2008}. We recently found a high proportion of indecisions during a competitive decision-making task between two humans that observed each other’s movements when selecting a target \autocite{lokeshHumansUtilizeSensory2022}. In this competitive scenario, the ‘predator’ attempted to end up in the same target as the ‘prey’ by a time constraint, while the prey attempted to end up in the opposite target as the predator. This task had a high time pressure, such that participants were awarded no points if they were indecisive by failing to enter either target within the time constraint. The task poses a conundrum: it may be advantageous to wait for future sensory information and react to an opponent, but it could also be better to switch from reacting to guessing before the time constraint to avoid an indecision. Surprisingly, participants displayed a median indecision rate of approximately 25\% with an upper range close to 40\% indecisions. Similar to others \autocite{karsilarSpeedAccuracyTradeoff2014, wuCapacityCognitiveControl2016, philiastidesCausalRoleDorsolateral2011, dambacherTimePressureAffects2015, forstmannStriatumPreSMAFacilitate2008}, Karsilar and colleagues (2014) used a low time pressure task and found only 1.7\% of trials were indecisions. Tasks with low time pressure are characterized by providing relatively strong sensory information well in advance of the time constraint deadline. Yet the mechanisms that give rise to indecisive behaviour, which is particularly relevant under common high time pressure scenarios, remains unclear. 
+
+Humans and animals attempt to maximize reward to time, select, and indicate a decision with a motor response \autocite{drugowitschOptimalDecisionmakingTimevarying2014, balciOptimalTemporalRisk2011, bogaczPhysicsOptimalDecision2006,hudsonOptimalCompensationTemporal2008, trommershauserHumansRapidlyEstimate2006}. To obtain more reward, it has been shown that it is important to consider the inherent time delays and temporal uncertainties of the nervous system \autocite{drugowitschTuningSpeedaccuracyTradeoff2015,balciOptimalTemporalRisk2011,hudsonOptimalCompensationTemporal2008,acerbiInternalRepresentationsTemporal2012,faisalNoiseNervousSystem2008,kordingBayesianDecisionTheory2006,wolpertMotorControlDecisionmaking2012,tanisAccuracyEffortCosts2023,lokeshVisualAccuracyDominates2023}. Past work has shown that humans will often produce nearly optimal decision times during cognitive \autocite{balciOptimalTemporalRisk2011,mileticCautionDecisionmakingTime2019} and motor tasks \autocite{hudsonOptimalCompensationTemporal2008,faisalOptimalCombinationSensory2009}. Other work has shown suboptimal action selection or timing, which has been suggested to occur from an imperfect representation of time delays or temporal uncertainties \autocite{otaMotorPlanningTemporal2015, drugowitschComputationalPrecisionMental2016, onagawaSensorimotorStrategySelection2021, onagawaRiskAversionAdjustment2019}. With time constraints, misrepresentations of inherent time delays or temporal uncertainties could lead to a missed deadline and consequently an indecision. 
+
+Building on our past work \autocite{lokeshHumansUtilizeSensory2022}, we developed a high pressure task with a time constraint to examine how humans select decision times. We tested the idea that humans optimally account for time delays and temporal uncertainties to select a decision time that maximizes reward. Alternatively, humans may suboptimally represent time delays and temporal uncertainties, which can lead to an excessive number of indecisions. In \boldblue{Experiment 1}, we found humans were suboptimal and observed excessive indecisions that led to a below chance win rate. Computational modelling work suggested that suboptimality arose by failing to account for the time delay and temporal uncertainty associated with switching from reacting to guessing. \boldblue{Experiment 2} showed for the first time, to our knowledge, the existence of an additional time delay and uncertainty when switching from reacting to guessing within a trial. Taken together, our work suggests that humans suboptimally represent the time delay and temporal uncertainty associated with switching from reacting to guessing, leading to indecisive behaviour. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  RESULTS  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\vspace{2mm}
+\section{Results}
+\vspace{-1mm}
+
+\subsection{Experiment 1}
+\vspace{-1mm}
+
+\subsubsection{Experimental Design.}
+
+\noindent The goal of \boldblue{Experiment 1} was to test how stimulus timing influenced indecisive behaviour. Briefly, participants began each trial by moving their cursor into a start position (\boldblue{Fig. 1A}). The stimulus, represented as a cursor on the screen, would quickly move to one of the two target circles. Participants were instructed to reach the same target as the stimulus within a time constraint of 1500 ms. The time remaining in each trial was represented visually with a timing bar that decreased in width according to the elapsed time. Thus, participants were fully aware of how much time they had left relative to the time constraint. A trial was considered a win and the participant received one point if they successfully reached the same target as the stimulus within the time constraint (\boldblue{Fig. 1B}). A trial was considered incorrect and the participant received zero points if they reached the opposite target as the stimulus within the time constraint. A trial was considered an indecision and the participant received zero points if they failed to reach a target within the time constraint. That is, we considered an indecision to be not reaching a target within the time constraint and thus failing to make a decision in time.
+
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale =1]{figures/exp1_experimental_design_v2.png}
+  \caption*{\boldblue{Figure 1: Experimental Design.} \boldblue{A)} Participants grasped the handle of a robotic manipulandum and made reaching movements in the horizontal plane. An LCD projected images (start position, targets) onto a semi-silvered mirror. Participants began each trial by moving their cursor (purple) into the start position (solid white circle). At the start of the trial (0 ms), they heard a tone and saw two targets (white rings) and a timing bar (white rectangle) appear on the screen. During each trial, a stimulus (yellow cursor) would move quickly in a straight line to one of the two targets. Participants were instructed to reach the same target as the stimulus within a time constraint of 1500 ms. This time constraint was visually represented with a timing bar (white rectangle) that decreased in width according to the elapsed time. \boldblue{B)} A trial was considered a win and the participant received one point if they successfully reached the same target as the stimulus within the time constraint. A trial was considered incorrect and the participant received zero points if they reached the opposite target as the stimulus within the time constraint. A trial was considered an indecision and the participant received 0 points if they failed to reach a target within the time constraint. \boldblue{C)} Stimulus movement onset on each trial was randomly drawn from a specific probability distribution in each condition. Using a within experimental design, we manipulated the mean (early, middle, late) and standard deviation (low, high) of the stimulus movement onset probability distribution. For the main manuscript we focus on results for the low variance conditions, with high variance conditions results shown in \boldblue{Supplementary A.}}
+\end{figure}
+
+For each trial within a condition, the stimulus movement onset was drawn from the same normal distribution. Using a 3 x 2 within experimental design (\boldblue{Fig. 1C}), in separate blocks we manipulated the stimulus movement onset mean (early mean = 1000 ms, middle mean = 1100 ms, late mean = 1200 ms) and standard deviation (low variance = 50 ms, high variance = 150 ms). For the purposes of the main manuscript we focus on the results of the low variance conditions, but report the findings for the high variance conditions in \boldblue{Supplementary A}.
+
+\begin{figure}[H]
+  \begin{minipage}[c][\pdfpageheight][t]{0.5\textwidth}
+
+      \includegraphics[scale = 1]{figures/exp1_data_panel_with_models.png}
+  \end{minipage}\hfill
+  \begin{minipage}[c][\pdfpageheight][t]{0.5\textwidth}
+      \caption*{
+        \boldblue{Figure 2: Behaviour Results}. \boldblue{A)} Participant movement onset, \boldblue{B)} participant movement onset standard deviation, \boldblue{C)} indecisions, \boldblue{D)} wins, and \boldblue{E)} incorrects are shown for each condition. Open circles are individual participant data. Filled icons are the predicted behavior of the three models, see legend for detail. In our high time pressure task, participants made a high proportion of indecisions. Interestingly, we also found that the average win percentage (41.25\%) was significantly below the 50\% chance level (p < 0.001) in the \emph{late mean} condition, clearly demonstrating suboptimal behaviour. Critically, participants would have earned more points if they had simply guessed earlier on all trials, rather than attempting to react to the stimulus. \boldblue{Model Results}: Only the Partial Switch Time Model, which had only a partial representation of the time delay and uncertainty when switching from reacting to guessing, was able to predict the indecisions and a suboptimal win rate (below 50\%) in the \emph{late mean} condition. See \boldblue{Fig. 3} for the time varying model predictions for the \emph{late mean} condition. Collectively, our findings show that humans are suboptimal and excessively indecisive.} 
+  \end{minipage}
+\end{figure}
+
+\subsubsection{Participant timing behaviour}
+
+\noindent Participant movement onset for the low variance conditions is shown in \boldblue{Fig. 2A}. We found a significant main effect of stimulus movement onset mean (F[1.55,29.48] = 4.36, p = 0.030) and variance (F[1.00,19.00], p = 0.017). There was no significant interaction between stimulus movement onset mean and variance (F[1.66,31.47], p = 0.565). 
+When collapsed across low and high variance, participant movement onsets were significantly greater in the \emph{middle mean} conditions compared to the \emph{early mean} conditions (p = 0.014, $\hat{\theta}$ = 72.5\%), suggesting that participants waited longer to react to the stimulus movement and guessed later in time. Again, when collapsed across low and high variance, participant movement onset significantly decreased from the \emph{middle mean} conditions to the \emph{late mean} conditions (p = 0.018, $\hat{\theta}$ = 62.5\%). Here, an earlier participant movement onset in the \emph{late mean} condition suggests that participants attempted to wait and react to the stimulus, but ended up guessing.
+
+Participant movement onset standard deviation for the low variance conditions is shown in \boldblue{Fig. 2B}. There was a main effect of mean (F[1.38, 26.28], p = 0.018) and variance (F[1.00,19.00], p < 0.001) of the stimulus movement onset, and no significant interaction (F[1.98, 37.58], p = 0.097). 
+
+% Figure 3 Model Outputs and Data
+
+\noindent When collapsed across variance, waiting to react and then guessing in the \emph{late mean} conditions led to a higher standard deviation of participant movement onset relative to the \emph{middle mean} (p = 0.039, $\hat{\theta}$ = 70.0\%) and \emph{early mean} (p < 0.001, $\hat{\theta}$ = 77.5\%) conditions.
+
+\subsubsection{Participants are suboptimal and excessively indecisive}
+
+\noindent We calculated the indecisions (\boldblue{Fig. 2C}), wins (\boldblue{Fig. 2D}), and incorrect decisions (\boldblue{Fig. 2E}) for each of the experimental conditions. Participants displayed a substantial number of indecisions. The median percentage of indecisions was 15.0\% [range: 0.0 - 93.8\%] across all conditions, with the \emph{late mean} condition having a median percentage of indecisions of 19.4\% [range: 1.2\%, 93.8\%]. We found a significant interaction between stimulus movement onset and variance for indecisions (F[1.57, 28.78] = 5.58, p = 0.013). In low variance conditions, participants made significantly more indecisions in the \emph{middle mean} condition than the \emph{early mean} condition (p<0.001, $\hat{\theta}$ = 85.0\%; \boldblue{Fig. 2C}). Additionally, participants made significantly more indecisions in the \emph{late mean} condition compared to the \emph{early mean} condition (p<0.004, $\hat{\theta}$ = 80.0\%).
+
+The win percentage across all conditions was 56.25\% (range: 6.2\%, 93.8\%; \boldblue{Fig. 2D}). We found a significant interaction between stimulus movement onset mean and variance for wins (F[1.54, 29.30] = 23.73, p<0.001). The \emph{late mean} condition had significantly less wins than the \emph{early mean} condition (p < 0.001, $\hat{\theta}$ = 95.0\%). Interestingly, in the \emph{late mean} condition we found that the average win percentage was significantly below the 50\% chance level (p<0.001; $\hat{\theta}$ = 95.0\%), which was true for 19 out of 20 participants. Since guessing on every trial would lead to a win percentage of 50\%, the only way participants would be below chance is if they were excessively indecisive.
+
+The incorrect percentage across all conditions was 26.3\% [range: 0.0\%, 57.5\%; \boldblue{Fig. 2E}]. We found significant interactions between stimulus movement onset mean and variance for incorrect decisions (F[1.66,31.51] = 3.72, p = 0.033). Participants displayed a greater percentage of incorrect decisions in the \emph{late mean} condition than the \emph{early mean} condition (p < 0.001, $\hat{\theta}$ = 92.5\%). 
+For indecisions, wins, and incorrects we also found the same significant differences between conditions when separately analyzing the first half and second half of trials (\boldblue{Supplementary C}). 
+That is, the same trends for the first and second half of trials shows that participants determined their decision-timing strategy early on in each condition and there was a negligible influence of learning.
+
+\vspace{2mm}
+\subsubsection{Decision-Making Models}
+
+\noindent In our task, participants must make a decision of whether to react to the stimulus or guess. Building on the mathematical framework of statistical decision theory \autocite{trommershauserStatisticalDecisionTheory2003}, we tested three different models for \boldblue{Experiment 1}: i) No Switch Time Model, ii) Full Switch Time Model and iii) Partial Switch Time Model (\boldblue{Fig. 3}, left column). The decision policy of all models considers the expected value ($\mathbb{E}[R|\tau]$) to determine the time ($\tau$) to transition from reacting to guessing. 
+\\
+\noindent Expected value is defined as
+\setlength{\belowdisplayskip}{4pt} \setlength{\belowdisplayshortskip}{4pt} % THIS MUST BE HERE FOR EQUATIONS SPACING
+\setlength{\abovedisplayskip}{4pt} \setlength{\abovedisplayshortskip}{4pt}
+\begin{align}
+    \mathbb{E}[R|\tau] = & P(Win|\tau) \cdot R_{Win} \nonumber \\ &+ P(Incorrect|\tau) \cdot R_{Incorrect} \nonumber \\ &+ P(Indecision|\tau) \cdot R_{Indecision},
+\end{align}
+
+\noindent where $P(Win|\tau)$ is the probability of a win, $P(Incorrect|\tau)$ is the probability of an incorrect, and $P(Indecision|\tau)$ is the probability of an indecision. $R_{Win} = 1$, $R_{Incorrect} = 0$, and $R_{Indecision} = 0$ correspond to the reward structure of the task (\boldblue{Fig. 1B}). The decision policy of each model maximized expected reward to determine the optimal time to transition from reacting to guessing ($\tau^*$) according to
+\begin{equation}
+    \tau^* = \underset{\tau}{argmax}[\mathbb{E}(R|\tau)].
+\end{equation}
+
+Each model has varying knowledge of the different parameters (\boldblue{Fig. 3}, left column). A model can have full knowledge or partial knowledge of a particular parameter. With full knowledge, the decision policy fully utilizes the parameter when selecting the time to transition from reacting to guessing. With partial knowledge, the decision policy utilizes its partial and imperfect representation of the parameter. Here the idea is that a human may have an imperfect representation of some parameter when determining a transition time, even though that particular parameter will still influence behaviour. As an example, one could plan for only some portion of a time delay, but then end up deciding too late because they did not fully account for the entire time delay. All model parameter values and the fitting procedure are described in \boldblue{Supplementary C}. 
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale = 1]{figures/model_diagram.png}
+
+  \caption*{%
+    \boldblue{Figure 3: Models.} No Switch Time Model (\boldblue{top row}, light grey), Full Switch Time Model (\boldblue{middle row}, dark grey), and Partial Switch Time Model (\boldblue{bottom row}, black). Each decision policy maximizes reward to select a time to transition from reacting to guessing. The decision policy of each model has different knowledge, full or partial, of the delays and uncertainties associated with the various parameters (e.g., response time, switch time). \boldblue{Top Row)} The No Switch Time Model (light grey) has full knowledge of all its model parameters. However, it does not include the potential delay and uncertainty when switching from reaching to guessing, which we term ‘switch time’.  \boldblue{Middle Row}) The Full Switch Time Model (dark gray) has knowledge of all model parameters, including switch time (bright green). \boldblue{Bottom Row)} Finally, the Partial Switch Time Model (black) has knowledge of several of the model parameters, but is only partially aware of the stopping time uncertainty and the switch time (delay and uncertainty). Only the Partial Switch Time Model is able to capture the participant target reach times (pink) in the \emph{late mean} condition (stimulus movement onset; blue), allowing it to explain indecisions (\boldblue{Fig. 2C}) and suboptimal win rates (\boldblue{Fig. 2D}).
+    }
+\end{figure}
+
+\noindent\emph{{No Switch Time Model}}
+
+\noindent We first considered a model that incorporated various time delays and temporal uncertainties from sources previously identified in the literature: response time, neuromechanical delay, movement time, stimulus movement onset, and timing uncertainty. Note, unlike the other models we will address below, this model did not consider a `switch time’ delay and uncertainty because it was not considered in past literature. Hence, we termed it the No Switch Time Model.
+
+In the \emph{late mean} condition, the No Switch Time Model underestimated participant movement onset (\boldblue{Fig. 2A}), underestimated indecisions (\boldblue{Fig. 2C}), and overestimated wins (\boldblue{Fig. 2D}). During this condition, participants displayed 19\% indecisions on average and a win percentage significantly below chance. One reason that the No Switch Time Model was unable to capture behaviour is because it did not consider the potential delays and uncertainties that might exist when switching from reacting to guessing.
+
+\vspace*{2mm}
+\noindent\emph{{{Full Switch Time Model}}}
+
+\noindent Next we considered a model that additionally incorporated the potential existence of a switch time delay and uncertainty when transitioning from reacting to guessing. For this Full Switch Time Model, we assumed that the model had full knowledge of the time delay and uncertainty when switching from reacting to guessing.
+
+Yet, despite including switch time, the Full Switch Time Model also performed poorly in the \emph{late mean} condition by under-predicting participant movement onset (\boldblue{Fig. 2A}), being unable to predict indecisions (\boldblue{Fig. 2C}), and not being able to predict less than 50\% wins (\boldblue{Fig. 2D}). An explanation for why this model did not do well to explain indecisions is that humans may not have full knowledge of this potential switch time delay and uncertainty.
+
+\vspace*{2mm}
+\noindent\emph{{{Partial Switch Time Model}}}
+
+\noindent Finally, we considered a model that had only partial knowledge of a potential switch time delay and uncertainty when transitioning from reaching to guessing. That is, this model specifically tests whether humans have an imperfect representation of a switch time delay and uncertainty. The model also had partial knowledge of timing uncertainty, which the fitting procedure found to further improve model fits. The Partial Switch Time Model was able to replicate all aspects of behaviour (\boldblue{Fig. 2}). Crucially, it was able to capture suboptimal behaviour in the \emph{late mean} condition, where we found that an excessive percentage of indecisions (\boldblue{Fig. 2C}, \boldblue{Fig. 3}) led to a lower than chance win percentage (\boldblue{Fig. 2D}).
+
+\subsection{Experiment 2}
+
+\noindent Our behavioural findings in \boldblue{Experiment 1} demonstrated that participants were suboptimal decision makers. Through our modelling efforts, we were able to capture this suboptimal decision-making by including a switch time delay and uncertainty when transitioning from reacting to guessing. The switch time delay and uncertainty were only partially represented by the Partial Switch Time Model when determining the optimal time to switch from reacting and guessing. However, we are not aware of any work that considers a delay and uncertainty associated with switching from reacting to guessing within a trial. The goal of \boldblue{Experiment 2} was to determine if there is indeed a switch delay and uncertainty that occurs when humans transition from reacting to guessing.
+
+\subsubsection{Experimental Design}
+
+\noindent For all conditions, participants controlled a visible cursor that was aligned with their hand position. They started each trial by moving their cursor into a start position. Trial onset began with the appearance of both the stimulus (yellow cursor) and two targets. Participants could experience two trial types: react trials or guess trials. In the react trials, participants saw the stimulus move and were instructed to as quickly as possible follow the stimulus to one of the targets (\boldblue{Fig. 4A}). 
+
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale = 1]{figures/exp2_design.png}
+  
+  \caption*{\boldblue{Figure 4: Experiment 2 Design.} The goal of this experiment was to test the idea that there is a delay and uncertainty associated with switching from reacting to guessing, as suggested by our findings in  Experiment 1. \boldblue{A)} Participants responded to two different types of stimuli. In the react trials (pink), the stimulus (yellow cursor) would move to one of the two potential targets. Participants were instructed to reach the same target as the stimulus as quickly as possible. \boldblue{B)} In the guess trials (blue), the stimulus disappeared from the start position. Once the stimulus disappeared, participants were instructed to guess which target the stimulus would appear in and select that target as quickly as possible. After the participant reached the target, the stimulus cursor would appear in one of the targets. \boldblue{C)} We had three experimental conditions. In the \emph{react or guess} condition, react trials and guess trials were randomly interleaved (50 react trials and 50 guess trials). Participants were informed that the stimulus would either move to one of the targets or disappear. In the \emph{only react} condition, participants were informed that the stimulus would alway move to one of the two targets (50 react trials and 0 guess trials). They were also told that the stimulus would not disappear. In the \emph{only guess} condition, participants were informed that the stimulus would always disappear (0 react trials and 50 guess trials). They were also informed the stimulus would not move. }
+\end{figure}
+
+\noindent In the guess trials, participants saw the stimulus disappear from the start circle. They were instructed to guess one of the two targets as quickly as possible (\boldblue{Fig. 4B}). Following trial onset, the movement or disappearance of the stimulus was drawn from a normal distribution with a mean of 800ms and a standard deviation of 50ms. There were three experimental conditions (\boldblue{Fig. 4C}): the \emph{react or guess} condition, the \emph{only react} condition, and the \emph{only guess} condition. In the \emph{react or guess} condition, react trials and guess trials were randomly interleaved (50 react trials and 50 guess trials). Participants were informed that the stimulus would either move to one of the targets or disappear. In the \emph{only react} condition, participants were informed that the stimulus would always move to one of the two targets (50 react trials and 0 guess trials). They were also told that the stimulus would not disappear. In the \emph{only guess} condition, participants were informed that the stimulus would always disappear (0 react trials and 50 guess trials). They were also informed that it would not move to one of the two targets.
+
+During the \emph{react or guess} condition, we reasoned that participants would prefer to react because they would be guaranteed to select the correct target. As a result, in the \emph{react or guess} condition, if the stimulus disappeared the participant would switch from reacting to guessing when selecting a target. Conversely, during the \emph{only guess} condition, if the stimulus disappeared participants would not have to switch from reacting to guessing. Thus, if there is a delay when switching from reacting to guessing, we would expect a greater response time for the guess trials in the \emph{react or guess} condition compared to the guess trials in the guess only condition.
+
+\subsubsection{Response Time} 
+
+\noindent Average participant response times are shown for react and guess trials for each condition are shown in \boldblue{Fig. 5A}. As expected, we found significantly greater response times for guess trials in the \emph{react or guess} condition when compared to the \emph{only guess} condition (p < 0.001, $\hat{\theta}$ = 100.0\%), which was displayed by all participants. These comparatively greater response times for guess trials in the \emph{react or guess} condition supports the idea that there is a switch time delay when transitioning from reacting to guessing.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[scale = 1]{figures/exp2_reaction_panel_mean_sd.png}
+    \caption*{\boldblue{Figure 5: Response Times. A)} Response time (y-axis) for each of the experimental conditions (x-axis). Participants had significantly greater response times for guess trials in the \emph{react or guess} condition compared to the \emph{only guess} condition. Critically, this result suggests there is an additional delay when participants initially wait to react to the stimulus and then switch to guessing. \boldblue{B)} Standard deviation of response times (y-axis) was used to quantify participant response time uncertainty for each of the experimental conditions (x-axis). Participants had significantly greater response time uncertainty for guess trials in the \emph{react or guess} condition than in the \emph{only guess} condition. Similarly, this finding suggests there is additional uncertainty when participants initially wait to react to the stimulus and then switch to guessing. These results provide empirical evidence for an additional time delay and temporal uncertainty when switching from reacting to guessing.}
+\end{figure}
+
+\vspace*{-4mm}
+Likewise, if there was a switch time delay we would also expect a comparatively greater response time difference between guess and react trials in the \emph{react or guess} condition, compared to the response time difference between \emph{only guess} trials and \emph{only react} trials [i.e., guess - react (\emph{react or guess} condition) > guess - react (guess only and react only conditions)]. Indeed, we found a greater response time difference between guess and react trials in the \emph{react or guess} condition, compared to the response time difference between the guess only and react only conditions (p < 0.001, $\hat{\theta}$ = 66.7\%; \boldblue{Fig. 5A}). This result shows that the response time differences between guess and react trials are not due to dual tasking \autocite{vanselstDecisionResponseDualTask1997} or task switching between trials \autocite{monsellTaskSwitching2003,kieselControlInterferenceTask2010a,rubinsteinExecutiveControlCognitive2001}, which would not show this relative difference  [i.e., guess - react (\emph{react or guess} condition) = guess - react (guess only and react only conditions)].
+
+% \vspace{10mm}
+\subsubsection{Response Time Uncertainty}
+
+\noindent We also examined participant response time uncertainty, calculated as the standard deviation (\boldblue{Fig. 5B}). Response time uncertainty on guess trials was significantly greater in the \emph{react or guess} condition compared to the \emph{only guess} condition (p < 0.001). This result suggests that there is additional uncertainty when participants switch from reacting to guessing.
+
+\section{Discussion}
+
+\noindent Participants were suboptimal decision-makers and excessively indecisive in a high time pressure task. Computational modelling suggested that excessive indecisions were a result of failing to account for a delay and uncertainty associated with switching from reacting to guessing. We then showed empirical evidence of an additional delay and uncertainty when switching from reacting to guessing. Taken together, we found that participants were suboptimal decision-makers and excessively indecisive because they did not account for the time delay and temporal uncertainty when switching from reacting to guessing.
+
+In \boldblue{Experiment 1}, participants were required to reach the same target as a cursor before a time constraint. Within a trial, they could either react to a moving stimulus or guess which of the two targets would be correct. We saw that 95\% of participants had a win rate less than chance (50\%) in the \emph{late mean} condition, which corresponded with an average of 19.4\% indecisions. This proportion of indecisions aligns with our recent prior work that examined competitive human-human decision-making with a high time pressure \autocite{lokeshHumansUtilizeSensory2022}. In this competitive task, one participant attempted to reach the same target as their opponent, while the other tried to reach the opposite target within a time constraint. It was suggested that the high proportion of indecisions were the result of participants waiting too long to acquire sensory information of their opponent, despite the impending time deadline. Likewise, we found a high proportion of indecisions across experimental conditions. Our results would also suggest that participants waited to acquire sensory information of when the stimuli would move. Moreover, building upon Lokesh and colleagues (2022), our work suggests that a key contributor leading to excessive indecisions is failing to account for the time delay and temporal uncertainty when switching from reacting to guessing.
+
+Past work has suggested that humans can nearly optimally account for time delays and temporal uncertainty when performing decision-making \autocite{balciRiskAssessmentMan2009,jazayeriTemporalContextCalibrates2010,balciOptimalTemporalRisk2011} and movement tasks \autocite{hudsonOptimalCompensationTemporal2008,deanTradingSpeedAccuracy2007} when attempting to maximize reward. Here we considered two optimal models, the No Switch Time Model and Full Switch Time Model, which both had full knowledge of all available time delays and temporal uncertainties. Interestingly, both the No Switch Time Model and Full Switch Time Model showed that even when fully accounting for all sensorimotor delays and uncertainties, indecisions were a part of an optimal strategy in all but one of the six conditions. In other words, given the inherent delays and uncertainty of our nervous system \autocite{faisalNoiseNervousSystem2008}, an optimal strategy of earning maximal reward may involve indecisive behaviour on some proportion of trials. We are unaware of any work in the literature suggesting that some level of indecisions may be optimal. Even though making some indecisions can be optimal, our results in \boldblue{Experiment 1} were in support of the idea that humans are suboptimal. Specifically, in the \emph{late mean} condition, we found that humans were suboptimal since they had a win percentage lower than chance, which arose from an excessive number of indecisions. The Partial Switch Time Model was suboptimal, since it had a partial representation of the time delay and temporal uncertainties associated with switching from reacting to guessing. We found that this model best explained behaviour, including a below chance win percentage and an excessive number of indecisions. The Partial Switch Time Model supports the notion that humans suboptimally select decision times when under high time pressures. An interesting future direction would be to test whether different reward structures, such as placing a higher reward on wins or punishing indecisions \autocite{kahnemanProspectTheoryAnalysis2013,rothReinforcementbasedProcessesActively2023,rothPunishmentLeadsGreater2024,galeaDissociableEffectsPunishment2015}, would provide a means to reduce an excessive number of indecisions.
+
+Decision theoretic and drift-diffusion models are two common frameworks used to model decision-making. Decision theoretic models use knowledge of sensorimotor delays and uncertainties to select decision times that maximize reward \autocite{mileticCautionDecisionmakingTime2019,balciRiskAssessmentMan2009, onagawaRiskAversionAdjustment2019,battagliaHumansTradeViewing2007}. Drift-diffusion models characterize the decision-making process through a decision variable that crosses a threshold to decide \autocite{ratcliffModeling2alternativeForcedchoice2018,ratcliffDiffusionDecisionModel2008}. Unlike decision theoretic models, drift-diffusion models do not explicitly represent several potential sources of sensorimotor delays and uncertainties (e.g. reaction time, movement time, timing uncertainty, switch time), which is an important factor when determining the optimal decision time. Drift-diffusion models can capture indecisions through the decision variable failing to cross a decision threshold within a time constraint. Prior work using these models for decision-making tasks under time constraints have ignored indecisions \autocite{karsilarSpeedAccuracyTradeoff2014,farashahiDynamicCombinationSensory2018}. Further, drift-diffusion models indicate a guess decision when the noisy decision variable randomly crosses some threshold but do not consider guessing as a separate process from reacting to evidence (i.e., a person consciously deciding when to guess). The notion of guessing being a separate process from reacting was proposed by Yellot in a fast-guess model \autocite{yellottCorrectionFastGuessing1971}. However, like drift-diffusion models, their modelling framework also did not consider a representation of sensorimotor delays and uncertainties. Thus, our modelling approach can be considered as a complementary blend between the decision-theoretic and fast-guess models. 
+
+The combined empirical evidence of \boldblue{Experiment 1} and computational modelling suggested the existence of a time delay and uncertainty when switching from reacting to guessing. However, we were unaware of any work in the literature to support this idea. In \boldblue{Experiment 2} we tested the notion of a more delayed and uncertain response time when switching from reacting to guessing, compared to guessing by itself. Indeed, we found that when participants had to switch from reacting to guessing, their response times were significantly slower and more uncertain than when they only had to guess. One possibility for increased time delays and temporal uncertainty could be related to switching between different processing ‘modes’. In our task, participants may have switched from a `react mode’ that corresponded to preparing to follow the stimulus, to a `guess mode’ to randomly select one of the targets.
+
+Dutilh and colleagues (2011) explored the idea of switching between a stimulus controlled (i.e. react) mode and a guess mode between trials \autocite{dutilhPhaseTransitionModel2011}. In their task, participants were required to discriminate between a word stimuli from a non-word stimuli by selecting one of two buttons during a two-alternative forced choice task. Between trials, the authors manipulated whether participants received more reward for accurate decisions to promote reacting, or more reward for fast decisions that promoted guessing. Participants displayed longer response times when transitioning from more accurate decisions to fast decisions, compared to when transitioning from fast decisions to accurate decisions given the same current reward weighting. The authors interpreted these results to represent a resistance, termed hysteresis, when switching between react and guess modes. That is, participants are more likely to stay in their current mode than switch modes. They also highlighted that classical decision-making models, such as drift-diffusion models \autocite{ratcliffModeling2alternativeForcedchoice2018} or more recently the urgency-gating model \autocite{cisekDecisionsChangingConditions2009,derosiereTradingAccuracySpeed2021,thuraDecisionMakingUrgency2012}, do not consider different modes of reacting or guessing. Extending upon the findings of Dutilh and colleagues (2011) that examined between trial mode switching, our work suggests that humans switch react and guess modes within a trial. Importantly, we find that not accounting for the time delays and temporal uncertainties when switching from reacting to guessing gives rise to excessive indecisions. To our knowledge, it is unknown how different modes would be represented in the nervous system. One possibility is that the different modes represent different attractors from a neural dynamical systems perspective \autocite{erlhagenDynamicFieldTheory2002,wangDecisionMakingRecurrent2008,churchlandNeuralPopulationDynamics2012,shenoyCorticalControlArm2013}, which would be an interesting avenue of investigation.
+
+We found in \boldblue{Experiment 2} that participant response times were more delayed by approximately 75 ms during guess trials in the \emph{react or guess} condition, compared to guess only trials. Moreover, the response time difference between guess and react trials in the \emph{react or guess} condition are significantly greater than the response time difference between the \emph{guess only} and \emph{react only} conditions. Collectively, these results suggest that participants have an initial preference to react, before having to switch to a guess. In this experiment behaviour may be explained by a strong preference to react since it yields a 100\% success probability, as opposed to guessing that on average yields a 50\% success probability. It would be interesting for future studies to examine if they can manipulate the magnitude or probability of reward to switch a preference between reacting or guessing, and how this impacts indecisive behaviour.
+
+Indecisions are often not studied since many decision-making tasks do not permit a non-response or simply do not consider responses made after some time constraint. A limitation of the commonly used two-alternative forced choice task without a time constraint is that the participant or animal must select one of two potential options, which does not allow for indecisive behaviour. For decision-making tasks with a time constraint, late responses beyond the deadline are typically not included in the analysis \autocite{forstmannStriatumPreSMAFacilitate2008,diederichFurtherTestSequentialsampling2008,wuCapacityCognitiveControl2016,dambacherTimePressureAffects2015}. These studies tend to focus on  response times and response time distributions of correct and incorrect decisions Furthermore, previous modelling work on decision-making under time constraints has primarily focused on the response times and response time distributions of correct and incorrect decisions \autocite{karsilarSpeedAccuracyTradeoff2014,farashahiDynamicCombinationSensory2018}.However, a focus on only correct and incorrect decisions leaves out a crucial and prevalent aspect of decision-making—indecisive behaviour.
+
+Here we showed in our first experiment that humans are excessively indecisive under time constraints. Computational work and a second experiment suggested that indecisive behaviour can occur by not accounting for the time delay and temporal uncertainty associated with switching from reacting to guessing. Our experimental and theoretical approach offers a new paradigm to study indecisions, which has received surprisingly little attention despite its ecological relevance. This work advances how indecisive behaviour arises, which is important to understand when attempting to avoid potentially catastrophic events during high time pressure scenarios.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%% Methods %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\section{Methods}
+
+\subsection{Participants}
+
+\noindent 44 participants participated across two experiments. 20 individuals participated in \boldblue{Experiment 1} and 24 individuals participated in \boldblue{Experiment 2}. All participants reported they were free from musculoskeletal injuries, neurological conditions, or sensory impairments. In addition to a base compensation of \$5.00, we informed them they would receive a performance-based compensation of up to \$5.00. Participants received the full \$10.00 once they completed the experiment irrespective of their performance. All participants provided written informed consent to participate in the experiment and the procedures were approved by the University of Delaware’s Institutional Review Board.
+
+\subsection{Apparatus}
+
+\noindent For both experiments we used an end point KINARM robot (\boldblue{Fig. 1A}; BKIN Technologies, Kingston, ON). Each participant was seated on an adjustable chair in front of one of the end-point robots. Each participant grasped the handle of a robotic manipulandum and made reaching movements in the horizontal plane. A semi-silvered mirror blocked the vision of the upper limb and displayed virtual images (e.g., targets, cursors) from an LCD screen. In all experiments the cursor was aligned with the position of the hand. The semi-silvered mirror occluded the vision of their hand. Kinematic data were recorded at 1,000 Hz and stored offline for data analysis.
+
+\vspace{5mm}
+\subsection{Experiment 1 Design}
+
+\noindent The goal of \boldblue{Experiment 1} was to study the influence of stimulus onset on indecisive behaviour. To begin the task, the participant moved their cursor (white circle, 1 cm diameter) into a start position (white circle, 1 cm diameter) (\boldblue{Fig. 1A}). Then a stimulus (yellow cursor, 1 cm diameter) appeared in the start position. After a random time delay (600-2400 ms drawn from a uniform distribution), the participant heard a tone that coincided with two targets (white ring, 8 cm diameter) and a timing bar appearing on the screen. The two potential targets were positioned 16.7 cm forward relative to the start position, and either 11.1 cm to the left or right of the start position. The timing bar was 10 cm below the start position. In each trial, the stimulus would move quickly (150 ms movement time) with a bell-shaped velocity profile into one of the two targets. The stimulus selected the left and right targets randomly with equal probability. Participants were instructed to reach the same target as the stimulus. They had to select a target within the 1500 ms time constraint, relative to trial onset. The timing bar decreased in width according to elapsed time and disappeared at 1500 ms. Visual feedback of the timing bar provided participants full knowledge of the time remaining in the trial. Participants were instructed to stay inside the start position until they decided to select a target.  Importantly, participants were informed that they could select one of the targets at any time during the trial. Thus, they could either wait to react to the stimulus or guess one of the targets. Once they decided which target to select, the participant rapidly moved their cursor into the selected target.
+
+Participants were instructed that their goal was to earn as many points as possible. A trial was considered a win if they successfully reached the same target as the stimulus within the 1500 ms time constraint. A trial was considered incorrect if they reached the opposite target as the stimulus before the time constraint. A trial was considered an indecision if they failed to reach a target within the time constraint. Participants earned one point for a win, zero points for being incorrect, and zero points for making an indecision (\boldblue{Fig. 1B}).
+
+For each trial within a condition, the stimulus movement onset was drawn from the same normal distribution. Using a 3 x 2 within experimental design, we manipulated the stimulus movement onset mean (\emph{early mean} = 1000 ms, \emph{middle mean} = 1100 ms, \emph{late mean} = 1200 ms) and standard deviation (low variance = 50 ms, high variance = 150 ms) that resulted in 6 experimental conditions (\boldblue{Fig. 1C}).  Each condition was performed separately using a block design.
+
+Participants completed 605 total trials. They first performed 25 baseline trials, as well as 80 trials per experimental condition that were each separated by 25 washout trials. The stimulus movement onset during baseline and washout trials was randomly drawn from a discrete uniform distribution [400, 437.5,…,1300 ms]. The washout condition was designed to minimize the influence of the stimulus movement onset distribution of the previous condition. Condition order was randomized across participants.
+
+Prior to \boldblue{Experiment 1}, participants performed two separate tasks to estimate response time (response time task; \boldblue{Supplementary E}) and timing uncertainty (timing uncertainty task; \boldblue{Supplementary F}). We counterbalanced the order of the response time and timing uncertainty tasks.
+
+\vspace{2mm}
+\subsection{Experiment 2 Design}
+
+\noindent The goal of \boldblue{Experiment 2} was to test whether there is a time delay and uncertainty when switching from reacting to guessing. To investigate, participants began each trial by moving their cursor into a start position. Then, a stimulus cursor appeared in the start position. Each trial began with a beep and the two potential targets appeared on the screen. Here participants experienced two different types of trials: react trials or guess trials. The react trials consisted of the stimulus moving to one of the two targets (\boldblue{Fig. 4A}). Participants were instructed to follow the stimulus as quickly as possible. The guess trials consisted of the stimulus disappearing from the start position (\boldblue{Fig. 4B}). Participants were instructed to select the target they believed the stimulus would end up in as quickly as possible. After the participant selected their target, the stimulus cursor appeared in one of the two targets. The stimulus movement onset (reaction trials) or disappearance time (guess trials) was drawn from a normal distribution (mean = 800 ms, standard deviation = 50 ms).  The stimulus randomly selected the left and right targets with equal probability.
+
+Using these react and guess trials, participants performed a within experimental design with three conditions: \emph{react or guess} condition, \emph{only react} condition, and \emph{only guess} condition. In the \emph{react or guess} condition, we pseudorandomly interleaved the 50 react trials and 50 guess trials. Participants were informed the stimulus would either move to one of the targets (react trials) or disappear (guess trials). The \emph{only react} condition consisted of 50 react trials. Participants were informed that the stimulus would move to one of the two targets and would not disappear. The \emph{only guess} condition consisted of 50 guess trials. Participants were informed that the stimulus would only disappear and would not move to one of the two targets. The \emph{react or guess} condition was performed first by participants to avoid any potential carry-over effects of repeatedly performing \emph{react or guess} trials in the other two conditions. After the \emph{react or guess} condition, the order of the \emph{only react} condition and \emph{only guess} condition was counterbalanced.
+
+\vspace{2mm}
+\subsection{Data Analysis}
+
+\noindent Kinematics were filtered using a dual-pass, low pass, second order Butterworth filter with a cutoff frequency of 14 Hz.
+
+\subsubsection{Experiment 1}
+
+\noindent \emph{Participant movement onset}: On each trial, we found when the time point where the participant hand velocity exceeded 0.05 m/s \autocite{gribbleRoleCocontractionArm2003,calaloSensorimotorSystemModulates2023}. The mean time point across all trials within a condition was used to estimate participant movement onset.
+
+\noindent \emph{Participant movement onset standard deviation}: Using all trials in a condition, we used the time point where the participant hand velocity exceeded 0.05 m/s to calculate the standard deviation of participant movement onsets for each condition.
+
+\noindent \emph{Outcome metrics}: Win (\%): A trial was a win if participants reached the same target as the stimulus before the time constraint. Incorrect (\%): A trial was an incorrect if participants reached the opposite target as the stimulus before the time constraint. Indecision (\%): A trial was an indecision if participants failed to reach either target before the time constraint. We calculated each of the outcome metrics as a percentage of the total trials.
+
+\subsubsection{Experiment 2}
+
+\noindent \emph{Response time}: Response times were calculated as the difference between participant movement onset and either the stimulus movement onset or stimulus disappearance time. The mean time difference across all trials within a condition was used to estimate the participant response times. Note that any response times greater than 650 ms or less than 150 ms were removed from analysis (3.7\% of trials). We calculated response time separately for react and guess trials.
+
+\noindent \emph{Response time standard deviation}: We calculated the standard deviation of participant’s response times separately for react and guess trials.
+
+\subsection{Statistics}
+
+\subsubsection{Experiment 1 and 2}
+
+\noindent We used analysis of variance (ANOVA) as omnibus tests to determine whether there were main effects and interactions. We report the Greenhouse-Geiser adjusted p-values and degrees of freedom. In \boldblue{Experiment 1} we used a 3 (mean: early, middle, late) x 2 (variance: low, high) repeated measures ANOVA for each dependent variable. In \boldblue{Experiment 2} we used a 2 (condition: interleaved react and guess, \emph{react or guess} only) x 2 (trial type: react trials, guess trials) repeated measures ANOVA for each dependent variable. For both \boldblue{Experiment 1} and \boldblue{2}, we performed mean comparisons using nonparametric bootstrap hypothesis tests (n = 1,000,000) \autocite{hesterbergBootstrap2011,cashabackDissociatingErrorbasedReinforcementbased2017,cashabackGradientReinforcementLandscape2019a}. Mean comparisons were Holm-Bonferonni correct to account for multiple comparisons. Significance threshold was set at $\alpha$ = 0.05). We also report the common-language effect size ($\hat{\theta}$).
+
+\newpage
+\begin{nolinenumbers}
+
+    \printbibliography[title=\textcolor{mydarkblue}{References}]
+
+\end{nolinenumbers}
+
+% \newpage
+% \input{supplementary}
+
+\end{document}
