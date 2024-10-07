@@ -1,46 +1,70 @@
-\documentclass[12pt]{article}
-\usepackage{inputenc}
+\documentclass[man,floatsintext,letterpaper,12pt]{apa7}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\raggedbottom
+
+\usepackage{fontspec} % For setmainfont
+% \usepackage{docmute} % For putting one tex into another tex using \input
+\usepackage{bbm} % Needed for supplementary
+
+\usepackage{csquotes}
+\MakeOuterQuote{"}
+
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{setspace}
+\captionsetup[figure]{font=doublespacing,justification=justified}
+% \captionsetup[table]{font=doublespacing}
+
+\usepackage{hyperref}
+\hypersetup{hidelinks,colorlinks=false}
+\urlstyle{same}
+\usepackage{lineno}
+\linenumbers
+
 \usepackage{amsmath}
 \usepackage{amsfonts}
 \usepackage{amssymb}
-\usepackage{bbm}
-\usepackage{fontspec} %XeLatex
-\usepackage{soul,xcolor}
-\usepackage{graphicx,wrapfig}
-\usepackage{float}
-\usepackage{caption}
-\usepackage{arydshln} % For \hdashline
-\usepackage{lineno}
-\usepackage{setspace}
 
+\usepackage{sectsty}
 \definecolor{mydarkblue}{RGB}{0,51,102}
 \definecolor{MYDARKBLUE}{RGB}{0,51,102}
+\newcommand\boldblue[1]{\textcolor{mydarkblue}{\textbf{#1}}}
+\newcommand\bolditalicblue[1]{\textcolor{mydarkblue}{\textit{\textbf{#1}}}}
+\newcommand\italicblue[1]{\textcolor{mydarkblue}{\textit{#1}}}
+
+\sectionfont{\centering\normalfont\normalsize\boldblue}
+\subsectionfont{\noindent\normalfont\normalsize\bolditalicblue}
+\subsubsectionfont{\noindent\normalfont\normalsize\italicblue}
+
+\usepackage[
+  autocite=inline,
+  style=apa,
+  sortcites=true,
+  sorting=nyt,
+  backend=biber
+  ]{biblatex}
+  \addbibresource{Aim1.bib}
+
+\DeclareBibliographyCategory{asterisk}
+\renewbibmacro*{begentry}{%
+    \ifcategory{asterisk}%
+    {*}%
+    {}%
+}
+\newcommand*{\nocitemeta}[1]{%
+    \nocite{#1}%
+    \addtocategory{asterisk}{#1}%
+}
+
+\renewcommand{\postnotedelim}{\space}
+
+\usepackage{comment}
+
+%% MY DEFINITIONS --------------------------------------
 
 \graphicspath{ {./figures/} }
-
-\usepackage[%
-  autocite  = superscript,
-  backend  = bibtex,
-  sortcites  = false,
-  citestyle = numeric,
-  bibstyle=authoryear,
-  sorting = none,
-  maxbibnames=99,
-  giveninits = true, %initials
-  isbn=false,
-  doi = false,
-  url = false
-]{biblatex}
-
-\addbibresource{Aim1.bib}
-% \bibliography{draft}
-
-\usepackage[paper=letterpaper,
-            %includefoot, % Uncomment to put page number above margin
-            marginparwidth=0.0in,     % Length of section titles
-            marginparsep=.05in,       % Space between titles and text
-            margin=1.0in,               % 1 inch margins
-            includemp]{geometry}
 
 \renewbibmacro{in:}{}
 \DeclareFieldFormat[article]{citetitle}{#1}
@@ -50,54 +74,6 @@
 \DeclareNameAlias{default}{family-given}
 \DeclareFieldFormat{labelnumberwidth}{\textcolor{mydarkblue}{\mkbibbold{#1\adddot}}} %remove brackets in bibliography
 \DeclareFieldFormat{journaltitle}{\mkbibemph{#1}\isdot}
-%\renewcommand{\labelnamepunct}{\addspace}  % remove period after year
-
-% add numbers in front of citations and puts year behind authors
-\defbibenvironment{bibliography}
-  {\list
-     {\printtext[labelnumberwidth]{%
-    \printfield{labelprefix}%
-    \printfield{labelnumber}}}
-     {\setlength{\labelwidth}{\labelnumberwidth}%
-      \setlength{\leftmargin}{\labelwidth}%
-      \setlength{\labelsep}{\biblabelsep}%
-      \addtolength{\leftmargin}{\labelsep}%
-      \setlength{\itemsep}{\bibitemsep}%
-      \setlength{\parsep}{\bibparsep}}%
-      \renewcommand*{\makelabel}[1]{\hss##1}}
-  {\endlist}
-  {\item}
-
-\usepackage{xpatch}
-\xpatchbibmacro{date+extrayear}{%
-  \printtext[parens]%
-}{%
-  \setunit{\addperiod\space}%
-  \printtext%
-}{}{}
-\AtEveryBibitem{%
-  \clearfield{note}%
-}
-
-% adds comma after journal 
-\renewcommand\bibpagespunct{\ifentrytype{article}{\addcolon}{\addcomma}\space}
-\renewbibmacro*{volume+number+eid}{%
-\setunit*{\addcomma\space}% NEW
-  \printfield{volume}
-  \printfield[parens]{number}{,}%
-  \setunit{\addcomma\space}%
-  \printfield{eid}}
-
-% change and to \& (can also remove)
-\DefineBibliographyExtras{english}{%
-  \renewcommand*{\finalnamedelim}{\addcomma\addspace\&\addspace}%
-  %\renewcommand*{\finalnamedelim}{\addcomma\addspace}%
-}
-
-%\usepackage{hyperref}
-\usepackage{fancyhdr}
-\renewcommand{\headrulewidth}{0pt}
-\renewcommand{\footrulewidth}{0pt}
 
 \setmainfont{AvenirLTProBook.otf}[
     Path =fonts/,
@@ -110,34 +86,25 @@
 % \DeclareCaptionLabelFormat{table}{1-2}
 % \captionsetup[table]{labelfont=bf, labelsep=period}
 \DeclareCaptionLabelFormat{supp}{1-2}
+% \DeclareCaptionFont{myblue}{\color{mydarkblue}}
 \captionsetup[figure]{labelfont=bf, labelsep=colon, font=footnotesize, justification=justified}
 
 \DeclareMathOperator*{\argmax}{arg\,max} % thin space, limits underneath in displays
 
-\newcommand\boldblue[1]{\textcolor{mydarkblue}{\textbf{#1}}}
+\abovedisplayskip = 10.0pt plus 2.0pt minus 20.0pt
+\belowdisplayskip = 10.0pt plus 2.0pt minus 20.0pt
+\abovedisplayshortskip = 0.0pt plus 20.0pt
+\belowdisplayshortskip = 9pt plus 3pt minus 20pt
 
-\newcommand{\SuppCaption}[2]{\noindent\textbf{{#1}} {#2}\footnotesize}
-\newcommand{\SectionHeader}[1]{\noindent\textbf{\Large\textcolor{mydarkblue}{#1}}\normalsize }
-\newcommand{\SubSectionHeader}[1]{\noindent\Large{\textcolor{mydarkblue}{#1}}\normalsize }
+%%%%%%%%%%%%%%%%%%%
+\title{Supplementary Information}
+\shorttitle{}
+\authorsnames{}
+\authorsaffiliations{}
 
-\renewcommand{\figurename}{Supplementary Figure}
-
-% Condition variables
-% \def\emlv{\emph{\emph{early mean low variance}}}
-% \def\emhv{\emph{early mean high variance}}
-% \def\mmlv{\emph{middle mean low variance}}
-% \def\mmhv{\emph{middle mean high variance}}
-% \def\lmlv{\emph{\emph{late mean low variance}}}
-% \def\lmhv{\emph{late mean high variance}}
-
-% \def\em{\emph{early mean}}
-% \def\mm{\emph{middle mean}}
-% \def\lm{\emph{late mean}}
-
-% \definecolor{myudblue}{RGB}{0, 83, 159}
 \begin{document}
+% \maketitle
 \section{Supplementary}
-
 \section{Supplementary A: Low and High Variance Results}
 \begin{figure}[H]
     \centering
@@ -151,11 +118,9 @@
 
     \caption*{\boldblue{Supplementary Figure 2: Trial Outcomes.} \boldblue{A)} Indecisions (\%) \boldblue{B)} Wins (\%), and \boldblue{C)} Incorrects (\%) for each condition. \boldblue{A)} We found that the middle mean low variance and \emph{late mean low variance} condition had a significantly greater number of indecisions compared to the \emph{early mean low variance} condition. That is, in the middle mean low variance and \emph{late mean low variance} conditions, participants often waited to react to the stimulus but ended up guessing late. These late guesses often led to indecisions. \boldblue{B)} Interestingly, we also found that the average win percentage (41\%) was significantly below the 50\% chance level (p < 0.001) in the \emph{late mean low variance} condition, clearly demonstrating suboptimal behaviour. Critically, participants would have earned more points if they had simply guessed early on all trials, rather than attempting to react to the stimulus. Collectively, these results show that participants were suboptimal decision makers that led to excessively indecisive behaviour.}
 \end{figure}
-
 \newpage
 \section{Supplementary B: First Half and Second Half Data Trends}
 \vspace{-1mm}
-
 \begin{figure}[H]
     \centering
     \includegraphics[scale = 1]{figures/exp1_data_panel_first_half.png}
@@ -402,14 +367,14 @@ The decision policy uses known parameters to select an optimal transition time $
 \vspace{2mm}
 \subsection{Model Parameter Estimation and Fitting Procedure}
 
-\noindent As a reminder, we had three models: No Switch Time Model, Full Switch Time Model, and Partial Switch Time Model. Each of these models had full knowledge of the reaction time mean and standard deviation, neuromechanical delay mean and standard deviation, movement time mean and standard deviation, and the stimulus movement onset distribution. These parameter values were estimated from experimental data by bootstrapping the meansfrom the response time experiment ($\mu_{rt}, \sigma_{rt}$), timing experiment ($\sigma_{\tau}$), and \boldblue{Experiment 1} ($\mu_{mt}, \sigma_{mt}$). We describe the bootstrap procedure below. Neuromechanical delay ($\mu_{nmd}$) and uncertainty ($\sigma_{nmd}$) were estimated from prior literature\autocite*{normanElectromechanicalDelaySkeletal1979,rossiniClinicalApplicationsMotor1998,brucePrimateFrontalEye1985}.
+\noindent As a reminder, we had three models: No Switch Time Model, Full Switch Time Model, and Partial Switch Time Model. Each of these models had full knowledge of the reaction time mean and standard deviation, neuromechanical delay mean and standard deviation, movement time mean and standard deviation, and the stimulus movement onset distribution. These parameter values were estimated from experimental data by bootstrapping the meansfrom the response time experiment ($\mu_{rt}, \sigma_{rt}$), timing experiment ($\sigma_{\tau}$), and \boldblue{Experiment 1} ($\mu_{mt}, \sigma_{mt}$). We describe the bootstrap procedure below. Neuromechanical delay ($\mu_{nmd}$) and uncertainty ($\sigma_{nmd}$) were estimated from prior literature\autocite{normanElectromechanicalDelaySkeletal1979,rossiniClinicalApplicationsMotor1998,brucePrimateFrontalEye1985}.
 
 We used both a warm-start initialization and bootstrap procedure (see below) to determine the switch time mean ($\mu_{switch}$) and uncertainty ($\sigma_{switch}$), as well as the decision policy’s knowledge of the switch time mean ($\hat{\mu}_{switch}$), switch time uncertainty ($\hat{\sigma}_{switch}$), and timing uncertainty ($\hat{\sigma}_{\tau}$).
 
 \vspace{2mm}
 \noindent\emph{Warm-Start Initialization}
 
-\noindent The fitting procedure for the Full Switch Time Model and Partial Switch Time Model began with a “warm-start” to find an initial set of $\mu_{switch}$, $\sigma_{switch}$, $\hat{\mu}_{switch}$, $\hat{\sigma}_{switch}$, and $\hat{\sigma}_{\tau}$ \autocite*{rothReinforcementbasedProcessesActively2023,rothPunishmentLeadsGreater2024}.  Here the remaining parameters estimated from experimental data were set as the group level means. We found the best-fit parameters that led to the lowest loss between model outputs ($Model_{i,j}$) and group data means ($Data_{i,j}$) according to
+\noindent The fitting procedure for the Full Switch Time Model and Partial Switch Time Model began with a “warm-start” to find an initial set of $\mu_{switch}$, $\sigma_{switch}$, $\hat{\mu}_{switch}$, $\hat{\sigma}_{switch}$, and $\hat{\sigma}_{\tau}$ \autocite{rothReinforcementbasedProcessesActively2023,rothPunishmentLeadsGreater2024}.  Here the remaining parameters estimated from experimental data were set as the group level means. We found the best-fit parameters that led to the lowest loss between model outputs ($Model_{i,j}$) and group data means ($Data_{i,j}$) according to
 % Loss Equation 
 \begin{equation}
     \mathcal{L} = \sum_{i = 1}^{6} \sum_{j = 1}^{5} \frac{|Data_{i,j} - Model_{i,j}|}{Data_{i,j}},
@@ -419,7 +384,7 @@ where $i$ corresponds to experimental condition and $j$ corresponds to each depe
 \vspace{2mm}
 \noindent\emph{Bootstrap Procedure}
 
-\noindent In the bootstrap procedure we randomly sampled participants with replacement 10,000 times\autocite*{cashabackGradientReinforcementLandscape2019a, cashabackDissociatingErrorbasedReinforcementbased2017,rothReinforcementbasedProcessesActively2023,rothPunishmentLeadsGreater2024}. We used the mean of the bootstrapped participant data for each of the parameter values that were estimated from data. For each bootstrap iteration, the optimization process selected the free parameters for the Full Switch Time Model ($\mu_{switch}$, $\sigma_{switch}$) and Partial Switch Time Model ($\mu_{switch}$, $\sigma_{switch}$, $\hat{\mu}_{switch}$, $\hat{\sigma}_{\tau}$, $\hat{\sigma}_{\tau}$) that minimized the loss function (\boldblue{Eq. 44}).
+\noindent In the bootstrap procedure we randomly sampled participants with replacement 10,000 times\autocite{cashabackGradientReinforcementLandscape2019a, cashabackDissociatingErrorbasedReinforcementbased2017,rothReinforcementbasedProcessesActively2023,rothPunishmentLeadsGreater2024}. We used the mean of the bootstrapped participant data for each of the parameter values that were estimated from data. For each bootstrap iteration, the optimization process selected the free parameters for the Full Switch Time Model ($\mu_{switch}$, $\sigma_{switch}$) and Partial Switch Time Model ($\mu_{switch}$, $\sigma_{switch}$, $\hat{\mu}_{switch}$, $\hat{\sigma}_{\tau}$, $\hat{\sigma}_{\tau}$) that minimized the loss function (\boldblue{Eq. 44}).
 
 \vspace{2mm}
 \subsection{Model Parameter Values}
@@ -475,7 +440,7 @@ The Partial Switch Time Model fit the timing uncertainty, switch time mean, swit
     \caption*{\boldblue{Supplementary Figure 8: Timing Uncertainty Experiment}. One of two potential targets (dashed white rings; not visible to participants) would appear on the screen. Once a target appeared (solid white ring), participants were instructed to rapidly move their cursor to hit the displayed target. We used the mean and standard deviation of response times as model parameters in the optimal transition models.}
 \end{figure}
 
-\newpage
+% \newpage
 \section{Supplementary G: Guess Decisions}
 
 \begin{figure}[H]
@@ -483,15 +448,14 @@ The Partial Switch Time Model fit the timing uncertainty, switch time mean, swit
     \includegraphics[scale = 1]{figures/guess_decisions.png}
 
     \caption*{\boldblue{Supplementary Figure 9: Guess Decision Percentages for Experiment 1}. 
-    Estimated percentage of guess decision percentages (y-axis) for each experimental condition (x-axis). During \boldblue{Experiment 1} participants were rewarded for successful trials and experienced a time constraint. Thus, we would expect participants to have faster response times in \boldblue{Experiment 1} than in the Response Time task \autocite*{milsteinInfluenceExpectedValue2007,shadmehrMovementVigorReflection2019a}. To account for this, we adjusted participant response times by subtracting 25ms from their median response time in the Response Time task. A trial was a guess decision if the difference between the stimulus movement onset and participant movement onset was less than that participant’s adjusted response time. We found that participants guessed significantly more often as the stimulus’s mean movement onset approached the time constraint.}
+    Estimated percentage of guess decision percentages (y-axis) for each experimental condition (x-axis). During \boldblue{Experiment 1} participants were rewarded for successful trials and experienced a time constraint. Thus, we would expect participants to have faster response times in \boldblue{Experiment 1} than in the Response Time task \autocite{milsteinInfluenceExpectedValue2007,shadmehrMovementVigorReflection2019a}. To account for this, we adjusted participant response times by subtracting 25ms from their median response time in the Response Time task. A trial was a guess decision if the difference between the stimulus movement onset and participant movement onset was less than that participant’s adjusted response time. We found that participants guessed significantly more often as the stimulus’s mean movement onset approached the time constraint.}
 \end{figure}
 
-% \newpage
-% \fancyhead[L]{} % Need this because print bibliography is dumb and puts a REFERENCES in the left header
-% \begin{nolinenumbers}
+\newpage
+\begin{nolinenumbers}
 %     \definecolor{mydarkblue}{RGB}{0,51,102}
-
-%     \printbibliography[title=\LARGE\textcolor{mydarkblue}{Supplementary References}]
-% \end{nolinenumbers}
+    \printbibliography[title={Supplementary References}]
+\end{nolinenumbers}
 
 \end{document}
+
