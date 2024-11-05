@@ -139,7 +139,6 @@
 
 \newpage
 % \pagenumbering{arabic} % page numbering starts here
-Word count: 7114
 \section{Introduction}
 \vspace{2mm}
 \noindent Indecisions arise from failing to decide and act upon sensory information in time, such as a driver failing to brake or hit the gas pedal when a traffic light turns yellow. When acting under high pressure time constraints, the ability to accurately time a decision is critical to success. The vast majority of decision-making research either does not consider responses made after some time constraint or simply does not permit a non-response, such as in the classic two-alternative forced choice paradigm \autocite{zacksenhouseRobustOptimalStrategies2010, bogaczPhysicsOptimalDecision2006, choMechanismsUnderlyingDependencies2002, joganNewTwoalternativeForced2014, ratcliffDiffusionDecisionModel2008,ulrichThresholdEstimationTwoalternative2004,tylerSignalDetectionTheory2000}. Thus, despite its real-world ubiquity and importance, we have very little understanding of how indecisions arise.
@@ -313,8 +312,10 @@ Here we showed in our first experiment that humans are excessively indecisive un
 
 \subsection{Participants}
 
-\noindent 44 participants participated across two experiments. 20 individuals participated in \boldblue{Experiment 1} and 24 individuals participated in \boldblue{Experiment 2}. All participants reported they were free from musculoskeletal injuries, neurological conditions, or sensory impairments. In addition to a base compensation of \$5.00, we informed them they would receive a performance-based compensation of up to \$5.00. Participants received the full \$10.00 once they completed the experiment irrespective of their performance. All participants provided written informed consent to participate in the experiment and the procedures were approved by the University of Delaware’s Institutional Review Board.
+\noindent 44 participants participated across two experiments (collected in 2023). 20 individuals participated in \boldblue{Experiment 1} (mean age = 25.7, 8 female) and 24 individuals participated in \boldblue{Experiment 2} (mean age = 25.1, 9 female). All participants reported they were free from musculoskeletal injuries, neurological conditions, or sensory impairments. In addition to a base compensation of \$5.00, we informed them they would receive a performance-based compensation of up to \$5.00. Participants received the full \$10.00 once they completed the experiment irrespective of their performance. All participants provided written informed consent to participate in the experiment and the procedures were approved by the University of Delaware’s Institutional Review Board.
 
+\subsection{Power Analysis}
+For \boldblue{Experiment 1}, we performed a power analysis on the interaction term of a 3 x 2 repeated measures ANOVA ($\alpha$ = 0.05, $\beta$ = 0.2 [80\% power], f = 0.34). This yielded a sample size of 14, but we collected 20 participants. For \boldblue{Experiment 2}, we performed a power analysis on the interaction term of a 2 x 2 repeated measures ANOVA ($\alpha$ = 0.05, $\beta$ = 0.2 [80\% power], f = 0.41). This yielded a sample size of 15, but we collected 24 participants.
 \subsection{Apparatus}
 
 \noindent For both experiments we used an end point KINARM robot (\boldblue{Fig. 1A}; BKIN Technologies, Kingston, ON). Each participant was seated on an adjustable chair in front of one of the end-point robots. Each participant grasped the handle of a robotic manipulandum and made reaching movements in the horizontal plane. A semi-silvered mirror blocked the vision of the upper limb and displayed virtual images (e.g., targets, cursors) from an LCD screen. In all experiments the cursor was aligned with the position of the hand. The semi-silvered mirror occluded the vision of their hand. Kinematic data were recorded at 1,000 Hz and stored offline for data analysis.
@@ -360,6 +361,8 @@ Using these react and guess trials, participants performed a within experimental
 \subsubsection{Experiment 1 and 2}
 
 \noindent We used analysis of variance (ANOVA) as omnibus tests to determine whether there were main effects and interactions. We report the Greenhouse-Geiser adjusted p-values and degrees of freedom. In \boldblue{Experiment 1} we used a 3 (mean: early, middle, late) x 2 (variance: low, high) repeated measures ANOVA for each dependent variable. In \boldblue{Experiment 2} we used a 2 (condition: interleaved react and guess, \emph{react or guess} only) x 2 (trial type: react trials, guess trials) repeated measures ANOVA for each dependent variable. For both \boldblue{Experiment 1} and \boldblue{2}, we performed mean comparisons using nonparametric bootstrap hypothesis tests (n = 1,000,000) \autocite{hesterbergBootstrap2011,cashabackDissociatingErrorbasedReinforcementbased2017,cashabackGradientReinforcementLandscape2019a}. Mean comparisons were Holm-Bonferonni correct to account for multiple comparisons. Significance threshold was set at $\alpha$ = 0.05). We also report the common-language effect size ($\hat{\theta}$).
+\subsection{Transparency and Openness}
+Data, analysis scripts, and computational modeling scripts are available on github (https://github.com/CashabackLab). This study and the subsequent analyses were not preregistered. 
 
 \newpage
 \begin{nolinenumbers}
